@@ -12,10 +12,7 @@
 
 # 1️⃣ Chosen approach (why this one)
 
-**Winner:**
 ✅ **Markdown Tables + YAML frontmatter for logic**
-
-Why this fits *your* use cases best:
 
 | Requirement    | Why this wins                                 |
 | -------------- | --------------------------------------------- |
@@ -325,15 +322,3 @@ If this grows:
 * v5 → versioned financial models
 
 Still text. Still sane.
-
----
-
-If you want next steps, I can:
-
-* Write a **formal RFC-style spec**
-* Implement a **reference evaluator (Python / C# / TS)**
-* Design a **VS Code extension**
-* Define a **linting rule set for finance**
-* Show **round-tripping MDXTab ↔ Excel**
-
-If you had to pick one: **human readability** or **machine power**—which one should always win when they conflict?
