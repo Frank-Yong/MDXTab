@@ -14,6 +14,8 @@
 - Frontmatter: YAML parsed to structured schema; enforce required fields and defaults (`key: id`, `empty_cells: null`).
 - Markdown tables: extract header to align with `columns`; parse rows to raw literals or blanks (handled by policy).
 - No computed columns allowed in Markdown rows.
+- Dates: strict `YYYY-MM-DD`, date-only; no time zone or date math.
+- Identifiers: letters/digits/underscore, start with letter/underscore, case-sensitive.
 
 ## Validation
 - Schema: required keys, unique table names, unique row keys, columns match declared order.
@@ -28,13 +30,35 @@
 - Functions: only deterministic built-ins (`sum`, `avg`, `min`, `max`, `count`, `round`, `if`).
 - Errors: stop on failed lookups, bad types, or invalid expressions.
 
+## Number and null rules
+- Numbers must be finite; division by zero errors; `round` uses half-to-even and requires an integer `n`.
+- Arithmetic with null returns null (except division by zero which errors).
+- Aggregates skip nulls; empty inputs return: `sum`=0, `count`=0, `avg`=null, `min`=null, `max`=null.
+- Comparisons against null are errors; logical `and`/`or` treat null as false.
+
 ## Interpolation and Rendering
 - Allow only `{{ table.aggregate }}` substitutions in Markdown body.
 - Provide hooks to export tables to CSV/XLSX/JSON without altering semantics.
+- Allow optional spaces inside braces; any other `{{ }}` pattern is an error.
 
 ## Extensibility
 - Keep a list of allowed functions; block anything random or time-based.
 - Use future flags to add types or policies without breaking v1 defaults.
+
+## Cross-language compliance
+- Keep behavior identical across runtimes: follow the number/null rules and aggregate empty-set results above.
+- Reject NaN/Infinity; do not allow environment-specific math quirks.
+- Use the shared diagnostics shape so CLI and editors stay aligned.
+- Treat golden test vectors as the contract for ports in other languages.
+- Use the shared error codes list for consistency across implementations.
+
+## Pitfalls to avoid
+- Ambiguous templates: only `{{ table.aggregate }}` (with optional spaces) is valid; other `{{ }}` forms error.
+- Table parsing drift: never reorder or auto-trim cells; enforce declared column order and preserve row order.
+- Identifier laxness: stay case-sensitive; allow only letters/digits/underscore, starting with letter/underscore.
+- Silent coercions: forbid any coercion outside the allowed patterns; fail instead of guessing.
+- NaN/Infinity leaks: disallow; error on divide-by-zero or overflow cases that would produce them.
+- Date looseness: accept only `YYYY-MM-DD`; no time zones, no date math in v1.
 
 ## Observability
 - Structured error objects including table, column/aggregate, kind, and source location when available.

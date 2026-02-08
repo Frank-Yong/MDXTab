@@ -32,6 +32,16 @@
 - Make errors easy to see in CI and in the editor.
 - Allow adding safe built-in functions without breaking determinism.
 
+## Cross-language Compatibility
+- Follow the format spec rules for numbers: only finite values, division by zero errors, `round` uses half-to-even, and no NaN/Infinity.
+- Apply null rules consistently: arithmetic with null yields null; aggregates skip nulls and use the defined empty-set results; comparisons with null error.
+- Use the shared diagnostics shape (code, message, severity, file, table, column/aggregate, range).
+- Pass the golden test vectors; use them as a contract for other language ports.
+- Apply strict date rules: `YYYY-MM-DD` only, no time zone, no date math.
+- Enforce identifier rules: letters/digits/underscore, start with letter/underscore, case-sensitive.
+- Interpolation parser must accept `{{ table.aggregate }}` with optional spaces; treat other `{{ }}` forms as errors.
+- Use the standard error codes list to keep diagnostics aligned across runtimes.
+
 ## Milestones (aligned with plan)
 1) Spec lock and golden examples.
 2) Core engine: parsing, validation, expression eval, aggregates, dependency graph.
@@ -66,6 +76,7 @@
 - Unit tests for parsing, evaluation, type rules, and error cases.
 - Randomized checks where useful (for example, parse then serialize should keep data the same).
 - Integration tests for cross-table lookups and detecting dependency cycles.
+- Publish golden vectors with strict expected diagnostics (codes, messages) to guide other language ports.
 
 ## Compatibility and Versioning
 - `mdxtab: 1.0` enforced; feature flags for future additions must default off.

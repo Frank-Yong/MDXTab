@@ -48,6 +48,18 @@ tables:
   - `string` -> `date` if `YYYY-MM-DD`
 - All other coercions must fail.
 
+## Dates
+- Dates are date-only (no time, no timezone); format must be `YYYY-MM-DD`.
+- No date arithmetic in v1; any attempt is an error.
+
+## Numeric and Null Semantics
+- Numbers must be finite (no NaN or Infinity); any operation that would produce them is an error.
+- Division by zero is an error.
+- `round(x, n)` rounds to `n` decimal places using half-to-even; `n` must be an integer (negative not allowed) or it is an error.
+- Arithmetic `+ - * /` with any null operand returns null (except division by zero, which errors).
+- Logical `and`/`or` treat null as false.
+- Comparisons against null are errors.
+
 ## Expression Language (v1)
 - Pure, deterministic, side-effect free.
 - Grammar (EBNF):
@@ -68,6 +80,11 @@ arguments   ::= expression ( "," expression )*
   - `row.col` or `col` within the same row.
   - Cross-table lookup: `table[key].col`; missing row or column must fail.
 
+## Identifiers
+- Table and column names: letters, digits, underscore; must start with a letter or underscore.
+- Identifiers are case-sensitive.
+- Function names use the same rules.
+
 ## Evaluation Order (Deterministic)
 1) Parse frontmatter and Markdown tables.
 2) Validate schema, column presence, types, and dependency graph (no cycles).
@@ -75,9 +92,15 @@ arguments   ::= expression ( "," expression )*
 4) Evaluate aggregates over final column values.
 5) Render outputs (interpolation, exports).
 
+### Aggregate Null Handling
+- Aggregates skip null inputs.
+- If all values are null: `sum` and `count` return 0; `avg`, `min`, and `max` return null.
+
 ## Interpolation Rules
 - Allowed only for aggregates inside `{{ table.aggregate }}` within Markdown body.
 - Arbitrary expressions inside interpolation are disallowed.
+- Spaces allowed inside the braces: `{{table.aggregate}}` and `{{ table.aggregate }}` are both valid.
+- Any other pattern with `{{` and `}}` that is not `table.aggregate` is an error.
 
 ## Error Handling (Fatal)
 - Missing tables/columns/keys, duplicate keys, or column order mismatch.
@@ -86,6 +109,17 @@ arguments   ::= expression ( "," expression )*
 - Invalid expressions or unknown identifiers/functions.
 - Failed lookups in cross-table references.
 - Empty cell policy `error` violations.
+
+## Pitfalls to avoid
+- Ambiguous templates: only `{{ table.aggregate }}` (with optional spaces) is allowed; all other `{{ }}` patterns error.
+- Table drift: do not reorder or auto-trim cells; column order must match, row order is preserved.
+- Identifier looseness: names are case-sensitive and limited to letters/digits/underscore, starting with a letter/underscore; no dashes/spaces.
+- Type slippage: only the exact coercions allowed; everything else errors (no silent string→number/date).
+- NaN/Infinity: never allowed; divide-by-zero is an error.
+- Dates: strict `YYYY-MM-DD`, no time zones, no date math.
+
+### Standard error codes (suggested)
+- `missing-table`, `missing-column`, `duplicate-key`, `column-order-mismatch`, `type-mismatch`, `invalid-coercion`, `cycle-detected`, `invalid-expression`, `unknown-identifier`, `unknown-function`, `lookup-failed`, `empty-cell-error`, `divide-by-zero`, `invalid-round`, `invalid-date`, `invalid-identifier`, `invalid-interpolation`.
 
 ## Versioning and Compatibility
 - Files declare `mdxtab: 1.0`; future minor versions must remain backward compatible.
