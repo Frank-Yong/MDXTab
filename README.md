@@ -38,6 +38,7 @@ tables:
     key: <columnName>        # optional, default: id
     columns:
       - <columnName>
+    empty_cells: null|zero|empty-string|error  # optional, default: null
     types:                   # optional
       <columnName>: number|string|date|bool
     computed:
@@ -67,6 +68,7 @@ tables:
 
   * Contain **raw data only**
   * No formulas inline
+  * Empty cells default to **null** unless overridden
 * All logic lives in frontmatter
 
 ---
