@@ -44,7 +44,7 @@
 - Allow only `{{ table.aggregate }}` substitutions in Markdown body.
 - Provide hooks to export tables to CSV/XLSX/JSON without altering semantics.
 - Allow optional spaces inside braces; any other `{{ }}` pattern is an error, except inside fenced code blocks or inline code spans, which are left untouched.
-- Escaping: `\{\{` and `\}\}` render literal `{{` and `}}` in text. Apply escaping before detecting interpolation.
+- Escaping: `\{\{` and `\}\}` render literal `{{` and `}}` in text. Interpolation runs on the Markdown AST; apply escaping and interpolation only within non-code text nodes, leaving fenced/inline code untouched.
 
 ## Extensibility
 - Keep a list of allowed functions; block anything random or time-based.
