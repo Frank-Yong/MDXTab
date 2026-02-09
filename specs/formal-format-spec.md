@@ -76,7 +76,7 @@ tables:
 ```
 expression  ::= logical
 logical     ::= comparison ( ("and" | "or") comparison )*
-comparison  ::= sum ( ("==" | "!=" | ">" | "<" | ">=" | "<=") sum )*
+comparison  ::= sum ( ("==" | "!=" | ">" | "<" | ">=" | "<=") sum )?
 sum         ::= term ( ("+" | "-") term )*
 term        ::= factor ( ("*" | "/") factor )*
 factor      ::= literal | reference | function | "(" expression ")"
@@ -95,6 +95,9 @@ arguments   ::= expression ( "," expression )*
 ### Context rules for functions
 - In per-row computed columns, only row-safe functions are allowed. Using aggregate-only functions in a row expression is an error (`invalid-aggregate-context`).
 - In aggregates, both row-safe and aggregate-only functions are allowed, but aggregate-only functions operate over the current table after row evaluation.
+
+### Comparison chaining
+- Comparisons allow only a single operator (e.g., `a < b`). Chained comparisons such as `1 < 2 < 3` are invalid and must raise `invalid-expression`.
 
 ## Identifiers
 - ASCII-only: start with `[A-Za-z_]`, continue with `[A-Za-z0-9_]*`.

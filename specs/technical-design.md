@@ -23,6 +23,7 @@
 - Dependencies: find a safe order to compute things and fail if there is a loop.
 - References: columns must exist; cross-table lookups must find the row and column.
 - Empty cell policy: apply `null`/`zero`/`empty-string`/`error` the same way everywhere.
+- Expressions: reject chained comparisons (only one comparison operator per expression segment).
 
 ## Evaluation
 - Row phase: compute row formulas in a safe order; references can point to the current row or to a lookup.
