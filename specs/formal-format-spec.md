@@ -89,6 +89,7 @@ arguments   ::= expression ( "," expression )*
 - Built-ins:
   - Row-safe: `round(x,n)`, `if(cond,a,b)`.
   - Aggregate-only: `sum(col)`, `avg(col)`, `min(col)`, `max(col)`, `count(col)`.
+  - Aggregate-only functions take exactly one argument, which must be a column reference from the same table; any other argument shape is an error (`invalid-aggregate-argument`).
 - References:
   - `row.col` or `col` within the same row.
   - Cross-table lookup: `table[key].col`; `key` is any expression that must evaluate to the table's key type (`string` or `number`). Missing row or column must fail.

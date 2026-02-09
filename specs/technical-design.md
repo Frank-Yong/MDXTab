@@ -29,6 +29,7 @@
 - Row phase: compute row formulas in a safe order; references can point to the current row or to a lookup.
 - Aggregate phase: run after rows are complete; can read any column, including computed ones.
 - Functions: row-safe in row expressions (`round`, `if`); aggregate-only in aggregates (`sum`, `avg`, `min`, `max`, `count`). Using aggregate-only functions in a row expression is an error.
+- Aggregate-only functions take exactly one argument, which must be a column reference from the same table; other argument shapes are errors.
 - Errors: stop on failed lookups, bad types, or invalid expressions.
 
 ## Number and null rules
