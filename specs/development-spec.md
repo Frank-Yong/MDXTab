@@ -18,7 +18,7 @@
 - Network/I/O inside expressions.
 
 ## Functional Requirements
-- Parse frontmatter and require the basics: `mdxtab`, `tables`, `columns`, and `key`.
+- Parse frontmatter and require the basics: `mdxtab`, `tables`, and `columns`; `key` is optional and defaults to `id` if omitted.
 - Read Markdown tables in the written order and ensure their columns match what was declared.
 - Only allow safe type conversions; fail when a value does not fit the declared type.
 - Parse and run expressions the same way every time; detect and block any dependency loops.
