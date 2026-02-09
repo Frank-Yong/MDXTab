@@ -111,7 +111,7 @@ arguments   ::= expression ( "," expression )*
 - Identifiers are case-sensitive.
 
 ### Reserved words
-- Reserved and cannot be used as identifiers: `and`, `or`, `true`, `false`, and the `row` prefix when followed by a dot.
+- Reserved and cannot be used as identifiers: `and`, `or`, `true`, `false`, `row`.
 - All other identifiers may be used for tables, columns, computed columns, aggregates, and functions.
 
 ## Evaluation Order (Deterministic)
