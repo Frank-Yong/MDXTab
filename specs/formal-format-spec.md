@@ -129,6 +129,11 @@ arguments   ::= expression ( "," expression )*
 - NaN/Infinity: never allowed; divide-by-zero is an error.
 - Dates: strict `YYYY-MM-DD`, no time zones, no date math.
 
+### Canonical cell text extraction
+- Preserve the raw cell text between pipes; do not trim leading/trailing spaces.
+- Tabs are not allowed inside table cells; treat them as invalid.
+- Because whitespace is preserved, a value like ` 123 ` will fail numeric coercion (whitespace is not allowed for coercion).
+
 ### Standard error codes (suggested)
 - `missing-table`, `missing-column`, `duplicate-key`, `column-order-mismatch`, `type-mismatch`, `invalid-coercion`, `cycle-detected`, `invalid-expression`, `unknown-identifier`, `unknown-function`, `lookup-failed`, `empty-cell-error`, `divide-by-zero`, `invalid-round`, `invalid-date`, `invalid-identifier`, `invalid-interpolation`.
 
