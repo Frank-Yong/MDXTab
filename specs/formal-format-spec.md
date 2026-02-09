@@ -78,10 +78,16 @@ table_ref   ::= identifier "[" expression "]." identifier
 function    ::= identifier "(" arguments? ")"
 arguments   ::= expression ( "," expression )*
 ```
-- Built-ins: `sum(col)`, `avg(col)`, `min(col)`, `max(col)`, `count(col)`, `round(x,n)`, `if(cond,a,b)`.
+- Built-ins:
+  - Row-safe: `round(x,n)`, `if(cond,a,b)`.
+  - Aggregate-only: `sum(col)`, `avg(col)`, `min(col)`, `max(col)`, `count(col)`.
 - References:
   - `row.col` or `col` within the same row.
   - Cross-table lookup: `table[key].col`; `key` is any expression that must evaluate to the table's key type (string or number). Missing row or column must fail.
+
+### Context rules for functions
+- In per-row computed columns, only row-safe functions are allowed. Using aggregate-only functions in a row expression is an error (`invalid-aggregate-context`).
+- In aggregates, both row-safe and aggregate-only functions are allowed, but aggregate-only functions operate over the current table after row evaluation.
 
 ## Identifiers
 - Table and column names: letters, digits, underscore; must start with a letter or underscore.
