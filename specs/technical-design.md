@@ -32,8 +32,9 @@
 - Errors: stop on failed lookups, bad types, or invalid expressions.
 
 ## Number and null rules
-- Numbers must be finite; division by zero errors; `round` uses decimal half-to-even and requires an integer `n` that is non-negative.
-- Rounding must use decimal/integer arithmetic (not binary float tie checks): scale by `10^n`, round the scaled value half-to-even, then divide by `10^n`; error if the result is not finite.
+- Numbers are IEEE-754 and must be finite; division by zero errors.
+- `round` uses decimal half-to-even and requires an integer `n` that is non-negative.
+- Rounding must use decimal/integer arithmetic (not binary float tie checks): scale by `10^n`, round the scaled value half-to-even, then divide by `10^n`; error if the result is not finite. The result must match computing on the exact rational value of the IEEE-754 input.
 - Arithmetic with null returns null (except division by zero which errors).
 - Aggregates skip nulls; empty inputs return: `sum`=0, `count`=0, `avg`=null, `min`=null, `max`=null.
 - Comparisons against null are errors; logical `and`/`or` treat null as false.

@@ -58,7 +58,7 @@ tables:
 - No date arithmetic in v1; any attempt is an error.
 
 ## Numeric and Null Semantics
-- Numbers must be finite (no NaN or Infinity); any operation that would produce them is an error.
+- Numbers are represented as IEEE-754, but results must be finite (no NaN or Infinity); any operation that would produce them is an error.
 - Division by zero is an error.
 - `round(x, n)` rounds to `n` decimal places using half-to-even; `n` must be an integer (negative not allowed) or it is an error.
 - Rounding algorithm (deterministic/decimal):
@@ -66,6 +66,7 @@ tables:
   - Let `scale = 10^n`; compute `x_scaled = x * scale` exactly in decimal.
   - If the fractional part of `x_scaled` is < 0.5, round down; > 0.5, round up; == 0.5, round to the nearest even integer.
   - Result = rounded integer / `scale`. If the result is not finite, error.
+- For `round`, the result must match computing on the exact rational value of the IEEE-754 input (not an approximated decimal literal). Implementations may use bigint/decimal to achieve exact scaling; binary float tie checks are not allowed.
 - Arithmetic `+ - * /` with any null operand returns null (except division by zero, which errors).
 - Logical `and`/`or` treat null as false.
 - Comparisons against null are errors.
