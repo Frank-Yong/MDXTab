@@ -27,7 +27,7 @@
 ## Evaluation
 - Row phase: compute row formulas in a safe order; references can point to the current row or to a lookup.
 - Aggregate phase: run after rows are complete; can read any column, including computed ones.
-- Functions: only deterministic built-ins (`sum`, `avg`, `min`, `max`, `count`, `round`, `if`).
+- Functions: row-safe in row expressions (`round`, `if`); aggregate-only in aggregates (`sum`, `avg`, `min`, `max`, `count`). Using aggregate-only functions in a row expression is an error.
 - Errors: stop on failed lookups, bad types, or invalid expressions.
 
 ## Number and null rules
