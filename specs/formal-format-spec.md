@@ -72,7 +72,7 @@ tables:
 - Comparisons against null are errors.
 
 ## Expression Language (v1)
-- Pure, deterministic, side-effect free.
+- Pure, deterministic, side-effect-free.
 - Grammar (EBNF):
 ```
 expression  ::= logical
