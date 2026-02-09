@@ -74,14 +74,14 @@ sum         ::= term ( ("+" | "-") term )*
 term        ::= factor ( ("*" | "/") factor )*
 factor      ::= literal | reference | function | "(" expression ")"
 reference   ::= identifier | "row." identifier | table_ref
-table_ref   ::= identifier "[" identifier "]." identifier
+table_ref   ::= identifier "[" expression "]." identifier
 function    ::= identifier "(" arguments? ")"
 arguments   ::= expression ( "," expression )*
 ```
 - Built-ins: `sum(col)`, `avg(col)`, `min(col)`, `max(col)`, `count(col)`, `round(x,n)`, `if(cond,a,b)`.
 - References:
   - `row.col` or `col` within the same row.
-  - Cross-table lookup: `table[key].col`; missing row or column must fail.
+  - Cross-table lookup: `table[key].col`; `key` is any expression that must evaluate to the table's key type (string or number). Missing row or column must fail.
 
 ## Identifiers
 - Table and column names: letters, digits, underscore; must start with a letter or underscore.
