@@ -43,10 +43,13 @@ tables:
 ## Data Types
 - Primitive types: `number` (IEEE-754), `string` (UTF-8 text), `bool` (`true`/`false`), `date` (ISO-8601 `YYYY-MM-DD`).
 - Type coercion (only when unambiguous and lossless):
-  - `string` -> `number` if matches `-?\d+(\.\d+)?`
-  - `string` -> `bool` if `true` or `false`
-  - `string` -> `date` if `YYYY-MM-DD`
+  - `string` -> `number` if the entire string matches `^-?\d+(\.\d+)?$`
+  - `string` -> `bool` if the entire string is `true` or `false`
+  - `string` -> `date` if the entire string is `YYYY-MM-DD`
 - All other coercions must fail.
+
+### Whitespace for coercion
+- Leading or trailing whitespace is not allowed in values that are being coerced; any whitespace causes the coercion to fail.
 
 ## Dates
 - Dates are date-only (no time, no timezone); format must be `YYYY-MM-DD`.
