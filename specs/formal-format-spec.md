@@ -61,6 +61,11 @@ tables:
 - Numbers must be finite (no NaN or Infinity); any operation that would produce them is an error.
 - Division by zero is an error.
 - `round(x, n)` rounds to `n` decimal places using half-to-even; `n` must be an integer (negative not allowed) or it is an error.
+- Rounding algorithm (deterministic/decimal):
+  - Use decimal/integer arithmetic, not binary float tie checks.
+  - Let `scale = 10^n`; compute `x_scaled = x * scale` exactly in decimal.
+  - If the fractional part of `x_scaled` is < 0.5, round down; > 0.5, round up; == 0.5, round to the nearest even integer.
+  - Result = rounded integer / `scale`. If the result is not finite, error.
 - Arithmetic `+ - * /` with any null operand returns null (except division by zero, which errors).
 - Logical `and`/`or` treat null as false.
 - Comparisons against null are errors.
