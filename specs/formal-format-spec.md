@@ -92,9 +92,9 @@ arguments   ::= expression ( "," expression )*
 - In aggregates, both row-safe and aggregate-only functions are allowed, but aggregate-only functions operate over the current table after row evaluation.
 
 ## Identifiers
-- Table and column names: letters, digits, underscore; must start with a letter or underscore.
+- ASCII-only: start with `[A-Za-z_]`, continue with `[A-Za-z0-9_]*`.
+- Applies to table, column, computed-column, aggregate, and function names.
 - Identifiers are case-sensitive.
-- Function names use the same rules.
 
 ## Evaluation Order (Deterministic)
 1) Parse frontmatter and Markdown tables.
