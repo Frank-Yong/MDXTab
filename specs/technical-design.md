@@ -15,7 +15,7 @@
 - Markdown tables: extract header to align with `columns`; parse rows to raw literals or blanks (handled by policy).
 - No computed columns allowed in Markdown rows.
 - Dates: strict `YYYY-MM-DD`, date-only; no time zone or date math.
-- Identifiers: letters/digits/underscore, start with letter/underscore, case-sensitive.
+- Identifiers: ASCII-only; start with `[A-Za-z_]`, continue with `[A-Za-z0-9_]*`, case-sensitive.
 
 ## Validation
 - Schema: required keys, unique table names, unique row keys, columns match declared order.
