@@ -31,7 +31,7 @@
 - Errors: stop on failed lookups, bad types, or invalid expressions.
 
 ## Number and null rules
-- Numbers must be finite; division by zero errors; `round` uses half-to-even and requires an integer `n`.
+- Numbers must be finite; division by zero errors; `round` uses half-to-even and requires an integer `n` that is non-negative.
 - Arithmetic with null returns null (except division by zero which errors).
 - Aggregates skip nulls; empty inputs return: `sum`=0, `count`=0, `avg`=null, `min`=null, `max`=null.
 - Comparisons against null are errors; logical `and`/`or` treat null as false.
