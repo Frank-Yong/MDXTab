@@ -101,6 +101,10 @@ arguments   ::= expression ( "," expression )*
 - Applies to table, column, computed-column, aggregate, and function names.
 - Identifiers are case-sensitive.
 
+### Reserved words
+- Reserved and cannot be used as identifiers: `and`, `or`, `true`, `false`, and the `row` prefix when followed by a dot.
+- All other identifiers may be used for tables, columns, computed columns, aggregates, and functions.
+
 ## Evaluation Order (Deterministic)
 1) Parse frontmatter and Markdown tables.
 2) Validate schema, column presence, types, and dependency graph (no cycles).
