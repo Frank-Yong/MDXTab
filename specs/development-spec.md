@@ -39,7 +39,7 @@
 - Pass the golden test vectors; use them as a contract for other language ports.
 - Apply strict date rules: `YYYY-MM-DD` only, no time zone, no date math.
 - Enforce identifier rules: letters/digits/underscore, start with letter/underscore, case-sensitive.
-- Interpolation parser must accept `{{ table.aggregate }}` with optional spaces; treat other `{{ }}` forms as errors.
+- Interpolation: accept `{{ table.aggregate }}` with optional spaces; skip fenced/inline code; other `{{ }}` forms error; allow escaping via `\{\{` and `\}\}`. Follow the formal spec as the source of truth.
 - Use the standard error codes list to keep diagnostics aligned across runtimes.
 
 ## Milestones (aligned with plan)
