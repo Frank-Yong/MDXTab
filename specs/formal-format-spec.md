@@ -28,6 +28,7 @@ tables:
 ## Frontmatter Rules
 - `mdxtab` version is required and must be `1.0` for this spec.
 - Each table must declare a unique name under `tables` and a stable row key (defaults to `id`).
+- Key column type must be `string` or `number`; `bool` and `date` keys are not allowed.
 - Table, column, computed-column, and aggregate names must follow the identifier rules (letter/digit/underscore, start with letter/underscore, case-sensitive).
 - `columns` defines order and presence; Markdown table columns must match exactly.
 - `empty_cells` controls how blank Markdown cells are interpreted: `null` (default), `zero`, `empty-string`, or `error`.
@@ -84,7 +85,7 @@ arguments   ::= expression ( "," expression )*
   - Aggregate-only: `sum(col)`, `avg(col)`, `min(col)`, `max(col)`, `count(col)`.
 - References:
   - `row.col` or `col` within the same row.
-  - Cross-table lookup: `table[key].col`; `key` is any expression that must evaluate to the table's key type (string or number). Missing row or column must fail.
+  - Cross-table lookup: `table[key].col`; `key` is any expression that must evaluate to the table's key type (`string` or `number`). Missing row or column must fail.
 
 ### Context rules for functions
 - In per-row computed columns, only row-safe functions are allowed. Using aggregate-only functions in a row expression is an error (`invalid-aggregate-context`).
