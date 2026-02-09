@@ -28,6 +28,7 @@ tables:
 ## Frontmatter Rules
 - `mdxtab` version is required and must be `1.0` for this spec.
 - Each table must declare a unique name under `tables` and a stable row key (defaults to `id`).
+- Table, column, computed-column, and aggregate names must follow the identifier rules (letter/digit/underscore, start with letter/underscore, case-sensitive).
 - `columns` defines order and presence; Markdown table columns must match exactly.
 - `empty_cells` controls how blank Markdown cells are interpreted: `null` (default), `zero`, `empty-string`, or `error`.
 - `types` applies optional static typing; validation fails on mismatches.
@@ -109,7 +110,8 @@ arguments   ::= expression ( "," expression )*
 - Allowed only for aggregates inside `{{ table.aggregate }}` within Markdown body.
 - Arbitrary expressions inside interpolation are disallowed.
 - Spaces allowed inside the braces: `{{table.aggregate}}` and `{{ table.aggregate }}` are both valid.
-- Any other pattern with `{{` and `}}` that is not `table.aggregate` is an error.
+- Any other pattern with `{{` and `}}` that is not `table.aggregate` is an error **unless** it appears inside fenced code blocks or inline code spans, which are left untouched.
+- Escaping in text: write `{\{` and `\}}` to render literal `{{` and `}}` in normal text if needed.
 
 ## Error Handling (Fatal)
 - Missing tables/columns/keys, duplicate keys, or column order mismatch.
