@@ -50,6 +50,10 @@ tables:
   - `string` -> `date` if the entire string is `YYYY-MM-DD`.
 - All other coercions must fail.
 
+### Numeric literal format for coercion
+- Only plain decimals are accepted: optional leading `-`, digits, optional `.` followed by digits.
+- Not allowed: leading `+`, leading `.`, trailing `.`, exponents (`e`/`E`), underscores, or other formatting.
+
 ### Whitespace for coercion
 - Leading or trailing whitespace is not allowed in values that are being coerced; any whitespace causes the coercion to fail.
 
