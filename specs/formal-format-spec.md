@@ -151,7 +151,7 @@ arguments   ::= expression ( "," expression )*
 
 ### Canonical cell text extraction
 - Preserve the raw cell text between pipes; do not trim leading/trailing spaces.
-- Tabs are not allowed inside table cells; treat them as invalid.
+- Tabs are not allowed inside table cells. Check tabs in the raw source lines before any Markdown normalization; if a tab appears inside a cell, it is an error. Do not rely on downstream Markdown parsers expanding tabs.
 - Because whitespace is preserved, a value like ` 123 ` will fail numeric coercion (whitespace is not allowed for coercion).
 
 ### Standard error codes (suggested)
