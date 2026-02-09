@@ -30,7 +30,7 @@
 - Aggregate phase: run after rows are complete; can read any column, including computed ones.
 - Functions: row-safe in row expressions (`round`, `if`); aggregate-only in aggregates (`sum`, `avg`, `min`, `max`, `count`). Using aggregate-only functions in a row expression is an error.
 - Aggregate-only functions take exactly one argument, which must be a column reference from the same table; other argument shapes are errors.
-- Errors: stop on failed lookups, bad types, or invalid expressions.
+- Errors: validation must collect all issues it can find; evaluation is fail-fast on the first runtime error (e.g., lookup failure, divide-by-zero) and must not produce partial outputs.
 
 ## Number and null rules
 - Numbers are IEEE-754 and must be finite; division by zero errors.
