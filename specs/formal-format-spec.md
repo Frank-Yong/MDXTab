@@ -151,7 +151,7 @@ arguments   ::= expression ( "," expression )*
 - Because whitespace is preserved, a value like ` 123 ` will fail numeric coercion (whitespace is not allowed for coercion).
 
 ### Standard error codes (suggested)
-- `missing-table`, `missing-column`, `duplicate-key`, `column-order-mismatch`, `type-mismatch`, `invalid-coercion`, `cycle-detected`, `invalid-expression`, `unknown-identifier`, `unknown-function`, `lookup-failed`, `empty-cell-error`, `divide-by-zero`, `invalid-round`, `invalid-date`, `invalid-identifier`, `invalid-interpolation`.
+- `missing-table`, `missing-column`, `duplicate-key`, `column-order-mismatch`, `type-mismatch`, `invalid-coercion`, `cycle-detected`, `invalid-expression`, `unknown-identifier`, `unknown-function`, `lookup-failed`, `empty-cell-error`, `divide-by-zero`, `invalid-round`, `invalid-date`, `invalid-identifier`, `invalid-interpolation`, `invalid-aggregate-context`, `invalid-aggregate-argument`.
 
 ## Versioning and Compatibility
 - Files declare `mdxtab: 1.0`; future minor versions must remain backward compatible.
