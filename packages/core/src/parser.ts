@@ -41,7 +41,7 @@ class Parser {
     return true;
   }
 
-  private expression(rbp: number): AstNode {
+  expression(rbp: number): AstNode {
     const t = this.advance();
     const prefix = this.bindingPower(t).nud;
     if (!prefix) throw new Error(`Unexpected token ${t.type} at ${t.start}`);
@@ -57,6 +57,10 @@ class Parser {
 
   private bindingPower(token: Token): Binding {
     switch (token.type) {
+      case "rparen":
+      case "rbracket":
+      case "comma":
+        return { lbp: 0 };
       case "number":
         return { lbp: 0, nud: () => ({ type: "Number", value: Number(token.value) }) };
       case "string":
@@ -77,39 +81,32 @@ class Parser {
             return expr;
           },
         };
-      case "operator":
-        if (token.value === "-" || token.value === "+") {
-          return {
-            lbp: 0,
-            nud: () => {
-              const right = this.expression(70);
-              return { type: "Unary", value: token.value, children: [right] };
-            },
-          };
-        }
-        break;
       default:
         break;
     }
 
-    // infix / binary operators
+    // operators (prefix and infix)
     if (token.type === "operator") {
       switch (token.value) {
+        case "+":
+        case "-":
+          return {
+            lbp: 50,
+            nud: () => {
+              const right = this.expression(70);
+              return { type: "Unary", value: token.value, children: [right] };
+            },
+            led: (left) => {
+              const right = this.expression(50);
+              return { type: "Binary", value: token.value, children: [left, right] };
+            },
+          };
         case "*":
         case "/":
           return {
             lbp: 60,
             led: (left) => {
               const right = this.expression(60);
-              return { type: "Binary", value: token.value, children: [left, right] };
-            },
-          };
-        case "+":
-        case "-":
-          return {
-            lbp: 50,
-            led: (left) => {
-              const right = this.expression(50);
               return { type: "Binary", value: token.value, children: [left, right] };
             },
           };
@@ -188,6 +185,6 @@ export function parseExpression(tokens: Token[]): AstNode {
   const parser = new Parser(tokens);
   const ast = parser.expression(0);
   const end = parser["current"]();
-  if (end.type !== "eof") throw new Error("Unexpected tokens after expression");
+  if (end.type !== "eof") throw new Error(`Unexpected tokens after expression: ${end.type} ${end.value}`);
   return ast;
 }

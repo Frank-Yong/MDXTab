@@ -66,6 +66,23 @@ function logical(op: string, left: Scalar, right: Scalar): boolean {
   return op === "and" ? left && right : left || right;
 }
 
+function roundHalfToEven(value: number, decimals: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(decimals)) {
+    throw new Error("E_ARG: round expects finite numbers");
+  }
+  const d = Math.trunc(decimals);
+  const factor = Math.pow(10, d);
+  const scaled = value * factor;
+  const intPart = Math.trunc(scaled);
+  const diff = Math.abs(scaled - intPart);
+  const eps = 1e-12;
+  if (Math.abs(diff - 0.5) < eps) {
+    const even = intPart % 2 === 0 ? intPart : intPart + (scaled >= 0 ? 1 : -1);
+    return even / factor;
+  }
+  return Math.round(scaled) / factor;
+}
+
 export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
   switch (node.type) {
     case "Number":
@@ -74,7 +91,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
       return node.value as Scalar;
     case "Identifier": {
       const name = node.value as string;
-      if (name === "row") return ctx.row; // not expected to be used directly
+      if (name === "row") return null; // row object is not a scalar value
       if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
       return ctx.row[name];
     }
@@ -120,8 +137,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
         const x = toNumber(evaluateAst(args[0], ctx));
         const n = toNumber(evaluateAst(args[1], ctx));
         if (x === null || n === null) return null;
-        const factor = Math.pow(10, n);
-        return Math.round(x * factor) / factor; // spec: half-to-even? adjust if needed
+        return roundHalfToEven(x, n);
       }
       if (fn === "if") {
         if (args.length !== 3) throw new Error("E_ARG: if expects 3 args");

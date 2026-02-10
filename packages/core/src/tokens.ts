@@ -85,7 +85,7 @@ export function lexExpression(input: string): Token[] {
       continue;
     }
 
-    // booleans and identifiers
+    // booleans, logical operators, and identifiers
     if (isIdentifierStart(ch)) {
       const start = i;
       i += 1;
@@ -93,6 +93,8 @@ export function lexExpression(input: string): Token[] {
       const text = src.slice(start, i);
       if (text === "true" || text === "false") {
         push("boolean", text, start, i);
+      } else if (text === "and" || text === "or") {
+        push("operator", text, start, i);
       } else {
         push("identifier", text, start, i);
       }
