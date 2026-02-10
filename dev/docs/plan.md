@@ -18,20 +18,14 @@
 
 ## Phase 1: Core Engine (2-4 weeks)
 
-- Status: in progress on branch `phase-1-core-engine`; initial focus is on parsing and evaluation primitives.
 - Create packages/core:
-  - Frontmatter parser (see work item 02)
-  - Markdown table extractor (see work item 02)
-  - Expression lexer + Pratt parser (see work item 04)
-  - AST evaluator for row-level formulas (see work item 06)
-  - Dependency graph and cycle detection (see work item 05)
-  - Type validation + coercion rules (tie into evaluator and parser)
-- Add unit tests for grammar, evaluation, and error cases; prioritize golden vectors from Phase 0.
-- Immediate kickoff steps:
-  1) Stub `packages/core` with parsing/eval modules and test harness.
-  2) Implement frontmatter + Markdown extraction with header trimming and data preservation rules.
-  3) Build lexer + Pratt parser with coverage for success and syntax errors.
-  4) Wire dependency ordering + row evaluator; cover lookup and null/numeric edge cases.
+  - Frontmatter parser
+  - Markdown table extractor
+  - Expression lexer + Pratt parser
+  - AST evaluator
+  - Dependency graph and cycle detection
+  - Type validation + coercion rules
+- Add unit tests for grammar, evaluation, and error cases
 
 ## Phase 2: VS Code Extension (2-3 weeks)
 
