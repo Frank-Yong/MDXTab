@@ -164,7 +164,8 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
       const tableName = tableNameNode?.value as string | undefined;
       if (!tableName) throw new Error("E_LOOKUP: table name required");
       const key = evaluateAst(keyNode, ctx);
-      return ctx.lookup(tableName, key, ""); // column handled by Member that follows
+      // Lookup returns the row object; a following Member node selects the column.
+      return ctx.lookup(tableName, key, "");
     }
     default:
       throw new Error(`E_AST: unknown node type ${node.type}`);
