@@ -6,7 +6,7 @@
 - Architecture: monorepo with a reusable core library and a thin VS Code extension
 - Parsing: YAML frontmatter + Markdown table extractor + custom expression parser
 
-## Phase 0: Spec Lock and Examples (1-2 weeks)
+## Phase 0: Spec Lock and Examples (1-2 weeks) — DONE
 
 - Freeze v1 semantics:
   - Empty cell handling
@@ -16,7 +16,7 @@
 - Add canonical examples with expected outputs
 - Define golden test vectors (inputs + outputs + errors)
 
-## Phase 1: Core Engine (2-4 weeks)
+## Phase 1: Core Engine (2-4 weeks) — DONE
 
 - Create packages/core:
   - Frontmatter parser
@@ -27,7 +27,7 @@
   - Type validation + coercion rules
 - Add unit tests for grammar, evaluation, and error cases
 
-## Phase 2: VS Code Extension (2-3 weeks)
+## Phase 2: VS Code Extension (2-3 weeks) — IN PROGRESS (preview + diagnostics spike landed)
 
 - Implement diagnostics:
   - Schema errors
@@ -49,7 +49,7 @@
 
 ## Phase 4: CLI and CI (optional, 2-3 weeks)
 
-- CLI commands:
+- CLI commands: DONE
   - mdxtab validate
   - mdxtab render
 - GitHub Action for validation
