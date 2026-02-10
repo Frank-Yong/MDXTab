@@ -26,7 +26,7 @@ function expectStringArray(value: unknown, context: string): string[] {
 function validateTable(name: string, value: unknown): TableFrontmatter {
   const obj = expectObject(value, `table ${name}`);
   const columns = expectStringArray(obj.columns, `columns for table ${name}`);
-  const key = obj.key === undefined ? "id" : expectString(obj.key, `key for table ${name}`);
+  const keyName = obj.key === undefined ? "id" : expectString(obj.key, `key for table ${name}`);
 
   const computed = obj.computed
     ? Object.fromEntries(
@@ -68,7 +68,7 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
   }
 
   return {
-    key,
+    key: keyName,
     columns,
     computed,
     aggregates,
