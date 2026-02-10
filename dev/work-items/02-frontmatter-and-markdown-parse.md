@@ -5,6 +5,8 @@ Parse YAML frontmatter and Markdown tables into an internal model with basic sch
 
 ## Sub-items
 - Parse `mdxtab`, `tables`, `key` (default id), and `columns`.
-- Extract table headers/rows; enforce column order match.
-- Preserve row order; capture empty cells as raw blanks for later policy handling.
+- Validate `mdxtab` version is present and equals `1.0`.
+- Extract table headers/rows; enforce declared column order and preserve row order.
+- Trim header cells for column-name matching; do not trim data cells (preserve raw content). Reject tabs in data cells per spec.
+- Preserve empty cells as raw blanks for the empty-cell policy to handle later.
 - Fail clearly on missing sections or column/header mismatches.
