@@ -130,8 +130,8 @@ arguments   ::= expression ( "," expression )*
 - Arbitrary expressions inside interpolation are disallowed.
 - Spaces allowed inside the braces: `{{table.aggregate}}` and `{{ table.aggregate }}` are both valid.
 - Any other pattern with `{{` and `}}` that is not `table.aggregate` is an error **unless** it appears inside fenced code blocks or inline code spans, which are left untouched.
-- Escaping in text: write `\{\{` and `\}\}` to render literal `{{` and `}}` in normal text.
-- Interpolation runs over the Markdown AST, skipping fenced code blocks and inline code nodes.
+- Escaping in text: write `\{\{` and `\}\}` in the source to render literal `{{` and `}}`; escaped braces must not be considered for interpolation.
+- Processing model: parse Markdown; for non-code text nodes, operate on the original source slices (before Markdown unescaping). First handle escapes (`\{\{` → literal `{{`, `\}\}` → literal `}}`), then detect unescaped `{{ table.aggregate }}` placeholders; code blocks and inline code are skipped entirely.
 
 ## Error Handling (Fatal)
 - Missing tables/columns/keys, duplicate keys, or column order mismatch.
