@@ -66,7 +66,7 @@
 - Date looseness: accept only `YYYY-MM-DD`; no time zones, no date math in v1.
 
 ## Observability
-- Structured error objects including table, column/aggregate, kind, and source location when available.
+- Structured error objects including code, table, column/aggregate, message, severity, and source location when available.
 - Diagnostics surface to CLI exit codes and VS Code problems.
 
 ## Diagnostics format (simple)
