@@ -59,7 +59,7 @@
 
 ## Pitfalls to avoid
 - Ambiguous templates: only `{{ table.aggregate }}` (with optional spaces) is valid; other `{{ }}` forms error.
-- Table parsing drift: never reorder or auto-trim cells; enforce declared column order and preserve row order.
+- Table parsing drift: never reorder rows or data cells; enforce declared column order and preserve row order. Header cells may be trimmed for column-name matching; data cells must not be auto-trimmed.
 - Identifier laxness: stay case-sensitive; allow only letters/digits/underscore, starting with letter/underscore.
 - Silent coercions: forbid any coercion outside the allowed patterns; fail instead of guessing.
 - NaN/Infinity leaks: disallow; error on divide-by-zero or overflow cases that would produce them.
