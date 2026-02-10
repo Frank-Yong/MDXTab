@@ -30,7 +30,7 @@ tables:
 - Each table must declare a unique name under `tables` and a stable row key (defaults to `id`).
 - Key column type must be `string` or `number`; `bool` and `date` keys are not allowed.
 - Table, column, computed-column, and aggregate names must follow the identifier rules (letter/digit/underscore, start with letter/underscore, case-sensitive).
-- `columns` defines order and presence; Markdown table columns must match exactly.
+- `columns` defines order and presence; Markdown table headers must match exactly after trimming header cell leading/trailing spaces.
 - `empty_cells` controls how blank Markdown cells are interpreted: `null` (default), `zero`, `empty-string`, or `error`.
 - `types` applies optional static typing; validation fails on mismatches.
 - `computed` defines per-row derived columns; computed columns must not appear in Markdown data rows.
@@ -152,6 +152,7 @@ arguments   ::= expression ( "," expression )*
 ### Canonical cell text extraction
 - Preserve the raw cell text between pipes; do not trim leading/trailing spaces.
 - Tabs are not allowed inside table cells. Check tabs in the raw source lines before any Markdown normalization; if a tab appears inside a cell, it is an error. Do not rely on downstream Markdown parsers expanding tabs.
+- Header cells: trim leading/trailing spaces for column-name matching; after trimming, header names must satisfy identifier rules. Empty headers after trimming are errors.
 - Because whitespace is preserved, a value like ` 123 ` will fail numeric coercion (whitespace is not allowed for coercion).
 
 ### Standard error codes (suggested)
