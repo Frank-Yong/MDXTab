@@ -52,3 +52,15 @@ export interface ParseResult {
   frontmatter: FrontmatterDocument;
   tables: ParsedTable[];
 }
+
+export interface TableEvaluation {
+  name: string;
+  rows: Record<string, Scalar>[];
+  aggregates: Record<string, Scalar>;
+}
+
+export interface CompileResult {
+  frontmatter: FrontmatterDocument;
+  tables: Record<string, TableEvaluation>;
+  rendered: string;
+}

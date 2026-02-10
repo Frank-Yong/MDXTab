@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run -w @mdxtab/core build",
-    "test": "npm run -w @mdxtab/core test"
+    "build": "npm run -ws build",
+    "test": "npm run -ws test"
   },
   "devDependencies": {
     "@types/node": "^22.2.0",

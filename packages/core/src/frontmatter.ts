@@ -46,7 +46,7 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
       )
     : undefined;
 
-  const types = obj.types
+  const types: TableFrontmatter["types"] = obj.types
     ? Object.fromEntries(
         Object.entries(expectObject(obj.types, `types for table ${name}`)).map(([k, v]) => {
           if (v !== "number" && v !== "string" && v !== "date" && v !== "bool") {

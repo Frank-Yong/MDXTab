@@ -1,0 +1,19 @@
+{
+  "name": "@mdxtab/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "mdxtab": "dist/bin.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run -w @mdxtab/core build --if-present && vitest run"
+  },
+  "dependencies": {
+    "@mdxtab/core": "0.0.0"
+  }
+}

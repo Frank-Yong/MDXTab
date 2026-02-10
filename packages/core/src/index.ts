@@ -5,3 +5,4 @@ export * from "./tokens.js";
 export * from "./parser.js";
 export * from "./dependency-graph.js";
 export * from "./evaluator.js";
+export * from "./document.js";

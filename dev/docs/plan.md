@@ -36,6 +36,10 @@
 - Add document symbols for tables, columns, aggregates
 - Add hover info for computed columns and aggregates
 - Optimize incremental parsing on save
+- Markdown preview integration:
+  - Command to render the current MDXTab document via core compiler and open in a side preview
+  - Option to auto-render on save (opt-in)
+  - Surface compiler errors inline in the preview output
 
 ## Phase 3: Developer Experience (2-3 weeks)
 

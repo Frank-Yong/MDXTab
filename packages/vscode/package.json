@@ -1,0 +1,34 @@
+{
+  "name": "@mdxtab/vscode",
+  "displayName": "MDXTab",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "publisher": "mdxtab",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mdxtab.renderPreview",
+        "title": "MDXTab: Render Preview"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "npm run -w @mdxtab/core build --if-present && tsc -p tsconfig.json",
+    "test": "echo \"(no tests yet)\""
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/vscode": "^1.88.0"
+  },
+  "dependencies": {
+    "@mdxtab/core": "0.0.0"
+  }
+}
