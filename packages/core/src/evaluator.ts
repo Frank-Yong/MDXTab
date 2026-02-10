@@ -1,7 +1,156 @@
 import type { AstNode } from "./parser.js";
 import type { Scalar } from "./types.js";
 
-export function evaluateAst(node: AstNode, context: Record<string, Scalar>): Scalar {
-  // TODO: Evaluate AST with row context, lookup rules, and null/numeric semantics per spec.
-  throw new Error("evaluateAst not implemented");
+type LookupFn = (table: string, key: Scalar, column: string) => Scalar;
+type AggregateFn = (fn: string, column: string) => Scalar;
+
+interface EvalContext {
+  row: Record<string, Scalar>;
+  lookup: LookupFn;
+  aggregate: AggregateFn;
+}
+
+function isNull(v: Scalar): v is null {
+  return v === null;
+}
+
+function toNumber(v: Scalar): number | null {
+  if (v === null) return null;
+  if (typeof v === "number") return v;
+  throw new Error("E_TYPE: expected number");
+}
+
+function binaryNumeric(op: string, left: Scalar, right: Scalar): Scalar {
+  const l = toNumber(left);
+  const r = toNumber(right);
+  if (l === null || r === null) return null;
+  if (op === "/" && r === 0) throw new Error("E_DIV_ZERO: divide by zero");
+  switch (op) {
+    case "+":
+      return l + r;
+    case "-":
+      return l - r;
+    case "*":
+      return l * r;
+    case "/":
+      return l / r;
+    default:
+      throw new Error(`E_OP: unsupported operator ${op}`);
+  }
+}
+
+function compare(op: string, left: Scalar, right: Scalar): boolean {
+  if (left === null || right === null) return false;
+  switch (op) {
+    case "==":
+      return left === right;
+    case "!=":
+      return left !== right;
+    case "<":
+      return (left as number) < (right as number);
+    case "<=":
+      return (left as number) <= (right as number);
+    case ">":
+      return (left as number) > (right as number);
+    case ">=":
+      return (left as number) >= (right as number);
+    default:
+      throw new Error(`E_OP: unsupported comparator ${op}`);
+  }
+}
+
+function logical(op: string, left: Scalar, right: Scalar): boolean {
+  if (typeof left !== "boolean" || typeof right !== "boolean") {
+    throw new Error("E_TYPE: expected boolean operands");
+  }
+  return op === "and" ? left && right : left || right;
+}
+
+export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
+  switch (node.type) {
+    case "Number":
+    case "String":
+    case "Boolean":
+      return node.value as Scalar;
+    case "Identifier": {
+      const name = node.value as string;
+      if (name === "row") return ctx.row; // not expected to be used directly
+      if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
+      return ctx.row[name];
+    }
+    case "Unary": {
+      const op = node.value as string;
+      const v = evaluateAst(node.children![0], ctx);
+      if (op === "+") return toNumber(v);
+      if (op === "-") {
+        const n = toNumber(v);
+        return n === null ? null : -n;
+      }
+      throw new Error(`E_OP: unsupported unary ${op}`);
+    }
+    case "Binary": {
+      const [lNode, rNode] = node.children ?? [];
+      const op = node.value as string;
+      // logical short-circuit for null? Spec says null arithmetic -> null; comparisons with null -> false; logical expects booleans
+      if (op === "and" || op === "or") {
+        const l = evaluateAst(lNode, ctx);
+        const r = evaluateAst(rNode, ctx);
+        return logical(op, l, r);
+      }
+      if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
+        const l = evaluateAst(lNode, ctx);
+        const r = evaluateAst(rNode, ctx);
+        return compare(op, l, r);
+      }
+      const l = evaluateAst(lNode, ctx);
+      const r = evaluateAst(rNode, ctx);
+      return binaryNumeric(op, l, r);
+    }
+    case "Call": {
+      const fn = (node.value as string).toLowerCase();
+      const args = node.children ?? [];
+      if (["sum", "avg", "min", "max", "count"].includes(fn)) {
+        if (args.length !== 1 || args[0].type !== "Identifier") {
+          throw new Error(`E_AGG_ARGUMENT: aggregate ${fn} requires a single column identifier`);
+        }
+        return ctx.aggregate(fn, args[0].value as string);
+      }
+      if (fn === "round") {
+        if (args.length !== 2) throw new Error("E_ARG: round expects 2 args");
+        const x = toNumber(evaluateAst(args[0], ctx));
+        const n = toNumber(evaluateAst(args[1], ctx));
+        if (x === null || n === null) return null;
+        const factor = Math.pow(10, n);
+        return Math.round(x * factor) / factor; // spec: half-to-even? adjust if needed
+      }
+      if (fn === "if") {
+        if (args.length !== 3) throw new Error("E_ARG: if expects 3 args");
+        const cond = evaluateAst(args[0], ctx);
+        if (typeof cond !== "boolean") throw new Error("E_TYPE: if condition must be boolean");
+        return cond ? evaluateAst(args[1], ctx) : evaluateAst(args[2], ctx);
+      }
+      throw new Error(`E_FUNC: unknown function ${fn}`);
+    }
+    case "Member": {
+      const [target, prop] = node.children ?? [];
+      if (!target || !prop) throw new Error("E_REF: invalid member expression");
+      const base = evaluateAst(target, ctx);
+      if (typeof base !== "object" || base === null) throw new Error("E_REF: member base is not an object");
+      const key = (prop as AstNode).value as string;
+      const val = (base as Record<string, Scalar>)[key];
+      if (val === undefined) throw new Error(`E_REF: unknown member ${key}`);
+      return val;
+    }
+    case "Lookup": {
+      const [tableNode, keyNode] = node.children ?? [];
+      if (!tableNode || !keyNode) throw new Error("E_LOOKUP: invalid lookup");
+      const tableNameNode = tableNode.type === "Identifier" ? tableNode : undefined;
+      const tableName = tableNameNode?.value as string | undefined;
+      if (!tableName) throw new Error("E_LOOKUP: table name required");
+      const key = evaluateAst(keyNode, ctx);
+      return ctx.lookup(tableName, key, ""); // column handled by Member that follows
+    }
+    default:
+      throw new Error(`E_AST: unknown node type ${node.type}`);
+  }
 }
