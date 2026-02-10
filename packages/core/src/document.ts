@@ -241,13 +241,13 @@ export function compileMdxtab(raw: string): CompileResult {
   }
 
   const computedDone = new WeakSet<Record<string, Scalar>>();
-  const lookupRow: LookupRowFn = (table: string, key: Scalar) => {
+  const lookupRow: LookupRowFn = (table: string, keyValue: Scalar) => {
     const map = rowMap[table];
     if (!map) throw new Error(`E_LOOKUP: unknown table ${table}`);
-    const row = map.get(String(key));
-    if (!row) throw new Error(`E_LOOKUP: missing row ${table}[${String(key)}]`);
+    const row = map.get(String(keyValue));
+    if (!row) throw new Error(`E_LOOKUP: missing row ${table}[${String(keyValue)}]`);
     const keyName = keyByTable[table];
-    const rowKey = String(key);
+    const rowKey = String(keyValue);
     return ensureComputed(table, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone);
   };
 
