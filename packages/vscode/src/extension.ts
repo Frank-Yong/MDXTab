@@ -17,6 +17,10 @@ import { compileMdxtab } from "@mdxtab/core";
 
 const SCHEME = "mdxtab-preview";
 
+function makePreviewUri(docUri: Uri): Uri {
+  return Uri.from({ scheme: SCHEME, path: docUri.path, query: docUri.toString() });
+}
+
 class PreviewProvider implements TextDocumentContentProvider {
   private emitter = new EventEmitter<Uri>();
 
@@ -60,8 +64,18 @@ export function activate() {
 
   const diagnostics = languages.createDiagnosticCollection("mdxtab");
   workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics));
-  workspace.onDidChangeTextDocument((e) => updateDiagnostics(e.document, diagnostics));
-  workspace.onDidSaveTextDocument((doc) => updateDiagnostics(doc, diagnostics));
+  workspace.onDidChangeTextDocument((e) => {
+    updateDiagnostics(e.document, diagnostics);
+    if (e.document.languageId === "markdown") {
+      provider.refresh(makePreviewUri(e.document.uri));
+    }
+  });
+  workspace.onDidSaveTextDocument((doc) => {
+    updateDiagnostics(doc, diagnostics);
+    if (doc.languageId === "markdown") {
+      provider.refresh(makePreviewUri(doc.uri));
+    }
+  });
 
   const renderPreview = commands.registerCommand("mdxtab.renderPreview", async () => {
     const editor = window.activeTextEditor;
@@ -70,7 +84,7 @@ export function activate() {
       return;
     }
     const docUri = editor.document.uri;
-    const previewUri = Uri.from({ scheme: SCHEME, path: docUri.path, query: docUri.toString() });
+    const previewUri = makePreviewUri(docUri);
     provider.refresh(previewUri);
     await commands.executeCommand("vscode.open", previewUri, { preview: true });
   });

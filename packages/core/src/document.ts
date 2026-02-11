@@ -299,7 +299,10 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const { frontmatter: fmText, body } = splitFrontmatter(raw);
-  const renderedBody = interpolateAggregates(body, aggregateResults);
+  let renderedBody = interpolateAggregates(body, aggregateResults);
+  if (!includeFrontmatter && renderedBody.startsWith("\n")) {
+    renderedBody = renderedBody.slice(1);
+  }
   const rendered = includeFrontmatter ? `${fmText}${renderedBody}` : renderedBody;
 
   return { frontmatter: frontmatter as FrontmatterDocument, tables: results, rendered };

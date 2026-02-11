@@ -64,6 +64,7 @@ export function lexExpression(input: string): Token[] {
       const start = i;
       i += 1;
       let value = "";
+      let closed = false;
       while (i < len) {
         const c = src[i];
         if (c === "\\") {
@@ -76,12 +77,13 @@ export function lexExpression(input: string): Token[] {
         if (c === "\"") {
           i += 1;
           push("string", value, start, i);
+          closed = true;
           break;
         }
         value += c;
         i += 1;
       }
-      if (i > len) throw new Error("Unterminated string");
+      if (!closed) throw new Error("Unterminated string");
       continue;
     }
 

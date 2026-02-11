@@ -8,12 +8,11 @@ tables:
     aggregates:
       total: sum(value)
 ---
-
 ## sample
 
 | id | value |
 |----|-------|
-| a  | 1.5   |
+| a  | 1.345  |
 | b  | 2.25  |
 
 Narrative uses {{ sample.total }} outside code.
