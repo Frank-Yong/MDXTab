@@ -31,7 +31,9 @@ class PreviewProvider implements TextDocumentContentProvider {
     const doc = target ? await workspace.openTextDocument(target) : undefined;
     if (!doc) return "No document to render";
     try {
-      const result = compileMdxtab(doc.getText());
+      const config = workspace.getConfiguration("mdxtab");
+      const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+      const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter });
       return result.rendered;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

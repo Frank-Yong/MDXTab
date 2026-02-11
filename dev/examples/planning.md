@@ -1,5 +1,5 @@
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   roles:
     key: id
@@ -18,20 +18,23 @@ tables:
       total_monthly: sum(monthly_cost)
 ---
 
-## Roles
+## roles
 
 | id | title    | monthly_base |
 |----|----------|--------------|
 | se | Engineer | 12000        |
 | pm | PM       | 11000        |
 
-## Hires
+## hires
 
 | id | role_id | start_month | fte |
 |----|---------|-------------|-----|
 | h1 | se      | 2026-03     | 1.0 |
 | h2 | se      | 2026-04     | 0.5 |
 | h3 | pm      | 2026-03     | 1.0 |
+
+### Summary (rendered)
+- Total monthly: {{ hires.total_monthly }}
 
 ### Expected
 - monthly_cost: 12000.00, 6000.00, 11000.00

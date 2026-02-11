@@ -5,6 +5,7 @@ import { parseFrontmatter } from "./frontmatter.js";
 import { parseMarkdownTables } from "./markdown.js";
 import { lexExpression } from "./tokens.js";
 import type {
+  CompileOptions,
   CompileResult,
   FrontmatterDocument,
   ParsedTable,
@@ -183,7 +184,8 @@ function interpolateAggregates(body: string, aggregates: Record<string, Record<s
   });
 }
 
-export function compileMdxtab(raw: string): CompileResult {
+export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
+  const { includeFrontmatter = true } = options;
   const frontmatter = parseFrontmatter(raw);
   const tables = parseMarkdownTables(raw);
 
@@ -297,7 +299,8 @@ export function compileMdxtab(raw: string): CompileResult {
   }
 
   const { frontmatter: fmText, body } = splitFrontmatter(raw);
-  const rendered = `${fmText}${interpolateAggregates(body, aggregateResults)}`;
+  const renderedBody = interpolateAggregates(body, aggregateResults);
+  const rendered = includeFrontmatter ? `${fmText}${renderedBody}` : renderedBody;
 
   return { frontmatter: frontmatter as FrontmatterDocument, tables: results, rendered };
 }

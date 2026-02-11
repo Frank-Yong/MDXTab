@@ -64,3 +64,7 @@ export interface CompileResult {
   tables: Record<string, TableEvaluation>;
   rendered: string;
 }
+
+export interface CompileOptions {
+  includeFrontmatter?: boolean;
+}

@@ -13,6 +13,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "MDXTab",
+      "properties": {
+        "mdxtab.preview.showFrontmatter": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show frontmatter and formulas in the MDXTab preview. Disable to hide formulas/frontmatter so only the rendered markdown body is shown."
+        }
+      }
+    },
     "commands": [
       {
         "command": "mdxtab.renderPreview",

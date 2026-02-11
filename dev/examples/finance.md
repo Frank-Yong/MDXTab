@@ -1,9 +1,9 @@
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   expenses:
     key: id
-    columns: [id, category, net, tax, gross]
+    columns: [id, category, net]
     types:
       net: number
       tax: number
@@ -17,7 +17,7 @@ tables:
       gross_total: sum(gross)
 ---
 
-## Expenses
+## expenses
 
 | id | category | net |
 |----|----------|-----|

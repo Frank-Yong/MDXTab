@@ -1,5 +1,5 @@
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   sample:
     columns: [id, value]
@@ -8,6 +8,8 @@ tables:
     aggregates:
       total: sum(value)
 ---
+
+## sample
 
 | id | value |
 |----|-------|

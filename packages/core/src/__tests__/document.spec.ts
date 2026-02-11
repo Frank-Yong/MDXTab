@@ -50,4 +50,11 @@ describe("document integration", () => {
     const badDoc = doc.replace("category", "cat");
     expect(() => compileMdxtab(badDoc)).toThrow();
   });
+
+  it("omits frontmatter when requested", () => {
+    const result = compileMdxtab(doc, { includeFrontmatter: false });
+    expect(result.rendered.startsWith("---"))
+      .toBe(false);
+    expect(result.rendered).toContain("Summary: 300 / 40");
+  });
 });
