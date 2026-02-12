@@ -27,6 +27,10 @@ class Parser {
     return this.tokens[this.pos];
   }
 
+  peek(): Token {
+    return this.current();
+  }
+
   private advance(): Token {
     const t = this.tokens[this.pos];
     this.pos += 1;
@@ -184,7 +188,7 @@ class Parser {
 export function parseExpression(tokens: Token[]): AstNode {
   const parser = new Parser(tokens);
   const ast = parser.expression(0);
-  const end = parser["current"]();
+  const end = parser.peek();
   if (end.type !== "eof") throw new Error(`Unexpected tokens after expression: ${end.type} ${end.value}`);
   return ast;
 }
