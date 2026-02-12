@@ -12,7 +12,7 @@ tables:
 
 | id | value |
 |----|-------|
-| a  | 1.345  |
+| a  | 1.5  |
 | b  | 2.25  |
 
 Narrative uses {{ sample.total }} outside code.
