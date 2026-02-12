@@ -65,4 +65,14 @@ Inline: \`{{ expenses.total_net }}\``;
     expect(result.rendered).toContain("Summary: 300 / 40");
     expect(result.rendered).toContain("Inline: `{{ expenses.total_net }}`");
   });
+
+  it("rejects tab characters in data cells", () => {
+    const badDoc = doc.replace("| h1 | Hosting  | 100 |", "| h1 | Hosting\t | 100 |");
+    expect(() => compileMdxtab(badDoc)).toThrow(/Tab characters are not allowed/);
+  });
+
+  it("rejects rows with mismatched column counts", () => {
+    const badDoc = doc.replace("| a1 | Ads      | 200 |", "| a1 | Ads |");
+    expect(() => compileMdxtab(badDoc)).toThrow(/different number of columns/);
+  });
 });
