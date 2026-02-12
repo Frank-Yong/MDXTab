@@ -16,7 +16,7 @@
 - Add canonical examples with expected outputs
 - Define golden test vectors (inputs + outputs + errors)
 
-## Phase 1: Core Engine (2-4 weeks) — DONE
+## Phase 1: Core Engine (2-4 weeks) — TARGET DONE (pending merge)
 
 - Create packages/core:
   - Frontmatter parser
@@ -49,7 +49,7 @@
 
 ## Phase 4: CLI and CI (optional, 2-3 weeks)
 
-- CLI commands: DONE
+- CLI commands: TARGET DONE (pending merge)
   - mdxtab validate
   - mdxtab render
 - GitHub Action for validation
