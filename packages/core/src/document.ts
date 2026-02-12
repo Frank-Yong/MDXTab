@@ -24,11 +24,17 @@ type EvalKind = "computed" | "aggregate";
 
 function evalWithContext(
   ast: AstNode,
-  ctx: { row: Record<string, Scalar>; lookup: (table: string, key: Scalar, column: string) => Scalar; aggregate: (fn: string, col: string) => Scalar },
+  ctx: {
+    row: Record<string, Scalar>;
+    lookup: (table: string, key: Scalar, column: string) => Record<string, Scalar>;
+    aggregate: (fn: string, col: string) => Scalar;
+  },
   info: { table: string; target: string; kind: EvalKind; keyName?: string; rowKey?: string },
 ): Scalar {
   try {
-    return evaluateAst(ast, ctx);
+    const value = evaluateAst(ast, ctx);
+    if (value !== null && typeof value === "object") throw new Error("E_TYPE: expected scalar");
+    return value;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const rowPart = info.rowKey ? ` ${info.keyName ?? "row"}=${info.rowKey}` : "";
@@ -117,7 +123,7 @@ function ensureComputed(
       ast,
       {
         row,
-        lookup: (table, key) => lookupRow(table, key) as unknown as Scalar,
+        lookup: (table, key, _column) => lookupRow(table, key),
         aggregate: () => {
           throw new Error("E_AGG_IN_ROW: aggregates not allowed in row evaluation");
         },
@@ -173,15 +179,86 @@ function computeAggregate(
 }
 
 function interpolateAggregates(body: string, aggregates: Record<string, Record<string, Scalar>>): string {
-  return body.replace(/\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\}\}/g, (match, table, name) => {
-    const tableAgg = aggregates[table];
-    if (!tableAgg || !(name in tableAgg)) {
-      throw new Error(`Unknown aggregate reference ${table}.${name}`);
+  const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\}\}/g;
+  const replaceAggregates = (text: string) =>
+    text.replace(aggregateRe, (match, table, name) => {
+      const tableAgg = aggregates[table];
+      if (!tableAgg || !(name in tableAgg)) {
+        throw new Error(`Unknown aggregate reference ${table}.${name}`);
+      }
+      const value = tableAgg[name];
+      if (value === null) return "null";
+      return String(value);
+    });
+
+  const lines = body.split("\n");
+  const output: string[] = [];
+  let inFence = false;
+  let fenceTicks = 0;
+
+  for (const line of lines) {
+    if (inFence) {
+      output.push(line);
+      if (fenceTicks > 0) {
+        const fenceClose = new RegExp(`^\\s*` + "`".repeat(fenceTicks) + `\\s*$`);
+        if (fenceClose.test(line)) {
+          inFence = false;
+          fenceTicks = 0;
+        }
+      }
+      continue;
     }
-    const value = tableAgg[name];
-    if (value === null) return "null";
-    return String(value);
-  });
+
+    const fenceOpen = line.match(/^\s*(`{3,})/);
+    if (fenceOpen) {
+      inFence = true;
+      fenceTicks = fenceOpen[1].length;
+      output.push(line);
+      continue;
+    }
+
+    let i = 0;
+    let segmentStart = 0;
+    let inInline = false;
+    let inlineTicks = 0;
+    let lineOut = "";
+
+    while (i < line.length) {
+      if (line[i] !== "`") {
+        i += 1;
+        continue;
+      }
+      let j = i;
+      while (j < line.length && line[j] === "`") j += 1;
+      const tickCount = j - i;
+
+      if (!inInline) {
+        const text = line.slice(segmentStart, i);
+        lineOut += replaceAggregates(text);
+        inInline = true;
+        inlineTicks = tickCount;
+        lineOut += line.slice(i, j);
+        segmentStart = j;
+      } else if (tickCount === inlineTicks) {
+        lineOut += line.slice(segmentStart, j);
+        inInline = false;
+        inlineTicks = 0;
+        segmentStart = j;
+      }
+
+      i = j;
+    }
+
+    if (inInline) {
+      lineOut += line.slice(segmentStart);
+    } else {
+      lineOut += replaceAggregates(line.slice(segmentStart));
+    }
+
+    output.push(lineOut);
+  }
+
+  return output.join("\n");
 }
 
 export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
@@ -279,7 +356,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
         ast,
         {
           row: {},
-          lookup: (table, key) => lookupRow(table, key) as unknown as Scalar,
+          lookup: (table, key, _column) => lookupRow(table, key),
           aggregate: aggregateFn,
         },
         { table: name, target: aggName, kind: "aggregate" },

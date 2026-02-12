@@ -15,9 +15,9 @@ const run = (expr: string, opts: EvalOptions = {}): Scalar => {
   const row = opts.row ?? {};
   const aggregateMap = opts.aggregateReturn ?? {};
   const lookupMap = opts.lookupReturn ?? {};
-  return evaluateAst(ast, {
+  const value = evaluateAst(ast, {
     row,
-    lookup: (table, key) => {
+    lookup: (table, key, _column) => {
       const t = lookupMap[table];
       if (!t || !(key as string in t)) throw new Error("E_LOOKUP");
       return t[key as string];
@@ -28,6 +28,8 @@ const run = (expr: string, opts: EvalOptions = {}): Scalar => {
       return aggregateMap[k];
     },
   });
+  if (value !== null && typeof value === "object") throw new Error("E_TYPE: expected scalar");
+  return value;
 };
 
 describe("evaluator", () => {

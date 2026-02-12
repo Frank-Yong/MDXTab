@@ -1,26 +1,34 @@
 import type { AstNode } from "./parser.js";
 import type { Scalar } from "./types.js";
 
-type LookupFn = (table: string, key: Scalar, column: string) => Scalar;
+type RowValue = Record<string, Scalar>;
+type EvalValue = Scalar | RowValue;
+
+type LookupFn = (table: string, key: Scalar, column: string) => RowValue;
 type AggregateFn = (fn: string, column: string) => Scalar;
 
 interface EvalContext {
-  row: Record<string, Scalar>;
+  row: RowValue;
   lookup: LookupFn;
   aggregate: AggregateFn;
 }
 
-function isNull(v: Scalar): v is null {
-  return v === null;
+function isRowValue(v: EvalValue): v is RowValue {
+  return typeof v === "object" && v !== null;
 }
 
-function toNumber(v: Scalar): number | null {
+function toScalar(v: EvalValue): Scalar {
+  if (isRowValue(v)) throw new Error("E_TYPE: expected scalar");
+  return v;
+}
+
+function toNumber(v: EvalValue): number | null {
   if (v === null) return null;
   if (typeof v === "number") return v;
   throw new Error("E_TYPE: expected number");
 }
 
-function binaryNumeric(op: string, left: Scalar, right: Scalar): Scalar {
+function binaryNumeric(op: string, left: EvalValue, right: EvalValue): Scalar {
   const l = toNumber(left);
   const r = toNumber(right);
   if (l === null || r === null) return null;
@@ -39,31 +47,35 @@ function binaryNumeric(op: string, left: Scalar, right: Scalar): Scalar {
   }
 }
 
-function compare(op: string, left: Scalar, right: Scalar): boolean {
-  if (left === null || right === null) return false;
+function compare(op: string, left: EvalValue, right: EvalValue): boolean {
+  const l = toScalar(left);
+  const r = toScalar(right);
+  if (l === null || r === null) return false;
   switch (op) {
     case "==":
-      return left === right;
+      return l === r;
     case "!=":
-      return left !== right;
+      return l !== r;
     case "<":
-      return (left as number) < (right as number);
+      return (l as number) < (r as number);
     case "<=":
-      return (left as number) <= (right as number);
+      return (l as number) <= (r as number);
     case ">":
-      return (left as number) > (right as number);
+      return (l as number) > (r as number);
     case ">=":
-      return (left as number) >= (right as number);
+      return (l as number) >= (r as number);
     default:
       throw new Error(`E_OP: unsupported comparator ${op}`);
   }
 }
 
-function logical(op: string, left: Scalar, right: Scalar): boolean {
-  if (typeof left !== "boolean" || typeof right !== "boolean") {
+function logical(op: string, left: EvalValue, right: EvalValue): boolean {
+  const l = toScalar(left);
+  const r = toScalar(right);
+  if (typeof l !== "boolean" || typeof r !== "boolean") {
     throw new Error("E_TYPE: expected boolean operands");
   }
-  return op === "and" ? left && right : left || right;
+  return op === "and" ? l && r : l || r;
 }
 
 function roundHalfToEven(value: number, decimals: number): number {
@@ -83,7 +95,7 @@ function roundHalfToEven(value: number, decimals: number): number {
   return Math.round(scaled) / factor;
 }
 
-export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
+export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
   switch (node.type) {
     case "Number":
     case "String":
@@ -91,7 +103,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
       return node.value as Scalar;
     case "Identifier": {
       const name = node.value as string;
-      if (name === "row") return null; // row object is not a scalar value
+      if (name === "row") return ctx.row;
       if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
       return ctx.row[name];
     }
@@ -151,9 +163,9 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
       const [target, prop] = node.children ?? [];
       if (!target || !prop) throw new Error("E_REF: invalid member expression");
       const base = evaluateAst(target, ctx);
-      if (typeof base !== "object" || base === null) throw new Error("E_REF: member base is not an object");
+      if (!isRowValue(base)) throw new Error("E_REF: member base is not an object");
       const key = (prop as AstNode).value as string;
-      const val = (base as Record<string, Scalar>)[key];
+      const val = base[key];
       if (val === undefined) throw new Error(`E_REF: unknown member ${key}`);
       return val;
     }
@@ -163,7 +175,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): Scalar {
       const tableNameNode = tableNode.type === "Identifier" ? tableNode : undefined;
       const tableName = tableNameNode?.value as string | undefined;
       if (!tableName) throw new Error("E_LOOKUP: table name required");
-      const key = evaluateAst(keyNode, ctx);
+      const key = toScalar(evaluateAst(keyNode, ctx));
       // Lookup returns the row object; a following Member node selects the column.
       return ctx.lookup(tableName, key, "");
     }
