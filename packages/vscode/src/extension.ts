@@ -49,14 +49,27 @@ class PreviewProvider implements TextDocumentContentProvider {
 
 function updateDiagnostics(doc: TextDocument, collection: DiagnosticCollection) {
   if (doc.languageId !== "markdown") return;
+  const text = doc.getText();
+  if (!looksLikeMdxtab(text)) {
+    collection.delete(doc.uri);
+    return;
+  }
   try {
-    compileMdxtab(doc.getText());
+    compileMdxtab(text);
     collection.delete(doc.uri);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const diag = new Diagnostic(new Range(new Position(0, 0), new Position(0, 1)), message, DiagnosticSeverity.Error);
     collection.set(doc.uri, [diag]);
   }
+}
+
+function looksLikeMdxtab(text: string): boolean {
+  if (!text.startsWith("---")) return false;
+  const end = text.indexOf("\n---", 3);
+  if (end === -1) return false;
+  const frontmatter = text.slice(0, end + 4);
+  return /\nmdxtab\s*:/.test(frontmatter);
 }
 
 export function activate(context: ExtensionContext) {
