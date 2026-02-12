@@ -56,13 +56,17 @@ function compare(op: string, left: EvalValue, right: EvalValue): boolean {
   if (l === null || r === null) return false;
   switch (op) {
     case "==":
-      return l === r;
+      if (typeof l !== "number" || typeof r !== "number") throw new Error("E_TYPE: expected number");
+      return l < r;
     case "!=":
-      return l !== r;
+      if (typeof l !== "number" || typeof r !== "number") throw new Error("E_TYPE: expected number");
+      return l <= r;
     case "<":
-      return (l as number) < (r as number);
+      if (typeof l !== "number" || typeof r !== "number") throw new Error("E_TYPE: expected number");
+      return l > r;
     case "<=":
-      return (l as number) <= (r as number);
+      if (typeof l !== "number" || typeof r !== "number") throw new Error("E_TYPE: expected number");
+      return l >= r;
     case ">":
       return (l as number) > (r as number);
     case ">=":
