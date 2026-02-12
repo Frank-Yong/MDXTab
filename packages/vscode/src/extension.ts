@@ -3,6 +3,7 @@ import {
   Diagnostic,
   DiagnosticCollection,
   DiagnosticSeverity,
+  ExtensionContext,
   languages,
   Position,
   Range,
@@ -58,24 +59,25 @@ function updateDiagnostics(doc: TextDocument, collection: DiagnosticCollection) 
   }
 }
 
-export function activate() {
+export function activate(context: ExtensionContext) {
   const provider = new PreviewProvider();
-  workspace.registerTextDocumentContentProvider(SCHEME, provider);
+  context.subscriptions.push(workspace.registerTextDocumentContentProvider(SCHEME, provider));
 
   const diagnostics = languages.createDiagnosticCollection("mdxtab");
-  workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics));
-  workspace.onDidChangeTextDocument((e) => {
+  context.subscriptions.push(diagnostics);
+  context.subscriptions.push(workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics)));
+  context.subscriptions.push(workspace.onDidChangeTextDocument((e) => {
     updateDiagnostics(e.document, diagnostics);
     if (e.document.languageId === "markdown") {
       provider.refresh(makePreviewUri(e.document.uri));
     }
-  });
-  workspace.onDidSaveTextDocument((doc) => {
+  }));
+  context.subscriptions.push(workspace.onDidSaveTextDocument((doc) => {
     updateDiagnostics(doc, diagnostics);
     if (doc.languageId === "markdown") {
       provider.refresh(makePreviewUri(doc.uri));
     }
-  });
+  }));
 
   const renderPreview = commands.registerCommand("mdxtab.renderPreview", async () => {
     const editor = window.activeTextEditor;
@@ -88,14 +90,11 @@ export function activate() {
     provider.refresh(previewUri);
     await commands.executeCommand("vscode.open", previewUri, { preview: true });
   });
+  context.subscriptions.push(renderPreview);
 
   const active = window.activeTextEditor?.document;
   if (active) updateDiagnostics(active, diagnostics);
 
-  return { dispose: () => {
-    renderPreview.dispose();
-    diagnostics.dispose();
-  } };
 }
 
 export function deactivate() {
