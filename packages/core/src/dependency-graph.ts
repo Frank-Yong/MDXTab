@@ -12,6 +12,7 @@ export interface DependencyGraph {
 
 export function buildDependencyGraph(nodes: Record<string, AstNode>): DependencyGraph {
   const names = Object.keys(nodes);
+  const nameSet = new Set(names);
 
   // Optional aggregate argument validation: aggregates must take a single column identifier.
   const isAggregate = (name: string) => ["sum", "avg", "min", "max", "count"].includes(name);
@@ -61,7 +62,7 @@ export function buildDependencyGraph(nodes: Record<string, AstNode>): Dependency
     }
     state[n] = "visiting";
     for (const dep of depMap[n] ?? []) {
-      if (!names.includes(dep)) continue; // external dependency; ignore for ordering
+      if (!nameSet.has(dep)) continue; // external dependency; ignore for ordering
       visit(dep);
     }
     state[n] = "visited";
