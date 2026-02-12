@@ -60,7 +60,7 @@ export function parseMarkdownTables(raw: string): ParsedTable[] {
         const dataTrimmed = dataLine.trim();
         if (!(dataTrimmed.startsWith("|") && dataTrimmed.endsWith("|"))) break;
 
-        const cells = parsePipeRow(dataLine);
+        const cells = parsePipeRow(dataTrimmed);
         if (cells.some((c) => c.includes("\t"))) {
           throw new Error("Tab characters are not allowed in data cells");
         }
