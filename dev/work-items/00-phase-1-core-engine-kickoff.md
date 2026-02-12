@@ -1,8 +1,8 @@
 # Work Item: Phase 1 Core Engine Kickoff
 
 ## Status
-- Branch: phase-1-core-engine
-- Focus: parsing and evaluation primitives for the core library.
+- Branch: phase-1-core-engine (merged into main)
+- Focus: parsing and evaluation primitives for the core library (complete on main).
 
 ## Objectives
 - Stand up `packages/core` with parsing, lexing/parsing, evaluation, and dependency modules.

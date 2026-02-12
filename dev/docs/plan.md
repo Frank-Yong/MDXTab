@@ -8,7 +8,7 @@
 
 ## Phase 0: Spec Lock and Examples (1-2 weeks) — DONE
 
-Note: Phase status markers describe the target state after the current work is merged.
+Note: Phase status markers reflect the current state of main.
 
 - Freeze v1 semantics:
   - Empty cell handling
@@ -18,7 +18,7 @@ Note: Phase status markers describe the target state after the current work is m
 - Add canonical examples with expected outputs
 - Define golden test vectors (inputs + outputs + errors)
 
-## Phase 1: Core Engine (2-4 weeks) — TARGET DONE (pending merge)
+## Phase 1: Core Engine (2-4 weeks) — DONE
 
 - Create packages/core:
   - Frontmatter parser
@@ -51,7 +51,7 @@ Note: Phase status markers describe the target state after the current work is m
 
 ## Phase 4: CLI and CI (optional, 2-3 weeks)
 
-- CLI commands: TARGET DONE (pending merge)
+- CLI commands: DONE
   - mdxtab validate
   - mdxtab render
 - GitHub Action for validation
