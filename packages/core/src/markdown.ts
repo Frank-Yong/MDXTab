@@ -16,7 +16,10 @@ function parsePipeRow(line: string): string[] {
 
 function isSeparator(line: string): boolean {
   const trimmed = line.trim();
-  return trimmed.startsWith("|") && /[-:]/.test(trimmed);
+  if (!(trimmed.startsWith("|") && trimmed.endsWith("|"))) return false;
+  const cells = parsePipeRow(trimmed).map((cell) => cell.trim());
+  if (cells.length === 0) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
 function parseHeadingText(line: string): string | null {
