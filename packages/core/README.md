@@ -1,9 +1,9 @@
 # @mdxtab/core
 
-Core parsing and evaluation library for MDXTab. This package will house frontmatter parsing, Markdown table extraction, expression lexing/parsing, dependency ordering, and row/aggregate evaluation.
+Core parsing and evaluation library for MDXTab. This package includes frontmatter parsing, Markdown table extraction, expression lexing/parsing, dependency ordering, and row/aggregate evaluation.
 
 ## Status
-Scaffolding only. Implementations are TODO; semantics must follow the Phase 0 formal and technical specs (numeric/null rules, rounding, identifiers, header trimming for column matching, data cell preservation, interpolation constraints).
+Implemented (WIP). Core compilation, evaluation, and tests are in place; semantics follow the Phase 0 formal and technical specs. Remaining gaps are tracked in `dev/work-items`.
 
 ## Development
 - Build: `npm run -w @mdxtab/core build`
