@@ -1,5 +1,5 @@
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   t:
     columns: [id, net]
