@@ -2,7 +2,7 @@ import type { ParsedTable, TableRow } from "./types.js";
 
 function sliceFrontmatter(lines: string[]): string[] {
   if (lines[0]?.trim() !== "---") return lines;
-  const end = lines.indexOf("---", 1);
+  const end = lines.findIndex((line, idx) => idx > 0 && line.trim() === "---");
   if (end === -1) return lines;
   return lines.slice(end + 1);
 }
