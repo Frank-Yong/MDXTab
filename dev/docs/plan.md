@@ -8,6 +8,8 @@
 
 ## Phase 0: Spec Lock and Examples (1-2 weeks) — DONE
 
+Note: Phase status markers describe the target state after the current work is merged.
+
 - Freeze v1 semantics:
   - Empty cell handling
   - Type coercion matrix
