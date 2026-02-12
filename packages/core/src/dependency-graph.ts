@@ -24,9 +24,10 @@ export function buildDependencyGraph(nodes: Record<string, AstNode>): Dependency
       }
       case "Call": {
         const fn = typeof ast.value === "string" ? ast.value : "";
-        if (isAggregate(fn)) {
+        const normalized = fn.toLowerCase();
+        if (isAggregate(normalized)) {
           if (!ast.children || ast.children.length !== 1 || ast.children[0].type !== "Identifier") {
-            throw new Error(`E_AGG_ARGUMENT: aggregate ${fn} requires a single column identifier`);
+            throw new Error(`E_AGG_ARGUMENT: aggregate ${normalized} requires a single column identifier`);
           }
         }
         ast.children?.forEach((c) => collectDeps(c, deps));
