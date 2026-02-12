@@ -56,6 +56,15 @@ describe("evaluator", () => {
     expect(run("a > 1", { row: { a: null } })).toBe(false);
   });
 
+  it("handles numeric comparisons", () => {
+    expect(run("1 == 1")).toBe(true);
+    expect(run("1 != 2")).toBe(true);
+    expect(run("1 < 2")).toBe(true);
+    expect(run("2 <= 2")).toBe(true);
+    expect(run("2 > 1")).toBe(true);
+    expect(run("2 >= 3")).toBe(false);
+  });
+
   it("rejects non-boolean logical operands", () => {
     expect(() => run("1 and true")).toThrow(/E_TYPE/);
   });
