@@ -79,11 +79,32 @@ export function activate(context: ExtensionContext) {
   const diagnostics = languages.createDiagnosticCollection("mdxtab");
   context.subscriptions.push(diagnostics);
   context.subscriptions.push(workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics)));
-  context.subscriptions.push(workspace.onDidChangeTextDocument((e) => {
-    updateDiagnostics(e.document, diagnostics);
-    if (e.document.languageId === "markdown") {
-      provider.refresh(makePreviewUri(e.document.uri));
+  const debounceMs = 200;
+  const pendingUpdates = new Map<string, ReturnType<typeof setTimeout>>();
+  const scheduleUpdate = (doc: TextDocument) => {
+    if (doc.languageId !== "markdown") return;
+    if (!looksLikeMdxtab(doc.getText())) {
+      diagnostics.delete(doc.uri);
+      return;
     }
+    const key = doc.uri.toString();
+    const existing = pendingUpdates.get(key);
+    if (existing) clearTimeout(existing);
+    const handle = setTimeout(() => {
+      pendingUpdates.delete(key);
+      updateDiagnostics(doc, diagnostics);
+      provider.refresh(makePreviewUri(doc.uri));
+    }, debounceMs);
+    pendingUpdates.set(key, handle);
+  };
+  context.subscriptions.push({
+    dispose: () => {
+      for (const handle of pendingUpdates.values()) clearTimeout(handle);
+      pendingUpdates.clear();
+    },
+  });
+  context.subscriptions.push(workspace.onDidChangeTextDocument((e) => {
+    scheduleUpdate(e.document);
   }));
   context.subscriptions.push(workspace.onDidSaveTextDocument((doc) => {
     updateDiagnostics(doc, diagnostics);
