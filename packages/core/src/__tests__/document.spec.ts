@@ -57,4 +57,12 @@ describe("document integration", () => {
       .toBe(false);
     expect(result.rendered).toContain("Summary: 300 / 40");
   });
+
+  it("does not interpolate inside inline code", () => {
+    const docWithInline = `${doc}
+Inline: \`{{ expenses.total_net }}\``;
+    const result = compileMdxtab(docWithInline);
+    expect(result.rendered).toContain("Summary: 300 / 40");
+    expect(result.rendered).toContain("Inline: `{{ expenses.total_net }}`");
+  });
 });
