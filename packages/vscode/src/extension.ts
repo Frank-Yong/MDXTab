@@ -19,7 +19,7 @@ import { compileMdxtab } from "@mdxtab/core";
 const SCHEME = "mdxtab-preview";
 
 function makePreviewUri(docUri: Uri): Uri {
-  return Uri.from({ scheme: SCHEME, path: docUri.path, query: docUri.toString() });
+  return Uri.from({ scheme: SCHEME, path: docUri.path, query: encodeURIComponent(docUri.toString()) });
 }
 
 class PreviewProvider implements TextDocumentContentProvider {
@@ -32,7 +32,7 @@ class PreviewProvider implements TextDocumentContentProvider {
   }
 
   async provideTextDocumentContent(uri: Uri): Promise<string> {
-    const target = uri.query ? Uri.parse(uri.query) : undefined;
+    const target = uri.query ? Uri.parse(decodeURIComponent(uri.query)) : undefined;
     const doc = target ? await workspace.openTextDocument(target) : undefined;
     if (!doc) return "No document to render";
     try {
