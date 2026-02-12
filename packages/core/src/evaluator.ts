@@ -1,7 +1,10 @@
 import type { AstNode } from "./parser.js";
 import type { Scalar } from "./types.js";
 
-type RowValue = Record<string, Scalar>;
+interface RowValue {
+  [key: string]: EvalValue;
+}
+
 type EvalValue = Scalar | RowValue;
 
 type LookupFn = (table: string, key: Scalar, column: string) => RowValue;

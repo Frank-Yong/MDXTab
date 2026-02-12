@@ -7,8 +7,13 @@ import type { Scalar } from "../types.js";
 type EvalOptions = {
   row?: Record<string, Scalar>;
   aggregateReturn?: Record<string, Scalar>;
-  lookupReturn?: Record<string, Record<string, Scalar>>;
+  lookupReturn?: LookupReturn;
 };
+
+interface RowValue {
+  [key: string]: Scalar | RowValue;
+}
+type LookupReturn = Record<string, Record<string, RowValue>>;
 
 const run = (expr: string, opts: EvalOptions = {}): Scalar => {
   const ast = parseExpression(lexExpression(expr));
@@ -58,7 +63,7 @@ describe("evaluator", () => {
   it("supports lookups and members", () => {
     const val = run("roles[role_id].title", {
       row: { role_id: "se" },
-      lookupReturn: { roles: { se: { title: "Engineer" } } } as unknown as Record<string, Record<string, Scalar>>,
+      lookupReturn: { roles: { se: { title: "Engineer" } } },
     });
     expect(val).toBe("Engineer");
   });
@@ -92,7 +97,7 @@ describe("evaluator", () => {
   it("supports nested lookup members", () => {
     const val = run("roles[role_id].manager.name", {
       row: { role_id: "se" },
-      lookupReturn: { roles: { se: { manager: { name: "Ellen" } } } } as unknown as Record<string, Record<string, Scalar>>,
+      lookupReturn: { roles: { se: { manager: { name: "Ellen" } } } },
     });
     expect(val).toBe("Ellen");
   });
