@@ -14,7 +14,7 @@ import {
   workspace,
   EventEmitter,
 } from "vscode";
-import { compileMdxtab } from "@mdxtab/core";
+import { compileMdxtab, validateMdxtab, type Diagnostic as CoreDiagnostic } from "@mdxtab/core";
 
 const SCHEME = "mdxtab-preview";
 
@@ -54,14 +54,25 @@ function updateDiagnostics(doc: TextDocument, collection: DiagnosticCollection) 
     collection.delete(doc.uri);
     return;
   }
-  try {
-    compileMdxtab(text);
+  const { diagnostics } = validateMdxtab(text);
+  if (diagnostics.length === 0) {
     collection.delete(doc.uri);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const diag = new Diagnostic(new Range(new Position(0, 0), new Position(0, 1)), message, DiagnosticSeverity.Error);
-    collection.set(doc.uri, [diag]);
+    return;
   }
+  collection.set(doc.uri, diagnostics.map((diag) => toVsDiagnostic(diag)));
+}
+
+function toVsDiagnostic(diag: CoreDiagnostic): Diagnostic {
+  const range = diag.range
+    ? new Range(
+        new Position(diag.range.start.line, diag.range.start.character),
+        new Position(diag.range.end.line, diag.range.end.character),
+      )
+    : new Range(new Position(0, 0), new Position(0, 1));
+  const severity = diag.severity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error;
+  const vsDiag = new Diagnostic(range, diag.message, severity);
+  vsDiag.code = diag.code;
+  return vsDiag;
 }
 
 function looksLikeMdxtab(text: string): boolean {
