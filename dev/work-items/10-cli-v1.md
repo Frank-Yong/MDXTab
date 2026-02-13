@@ -1,5 +1,8 @@
 # Work Item: CLI v1
 
+## Status
+- State: DONE
+
 ## Description
 Ship a minimal CLI for validate/render with CI-friendly output.
 

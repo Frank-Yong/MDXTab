@@ -1,6 +1,7 @@
 # Work Item: Phase 1 Core Engine Kickoff
 
 ## Status
+- State: DONE
 - Branch: phase-1-core-engine (merged into main)
 - Focus: parsing and evaluation primitives for the core library (complete on main).
 

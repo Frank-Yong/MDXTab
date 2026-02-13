@@ -1,5 +1,8 @@
 # Work Item: Spec lock and golden examples
 
+## Status
+- State: DONE
+
 ## Description
 Freeze v1 rules and provide canonical examples with expected outputs and errors.
 

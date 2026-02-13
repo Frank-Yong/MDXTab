@@ -1,5 +1,8 @@
 # Work Item: Row evaluation
 
+## Status
+- State: DONE
+
 ## Description
 Evaluate computed columns per row using the dependency order and lookup rules.
 

@@ -1,5 +1,8 @@
 # Work Item: Interpolation renderer
 
+## Status
+- State: DONE
+
 ## Description
 Render Markdown by replacing allowed `{{ table.aggregate }}` placeholders.
 

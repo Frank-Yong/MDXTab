@@ -1,5 +1,8 @@
 # Work Item: Quick fixes and snippets
 
+## Status
+- State: TODO
+
 ## Description
 Offer small assists to fix common errors and speed up authoring.
 

@@ -1,5 +1,8 @@
 # Work Item: Diagnostics surface
 
+## Status
+- State: TODO
+
 ## Description
 Produce clear, structured errors and warnings that can be shared by CLI and VS Code.
 

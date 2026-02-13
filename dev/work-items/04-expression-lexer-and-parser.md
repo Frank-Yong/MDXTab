@@ -1,5 +1,8 @@
 # Work Item: Expression lexer and parser
 
+## Status
+- State: DONE
+
 ## Description
 Build the Pratt parser for the v1 grammar and produce an expression tree.
 

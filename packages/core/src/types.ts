@@ -32,14 +32,20 @@ export interface FrontmatterDocument {
 export interface HeaderCell {
   raw: string;
   trimmed: string;
+  line?: number;
+  start?: number;
+  end?: number;
 }
 
 export interface DataCell {
   raw: string;
+  start?: number;
+  end?: number;
 }
 
 export interface TableRow {
   cells: DataCell[];
+  line?: number;
 }
 
 export interface ParsedTable {
@@ -67,4 +73,27 @@ export interface CompileResult {
 
 export interface CompileOptions {
   includeFrontmatter?: boolean;
+}
+
+export interface DiagnosticPosition {
+  line: number;
+  character: number;
+}
+
+export interface DiagnosticRange {
+  start: DiagnosticPosition;
+  end: DiagnosticPosition;
+}
+
+export type DiagnosticSeverity = "error" | "warning";
+
+export interface Diagnostic {
+  code: string;
+  message: string;
+  severity: DiagnosticSeverity;
+  table?: string;
+  column?: string;
+  aggregate?: string;
+  rowKey?: string;
+  range?: DiagnosticRange;
 }

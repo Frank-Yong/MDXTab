@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compileMdxtab } from "../document.js";
+import { compileMdxtab, validateMdxtab } from "../document.js";
 
 const doc = `---
 mdxtab: "1.0"
@@ -74,5 +74,14 @@ Inline: \`{{ expenses.total_net }}\``;
   it("rejects rows with mismatched column counts", () => {
     const badDoc = doc.replace("| a1 | Ads      | 200 |", "| a1 | Ads |");
     expect(() => compileMdxtab(badDoc)).toThrow(/different number of columns/);
+  });
+
+  it("returns diagnostics with aggregate context", () => {
+    const badDoc = doc.replace("{{ expenses.total_net }}", "{{ expenses.missing }}");
+    const result = validateMdxtab(badDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_AGG_REF");
+    expect(result.diagnostics[0].table).toBe("expenses");
+    expect(result.diagnostics[0].aggregate).toBe("missing");
   });
 });
