@@ -3,10 +3,16 @@ import {
   Diagnostic,
   DiagnosticCollection,
   DiagnosticSeverity,
+  DocumentSymbol,
+  DocumentSymbolProvider,
   ExtensionContext,
+  Hover,
+  HoverProvider,
   languages,
+  MarkdownString,
   Position,
   Range,
+  SymbolKind,
   TextDocument,
   TextDocumentContentProvider,
   Uri,
@@ -14,7 +20,13 @@ import {
   workspace,
   EventEmitter,
 } from "vscode";
-import { compileMdxtab, validateMdxtab, type Diagnostic as CoreDiagnostic } from "@mdxtab/core";
+import {
+  compileMdxtab,
+  parseFrontmatter,
+  parseMarkdownTables,
+  validateMdxtab,
+  type Diagnostic as CoreDiagnostic,
+} from "@mdxtab/core";
 
 const SCHEME = "mdxtab-preview";
 
@@ -47,6 +59,256 @@ class PreviewProvider implements TextDocumentContentProvider {
       return `Render error: ${message}`;
     }
   }
+}
+
+class MdxtabSymbolProvider implements DocumentSymbolProvider {
+  provideDocumentSymbols(document: TextDocument): DocumentSymbol[] {
+    if (document.languageId !== "markdown") return [];
+    const text = document.getText();
+    if (!looksLikeMdxtab(text)) return [];
+
+    let frontmatter: ReturnType<typeof parseFrontmatter>;
+    let tables: ReturnType<typeof parseMarkdownTables>;
+    try {
+      frontmatter = parseFrontmatter(text);
+      tables = parseMarkdownTables(text);
+    } catch {
+      return [];
+    }
+
+    const tableByName = new Map(tables.map((table) => [table.name, table]));
+    const symbols: DocumentSymbol[] = [];
+
+    for (const [name, schema] of Object.entries(frontmatter.tables)) {
+      const table = tableByName.get(name);
+      if (!table) continue;
+
+      const header = table.headers[0];
+      const lastRow = table.rows[table.rows.length - 1];
+      const startLine = header?.line ?? 0;
+      const startChar = header?.start ?? 0;
+      const endLine = lastRow?.line ?? startLine;
+      const endChar = lastRow?.cells[lastRow.cells.length - 1]?.end ?? header?.end ?? startChar + 1;
+      const range = new Range(new Position(startLine, startChar), new Position(endLine, endChar));
+      const selectionRange = new Range(
+        new Position(startLine, startChar),
+        new Position(startLine, header?.end ?? startChar + 1),
+      );
+
+      const tableSymbol = new DocumentSymbol(name, "table", SymbolKind.Struct, range, selectionRange);
+      const children: DocumentSymbol[] = [];
+
+      for (const cell of table.headers) {
+        const colName = cell.trimmed;
+        const colRange = new Range(
+          new Position(cell.line ?? startLine, cell.start ?? startChar),
+          new Position(cell.line ?? startLine, cell.end ?? (cell.start ?? startChar) + 1),
+        );
+        children.push(new DocumentSymbol(colName, "column", SymbolKind.Field, colRange, colRange));
+      }
+
+      const aggregateNames = Object.keys(schema.aggregates ?? {});
+      for (const aggName of aggregateNames) {
+        children.push(new DocumentSymbol(aggName, "aggregate", SymbolKind.Function, range, selectionRange));
+      }
+
+      tableSymbol.children = children;
+      symbols.push(tableSymbol);
+    }
+
+    return symbols;
+  }
+}
+
+type HoverEntry = {
+  table: string;
+  kind: "computed" | "aggregate";
+  name: string;
+  expr: string;
+  line: number;
+  start: number;
+  end: number;
+};
+
+class MdxtabHoverProvider implements HoverProvider {
+  provideHover(document: TextDocument, position: Position): Hover | undefined {
+    if (document.languageId !== "markdown") return undefined;
+    const text = document.getText();
+    if (!looksLikeMdxtab(text)) return undefined;
+    const entry = findHoverEntry(text, position);
+    if (!entry) return undefined;
+
+    const title = entry.kind === "computed" ? "Computed" : "Aggregate";
+    const label = `${entry.table}.${entry.name}`;
+    const md = new MarkdownString(`**${title}:** ${label}\n\n\`${entry.expr}\``);
+    return new Hover(md);
+  }
+}
+
+function findHoverEntry(text: string, position: Position): HoverEntry | undefined {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const frontmatter = getFrontmatterBounds(lines);
+  if (!frontmatter) return undefined;
+  let parsedFrontmatter: ReturnType<typeof parseFrontmatter> | undefined;
+  let parsedTables: ReturnType<typeof parseMarkdownTables> | undefined;
+  try {
+    parsedFrontmatter = parseFrontmatter(text);
+    parsedTables = parseMarkdownTables(text);
+  } catch {
+    parsedFrontmatter = undefined;
+    parsedTables = undefined;
+  }
+
+  if (position.line > frontmatter.start && position.line < frontmatter.end) {
+    const entries = parseFrontmatterEntries(lines, frontmatter.start + 1, frontmatter.end);
+    for (const entry of entries) {
+      if (entry.line !== position.line) continue;
+      if (position.character < entry.start || position.character > entry.end) continue;
+      return entry;
+    }
+  }
+
+  if (parsedFrontmatter && parsedTables) {
+    return findBodyHoverEntry(lines, position, parsedFrontmatter, parsedTables);
+  }
+
+  return undefined;
+}
+
+function getFrontmatterBounds(lines: string[]): { start: number; end: number } | undefined {
+  if (lines.length === 0 || lines[0].trim() !== "---") return undefined;
+  for (let i = 1; i < lines.length; i += 1) {
+    if (lines[i].trim() === "---") return { start: 0, end: i };
+  }
+  return undefined;
+}
+
+function parseFrontmatterEntries(lines: string[], start: number, end: number): HoverEntry[] {
+  const entries: HoverEntry[] = [];
+  let tablesIndent: number | undefined;
+  let tableIndent: number | undefined;
+  let sectionIndent: number | undefined;
+  let currentTable = "";
+  let currentSection: "computed" | "aggregate" | undefined;
+
+  for (let i = start; i < end; i += 1) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+
+    if (/^tables\s*:/i.test(trimmed)) {
+      tablesIndent = indent;
+      currentTable = "";
+      currentSection = undefined;
+      continue;
+    }
+
+    if (tablesIndent !== undefined && indent > tablesIndent && trimmed.endsWith(":")) {
+      const nameMatch = trimmed.match(/^([A-Za-z0-9_]+)\s*:/);
+      if (nameMatch) {
+        currentTable = nameMatch[1];
+        tableIndent = indent;
+        currentSection = undefined;
+        continue;
+      }
+    }
+
+    if (tableIndent !== undefined && indent > tableIndent) {
+      const sectionMatch = trimmed.match(/^(computed|aggregates)\s*:/);
+      if (sectionMatch) {
+        currentSection = sectionMatch[1] === "computed" ? "computed" : "aggregate";
+        sectionIndent = indent;
+        continue;
+      }
+    }
+
+    if (currentTable && currentSection && sectionIndent !== undefined && indent > sectionIndent) {
+      const entryMatch = trimmed.match(/^([A-Za-z0-9_]+)\s*:\s*(.*)$/);
+      if (entryMatch) {
+        const name = entryMatch[1];
+        const expr = entryMatch[2];
+        const startIndex = line.indexOf(name);
+        const endIndex = startIndex + name.length;
+        entries.push({
+          table: currentTable,
+          kind: currentSection,
+          name,
+          expr,
+          line: i,
+          start: startIndex,
+          end: endIndex,
+        });
+      }
+    }
+  }
+
+  return entries;
+}
+
+function findBodyHoverEntry(
+  lines: string[],
+  position: Position,
+  frontmatter: ReturnType<typeof parseFrontmatter>,
+  tables: ReturnType<typeof parseMarkdownTables>,
+): HoverEntry | undefined {
+  const lineText = lines[position.line] ?? "";
+  const aggregateMatch = matchAggregateInterpolation(lineText, position.character);
+  if (aggregateMatch) {
+    const table = frontmatter.tables[aggregateMatch.table];
+    const expr = table?.aggregates?.[aggregateMatch.name];
+    if (expr) {
+      return {
+        table: aggregateMatch.table,
+        kind: "aggregate",
+        name: aggregateMatch.name,
+        expr,
+        line: position.line,
+        start: aggregateMatch.start,
+        end: aggregateMatch.end,
+      };
+    }
+  }
+
+  for (const table of tables) {
+    const schema = frontmatter.tables[table.name];
+    if (!schema?.computed) continue;
+    for (const header of table.headers) {
+      if (header.line !== position.line) continue;
+      const start = header.start ?? 0;
+      const end = header.end ?? start + header.trimmed.length;
+      if (position.character < start || position.character > end) continue;
+      const expr = schema.computed[header.trimmed];
+      if (!expr) continue;
+      return {
+        table: table.name,
+        kind: "computed",
+        name: header.trimmed,
+        expr,
+        line: header.line ?? position.line,
+        start,
+        end,
+      };
+    }
+  }
+
+  return undefined;
+}
+
+function matchAggregateInterpolation(
+  line: string,
+  position: number,
+): { table: string; name: string; start: number; end: number } | undefined {
+  const re = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\}\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(line))) {
+    const start = match.index;
+    const end = match.index + match[0].length;
+    if (position >= start && position <= end) {
+      return { table: match[1], name: match[2], start, end };
+    }
+  }
+  return undefined;
 }
 
 function updateDiagnostics(doc: TextDocument, collection: DiagnosticCollection) {
@@ -116,6 +378,12 @@ export function activate(context: ExtensionContext) {
   const diagnostics = languages.createDiagnosticCollection("mdxtab");
   context.subscriptions.push(diagnostics);
   context.subscriptions.push(workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics)));
+  context.subscriptions.push(
+    languages.registerDocumentSymbolProvider({ language: "markdown" }, new MdxtabSymbolProvider()),
+  );
+  context.subscriptions.push(
+    languages.registerHoverProvider({ language: "markdown" }, new MdxtabHoverProvider()),
+  );
   const debounceMs = 200;
   const pendingUpdates = new Map<string, ReturnType<typeof setTimeout>>();
   const scheduleUpdate = (doc: TextDocument) => {
