@@ -3,12 +3,16 @@ import {
   Diagnostic,
   DiagnosticCollection,
   DiagnosticSeverity,
+  CompletionItem,
+  CompletionItemKind,
   DocumentSymbol,
   DocumentSymbolProvider,
+  DefinitionProvider,
   ExtensionContext,
   Hover,
   HoverProvider,
   languages,
+  Location,
   MarkdownString,
   Position,
   Range,
@@ -128,6 +132,8 @@ type HoverEntry = {
   line: number;
   start: number;
   end: number;
+  exprStart: number;
+  exprEnd: number;
 };
 
 class MdxtabHoverProvider implements HoverProvider {
@@ -142,6 +148,148 @@ class MdxtabHoverProvider implements HoverProvider {
     const label = `${entry.table}.${entry.name}`;
     const md = new MarkdownString(`**${title}:** ${label}\n\n\`${entry.expr}\``);
     return new Hover(md);
+  }
+}
+
+class MdxtabCompletionProvider {
+  provideCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
+    if (document.languageId !== "markdown") return [];
+    const text = document.getText();
+    if (!looksLikeMdxtab(text)) return [];
+
+    const lines = text.replace(/\r\n?/g, "\n").split("\n");
+    const frontmatter = getFrontmatterBounds(lines);
+    if (!frontmatter) return [];
+
+    let parsedFrontmatter: ReturnType<typeof parseFrontmatter> | undefined;
+    let parsedTables: ReturnType<typeof parseMarkdownTables> | undefined;
+    try {
+      parsedFrontmatter = parseFrontmatter(text);
+      parsedTables = parseMarkdownTables(text);
+    } catch {
+      parsedFrontmatter = undefined;
+      parsedTables = undefined;
+    }
+
+    const entries = parseFrontmatterEntries(lines, frontmatter.start + 1, frontmatter.end);
+    const entry = entries.find(
+      (item) =>
+        item.line === position.line && position.character >= item.exprStart && position.character <= item.exprEnd,
+    );
+
+    const items: CompletionItem[] = [];
+    if (entry && parsedFrontmatter) {
+      const lineText = lines[position.line] ?? "";
+      const dotTable = findDotCompletionTable(lineText, position.character, entry.table, parsedFrontmatter);
+      if (dotTable) {
+        const table = parsedFrontmatter.tables[dotTable];
+        if (table) {
+          for (const col of table.columns) {
+            items.push(new CompletionItem(col, CompletionItemKind.Field));
+          }
+        }
+        return items;
+      }
+      const table = parsedFrontmatter.tables[entry.table];
+      if (table) {
+        for (const col of table.columns) {
+          items.push(new CompletionItem(col, CompletionItemKind.Field));
+        }
+      }
+      for (const name of Object.keys(parsedFrontmatter.tables)) {
+        items.push(new CompletionItem(name, CompletionItemKind.Struct));
+      }
+      for (const fn of ["sum", "avg", "min", "max", "count", "round", "if"]) {
+        const item = new CompletionItem(fn, CompletionItemKind.Function);
+        item.insertText = fn + "(";
+        items.push(item);
+      }
+      return items;
+    }
+
+    if (parsedFrontmatter && parsedTables) {
+      const interpolation = matchAggregateInterpolation(lines[position.line] ?? "", position.character);
+      if (interpolation) {
+        const table = parsedFrontmatter.tables[interpolation.table];
+        if (table?.aggregates) {
+          for (const aggName of Object.keys(table.aggregates)) {
+            items.push(new CompletionItem(aggName, CompletionItemKind.Function));
+          }
+        }
+        return items;
+      }
+
+      const interpolationStart = matchInterpolationStart(lines[position.line] ?? "", position.character);
+      if (interpolationStart) {
+        for (const name of Object.keys(parsedFrontmatter.tables)) {
+          items.push(new CompletionItem(name, CompletionItemKind.Struct));
+        }
+        return items;
+      }
+    }
+
+    return [];
+  }
+}
+
+class MdxtabDefinitionProvider implements DefinitionProvider {
+  provideDefinition(document: TextDocument, position: Position): Location | undefined {
+    if (document.languageId !== "markdown") return undefined;
+    const text = document.getText();
+    if (!looksLikeMdxtab(text)) return undefined;
+
+    const lines = text.replace(/\r\n?/g, "\n").split("\n");
+    const frontmatter = getFrontmatterBounds(lines);
+    if (!frontmatter) return undefined;
+
+    let parsedFrontmatter: ReturnType<typeof parseFrontmatter> | undefined;
+    let parsedTables: ReturnType<typeof parseMarkdownTables> | undefined;
+    try {
+      parsedFrontmatter = parseFrontmatter(text);
+      parsedTables = parseMarkdownTables(text);
+    } catch {
+      return undefined;
+    }
+
+    const entries = parseFrontmatterEntries(lines, frontmatter.start + 1, frontmatter.end);
+
+    const interpolation = matchAggregateInterpolation(lines[position.line] ?? "", position.character);
+    if (interpolation) {
+      const match = entries.find(
+        (entry) => entry.kind === "aggregate" && entry.table === interpolation.table && entry.name === interpolation.name,
+      );
+      if (match) {
+        const range = new Range(
+          new Position(match.line, match.start),
+          new Position(match.line, match.end),
+        );
+        return new Location(document.uri, range);
+      }
+    }
+
+    for (const table of parsedTables) {
+      const schema = parsedFrontmatter.tables[table.name];
+      if (!schema?.computed) continue;
+      for (const header of table.headers) {
+        if (header.line !== position.line) continue;
+        const start = header.start ?? 0;
+        const end = header.end ?? start + header.trimmed.length;
+        if (position.character < start || position.character > end) continue;
+        const name = header.trimmed;
+        const match = entries.find(
+          (entry) => entry.kind === "computed" && entry.table === table.name && entry.name === name,
+        );
+        if (match) {
+          const range = new Range(
+            new Position(match.line, match.start),
+            new Position(match.line, match.end),
+          );
+          return new Location(document.uri, range);
+        }
+      }
+    }
+
+    return undefined;
   }
 }
 
@@ -230,6 +378,10 @@ function parseFrontmatterEntries(lines: string[], start: number, end: number): H
         const expr = entryMatch[2];
         const startIndex = line.indexOf(name);
         const endIndex = startIndex + name.length;
+        const colonIndex = line.indexOf(":", endIndex);
+        let exprStart = colonIndex === -1 ? endIndex + 1 : colonIndex + 1;
+        while (exprStart < line.length && line[exprStart] === " ") exprStart += 1;
+        const exprEnd = line.length;
         entries.push({
           table: currentTable,
           kind: currentSection,
@@ -238,6 +390,8 @@ function parseFrontmatterEntries(lines: string[], start: number, end: number): H
           line: i,
           start: startIndex,
           end: endIndex,
+          exprStart,
+          exprEnd,
         });
       }
     }
@@ -308,6 +462,29 @@ function matchAggregateInterpolation(
       return { table: match[1], name: match[2], start, end };
     }
   }
+  return undefined;
+}
+
+function matchInterpolationStart(line: string, position: number): { start: number } | undefined {
+  const startIndex = line.lastIndexOf("{{", position);
+  if (startIndex === -1) return undefined;
+  const endIndex = line.indexOf("}}", startIndex + 2);
+  if (endIndex !== -1 && endIndex < position) return undefined;
+  return { start: startIndex };
+}
+
+function findDotCompletionTable(
+  line: string,
+  position: number,
+  currentTable: string,
+  frontmatter: ReturnType<typeof parseFrontmatter>,
+): string | undefined {
+  const prefix = line.slice(0, position);
+  const match = prefix.match(/([A-Za-z0-9_]+)\s*(?:\[[^\]]*\])?\s*\.\s*([A-Za-z0-9_]*)$/);
+  if (!match) return undefined;
+  const tableName = match[1];
+  if (tableName === "row") return currentTable;
+  if (tableName in frontmatter.tables) return tableName;
   return undefined;
 }
 
@@ -383,6 +560,12 @@ export function activate(context: ExtensionContext) {
   );
   context.subscriptions.push(
     languages.registerHoverProvider({ language: "markdown" }, new MdxtabHoverProvider()),
+  );
+  context.subscriptions.push(
+    languages.registerCompletionItemProvider({ language: "markdown" }, new MdxtabCompletionProvider(), "."),
+  );
+  context.subscriptions.push(
+    languages.registerDefinitionProvider({ language: "markdown" }, new MdxtabDefinitionProvider()),
   );
   const debounceMs = 200;
   const pendingUpdates = new Map<string, ReturnType<typeof setTimeout>>();
