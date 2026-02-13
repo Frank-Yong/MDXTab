@@ -488,14 +488,27 @@ function findDotCompletionTable(
   return undefined;
 }
 
-function updateDiagnostics(doc: TextDocument, collection: DiagnosticCollection) {
+type DiagnosticsCacheEntry = {
+  text: string;
+  diagnostics: CoreDiagnostic[];
+};
+
+function updateDiagnostics(
+  doc: TextDocument,
+  collection: DiagnosticCollection,
+  cache: Map<string, DiagnosticsCacheEntry>,
+) {
   if (doc.languageId !== "markdown") return;
   const text = doc.getText();
   if (!looksLikeMdxtab(text)) {
     collection.delete(doc.uri);
+    cache.delete(doc.uri.toString());
     return;
   }
-  const { diagnostics } = validateMdxtab(text);
+  const key = doc.uri.toString();
+  const cached = cache.get(key);
+  const diagnostics = cached?.text === text ? cached.diagnostics : validateMdxtab(text).diagnostics;
+  cache.set(key, { text, diagnostics });
   if (diagnostics.length === 0) {
     collection.delete(doc.uri);
     return;
@@ -553,8 +566,11 @@ export function activate(context: ExtensionContext) {
   context.subscriptions.push(window.onDidChangeVisibleTextEditors(() => updateVisiblePreviews()));
 
   const diagnostics = languages.createDiagnosticCollection("mdxtab");
+  const diagnosticsCache = new Map<string, DiagnosticsCacheEntry>();
   context.subscriptions.push(diagnostics);
-  context.subscriptions.push(workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics)));
+  context.subscriptions.push(
+    workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics, diagnosticsCache)),
+  );
   context.subscriptions.push(
     languages.registerDocumentSymbolProvider({ language: "markdown" }, new MdxtabSymbolProvider()),
   );
@@ -580,7 +596,7 @@ export function activate(context: ExtensionContext) {
     if (existing) clearTimeout(existing);
     const handle = setTimeout(() => {
       pendingUpdates.delete(key);
-      updateDiagnostics(doc, diagnostics);
+      updateDiagnostics(doc, diagnostics, diagnosticsCache);
       if (visiblePreviews.has(doc.uri.toString())) {
         provider.refresh(makePreviewUri(doc.uri));
       }
@@ -597,7 +613,7 @@ export function activate(context: ExtensionContext) {
     scheduleUpdate(e.document);
   }));
   context.subscriptions.push(workspace.onDidSaveTextDocument((doc) => {
-    updateDiagnostics(doc, diagnostics);
+    updateDiagnostics(doc, diagnostics, diagnosticsCache);
     if (doc.languageId === "markdown" && visiblePreviews.has(doc.uri.toString())) {
       provider.refresh(makePreviewUri(doc.uri));
     }
@@ -617,7 +633,7 @@ export function activate(context: ExtensionContext) {
   context.subscriptions.push(renderPreview);
 
   const active = window.activeTextEditor?.document;
-  if (active) updateDiagnostics(active, diagnostics);
+  if (active) updateDiagnostics(active, diagnostics, diagnosticsCache);
 
 }
 
