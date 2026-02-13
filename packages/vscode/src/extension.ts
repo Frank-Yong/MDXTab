@@ -38,6 +38,8 @@ class PreviewProvider implements TextDocumentContentProvider {
     try {
       const config = workspace.getConfiguration("mdxtab");
       const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+      const { diagnostics } = validateMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter });
+      if (diagnostics.length > 0) return formatDiagnostics(diagnostics);
       const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter });
       return result.rendered;
     } catch (err) {
@@ -83,9 +85,33 @@ function looksLikeMdxtab(text: string): boolean {
   return /\nmdxtab\s*:/.test(frontmatter);
 }
 
+function formatDiagnostics(diagnostics: CoreDiagnostic[]): string {
+  const lines = diagnostics.map((diag) => {
+    const location = diag.range
+      ? ` at ${diag.range.start.line + 1}:${diag.range.start.character + 1}`
+      : "";
+    return `- ${diag.code}: ${diag.message}${location}`;
+  });
+  return ["## MDXTab Errors", "", ...lines, ""].join("\n");
+}
+
 export function activate(context: ExtensionContext) {
   const provider = new PreviewProvider();
   context.subscriptions.push(workspace.registerTextDocumentContentProvider(SCHEME, provider));
+
+  const visiblePreviews = new Set<string>();
+  const updateVisiblePreviews = () => {
+    visiblePreviews.clear();
+    for (const editor of window.visibleTextEditors) {
+      const uri = editor.document.uri;
+      if (uri.scheme !== SCHEME) continue;
+      if (!uri.query) continue;
+      const target = Uri.parse(decodeURIComponent(uri.query));
+      visiblePreviews.add(target.toString());
+    }
+  };
+  updateVisiblePreviews();
+  context.subscriptions.push(window.onDidChangeVisibleTextEditors(() => updateVisiblePreviews()));
 
   const diagnostics = languages.createDiagnosticCollection("mdxtab");
   context.subscriptions.push(diagnostics);
@@ -104,7 +130,9 @@ export function activate(context: ExtensionContext) {
     const handle = setTimeout(() => {
       pendingUpdates.delete(key);
       updateDiagnostics(doc, diagnostics);
-      provider.refresh(makePreviewUri(doc.uri));
+      if (visiblePreviews.has(doc.uri.toString())) {
+        provider.refresh(makePreviewUri(doc.uri));
+      }
     }, debounceMs);
     pendingUpdates.set(key, handle);
   };
@@ -119,7 +147,7 @@ export function activate(context: ExtensionContext) {
   }));
   context.subscriptions.push(workspace.onDidSaveTextDocument((doc) => {
     updateDiagnostics(doc, diagnostics);
-    if (doc.languageId === "markdown") {
+    if (doc.languageId === "markdown" && visiblePreviews.has(doc.uri.toString())) {
       provider.refresh(makePreviewUri(doc.uri));
     }
   }));
