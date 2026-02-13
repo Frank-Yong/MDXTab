@@ -1,7 +1,7 @@
 # Work Item: VS Code diagnostics loop
 
 ## Status
-- State: IN PROGRESS
+- State: DONE
 
 ## Description
 Show validation results in the editor as you type or save.

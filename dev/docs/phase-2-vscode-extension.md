@@ -1,34 +1,23 @@
-# Phase 2: VS Code Extension
+# Work Item: Phase 2 VS Code Extension
 
-## Goal
-Ship a usable MDXTab authoring experience in VS Code with diagnostics, preview, and editor features.
+## Status
+- State: IN PROGRESS
+- Focus: VS Code authoring experience (diagnostics, preview, editor features).
 
-## Current status
-- Diagnostics loop: DONE (core diagnostics + VS Code integration)
-- Preview: DONE (render command + refresh gating + inline errors)
-- CLI JSON diagnostics: DONE
-
-## Remaining work
-1) Document symbols / outline
-- Tables, columns, computed columns, aggregates
-- Surface in Outline view
-
-2) Hovers
-- Column type and definition
-- Computed/aggregate expression snippets
-
-3) Completions + navigation
-- Suggest tables, columns, aggregates, functions
-- Go-to / Peek for column references and lookups
-
-4) Incremental parsing + performance
-- Cache parse results per document
-- Recompute only changed tables on save
-
-5) Diagnostics UX polish
-- Prioritize multiple diagnostics
-- Improve range targeting for expression-level errors
-
-## Notes
-- Keep the extension thin and rely on core for validation and evaluation.
+## Objectives
+- Ship diagnostics, preview, and editor affordances for MDXTab in VS Code.
+- Keep the extension thin and rely on core for validation/evaluation.
 - Prefer deterministic diagnostics for reliable editor behavior.
+
+## Immediate steps
+1) Document symbols / outline for tables, columns, computed columns, aggregates.
+2) Hovers for column types and computed/aggregate expressions.
+3) Completions + navigation for tables, columns, aggregates, functions.
+4) Incremental parsing/performance tuning on save.
+5) Diagnostics UX polish (multiple errors, tighter ranges).
+
+## Linked work items
+- 09: diagnostics surface
+- 11: VS Code diagnostics loop
+- 12: completions and navigation
+- 13: quick fixes and snippets
