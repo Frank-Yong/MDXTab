@@ -84,4 +84,37 @@ Inline: \`{{ expenses.total_net }}\``;
     expect(result.diagnostics[0].table).toBe("expenses");
     expect(result.diagnostics[0].aggregate).toBe("missing");
   });
+
+  it("returns structured diagnostics for common failures", () => {
+    const missingFrontmatter = "# No frontmatter\n\n| a | b |\n|---|---|\n| 1 | 2 |\n";
+    const frontmatterResult = validateMdxtab(missingFrontmatter);
+    expect(frontmatterResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_FRONTMATTER",
+        severity: "error",
+      }),
+    ]);
+
+    const tabDoc = doc.replace("| h1 | Hosting  | 100 |", "| h1 | Hosting\t | 100 |");
+    const tabResult = validateMdxtab(tabDoc);
+    expect(tabResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_TABLE_TAB",
+        severity: "error",
+        range: expect.any(Object),
+      }),
+    ]);
+
+    const headerMismatch = doc.replace("| id | category | net |", "| id | cat | net |");
+    const headerResult = validateMdxtab(headerMismatch);
+    expect(headerResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_COLUMN_MISMATCH",
+        severity: "error",
+        table: "expenses",
+        column: "category",
+        range: expect.any(Object),
+      }),
+    ]);
+  });
 });
