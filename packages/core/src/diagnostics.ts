@@ -66,7 +66,7 @@ export function toDiagnostic(err: unknown, fallback: Partial<Diagnostic> = {}): 
 }
 
 export function lineRange(line: number, text?: string): DiagnosticRange {
-  const endChar = text ? text.length : 0;
+  const endChar = text && text.length > 0 ? text.length : 1;
   return {
     start: { line, character: 0 },
     end: { line, character: endChar },
