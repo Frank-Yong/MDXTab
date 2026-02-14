@@ -1,5 +1,8 @@
 # Work Item: Interop and export (optional)
 
+## Status
+- State: TODO
+
 ## Description
 Add exports to common formats without changing core semantics.
 

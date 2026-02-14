@@ -1,5 +1,8 @@
 # Work Item: Type rules and empty-cell policy
 
+## Status
+- State: DONE
+
 ## Description
 Enforce type validation and safe coercions; apply empty-cell handling consistently.
 

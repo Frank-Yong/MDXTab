@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { compileMdxtab } from "@mdxtab/core";
+import { compileMdxtab, validateMdxtab } from "@mdxtab/core";
 
 export interface CliIO {
   stdout: (text: string) => void;
@@ -14,9 +14,31 @@ const defaultIo: CliIO = {
 };
 
 export function runCli(argv: string[], io: CliIO = defaultIo): number {
-  const [command, file] = argv;
+  let command: string | undefined;
+  let file: string | undefined;
+  let jsonOutput = false;
+  for (const arg of argv) {
+    if (arg.startsWith("--")) {
+      if (arg === "--json") {
+        jsonOutput = true;
+        continue;
+      }
+      io.stderr(`Unknown option: ${arg}\n`);
+      io.exit?.(1);
+      return 1;
+    }
+    if (!command) {
+      command = arg;
+    } else if (!file) {
+      file = arg;
+    } else {
+      io.stderr("Too many arguments\n");
+      io.exit?.(1);
+      return 1;
+    }
+  }
   if (!command || !file) {
-    io.stderr("Usage: mdxtab <validate|render> <file>\n");
+    io.stderr("Usage: mdxtab <validate|render> <file> [--json]\n");
     io.exit?.(1);
     return 1;
   }
@@ -25,18 +47,33 @@ export function runCli(argv: string[], io: CliIO = defaultIo): number {
     io.exit?.(1);
     return 1;
   }
+  if (jsonOutput && command !== "validate") {
+    io.stderr("--json is only supported with the validate command\n");
+    io.exit?.(1);
+    return 1;
+  }
 
   try {
     const raw = fs.readFileSync(file, "utf8");
-    const result = compileMdxtab(raw);
     if (command === "validate") {
-      io.stdout("OK\n");
+      const result = validateMdxtab(raw);
+      if (jsonOutput) {
+        io.stdout(JSON.stringify(result) + "\n");
+      } else if (result.diagnostics.length === 0) {
+        io.stdout("OK\n");
+      } else {
+        io.stderr(result.diagnostics[0].message + "\n");
+      }
+      const code = result.diagnostics.length === 0 ? 0 : 1;
+      io.exit?.(code);
+      return code;
     } else {
+      const result = compileMdxtab(raw);
       io.stdout(result.rendered);
       if (!result.rendered.endsWith("\n")) io.stdout("\n");
+      io.exit?.(0);
+      return 0;
     }
-    io.exit?.(0);
-    return 0;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     io.stderr(message + "\n");

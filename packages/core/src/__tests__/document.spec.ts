@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compileMdxtab } from "../document.js";
+import { compileMdxtab, validateMdxtab } from "../document.js";
 
 const doc = `---
 mdxtab: "1.0"
@@ -74,5 +74,95 @@ Inline: \`{{ expenses.total_net }}\``;
   it("rejects rows with mismatched column counts", () => {
     const badDoc = doc.replace("| a1 | Ads      | 200 |", "| a1 | Ads |");
     expect(() => compileMdxtab(badDoc)).toThrow(/different number of columns/);
+  });
+
+  it("returns diagnostics with aggregate context", () => {
+    const badDoc = doc.replace("{{ expenses.total_net }}", "{{ expenses.missing }}");
+    const result = validateMdxtab(badDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_AGG_REF");
+    expect(result.diagnostics[0].table).toBe("expenses");
+    expect(result.diagnostics[0].aggregate).toBe("missing");
+  });
+
+  it("returns structured diagnostics for common failures", () => {
+    const missingFrontmatter = "# No frontmatter\n\n| a | b |\n|---|---|\n| 1 | 2 |\n";
+    const frontmatterResult = validateMdxtab(missingFrontmatter);
+    expect(frontmatterResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_FRONTMATTER",
+        severity: "error",
+      }),
+    ]);
+
+    const tabDoc = doc.replace("| h1 | Hosting  | 100 |", "| h1 | Hosting\t | 100 |");
+    const tabResult = validateMdxtab(tabDoc);
+    expect(tabResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_TABLE_TAB",
+        severity: "error",
+        range: expect.any(Object),
+      }),
+    ]);
+
+    const headerMismatch = doc.replace("| id | category | net |", "| id | cat | net |");
+    const headerResult = validateMdxtab(headerMismatch);
+    expect(headerResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_COLUMN_MISMATCH",
+        severity: "error",
+        table: "expenses",
+        column: "category",
+        range: expect.any(Object),
+      }),
+    ]);
+
+    const keyMissing = doc.replace("key: id", "key: row_id");
+    const keyResult = validateMdxtab(keyMissing);
+    expect(keyResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_KEY_COLUMN",
+        severity: "error",
+        table: "rates",
+        column: "row_id",
+        range: expect.any(Object),
+      }),
+    ]);
+  });
+
+  it("reports cell ranges with indentation offsets", () => {
+    const dataLine = "  | a1 | abc |";
+    const indentedDoc = `---
+mdxtab: "1.0"
+tables:
+  rates:
+    key: id
+    columns: [id, rate]
+    types:
+      rate: number
+---
+
+## rates
+  | id | rate |
+  |----|------|
+${dataLine}
+`;
+    const result = validateMdxtab(indentedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    const diag = result.diagnostics[0];
+    expect(diag.code).toBe("E_TYPE");
+    expect(diag.range).toBeDefined();
+
+    const lines = indentedDoc.replace(/\r\n?/g, "\n").split("\n");
+    const lineIndex = lines.findIndex((line) => line === dataLine);
+    const firstPipe = dataLine.indexOf("|");
+    const secondPipe = dataLine.indexOf("|", firstPipe + 1);
+    const thirdPipe = dataLine.indexOf("|", secondPipe + 1);
+    const expectedStart = secondPipe + 1;
+    const expectedEnd = thirdPipe;
+
+    expect(diag.range?.start.line).toBe(lineIndex);
+    expect(diag.range?.start.character).toBe(expectedStart);
+    expect(diag.range?.end.character).toBe(expectedEnd);
   });
 });

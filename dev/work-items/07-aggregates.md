@@ -1,5 +1,8 @@
 # Work Item: Aggregates
 
+## Status
+- State: DONE
+
 ## Description
 Evaluate aggregates after rows are finalized, using built-in functions only.
 

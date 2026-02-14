@@ -4,9 +4,11 @@ import { parseExpression, type AstNode } from "./parser.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { parseMarkdownTables } from "./markdown.js";
 import { lexExpression } from "./tokens.js";
+import { DiagnosticError, errorCodeFromMessage, lineRange, toDiagnostic } from "./diagnostics.js";
 import type {
   CompileOptions,
   CompileResult,
+  Diagnostic,
   FrontmatterDocument,
   ParsedTable,
   Scalar,
@@ -38,16 +40,39 @@ function evalWithContext(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const rowPart = info.rowKey ? ` ${info.keyName ?? "row"}=${info.rowKey}` : "";
-    throw new Error(`[${info.kind}] table ${info.table} ${info.target}${rowPart}: ${message}`);
+    const contextMessage = `[${info.kind}] table ${info.table} ${info.target}${rowPart}: ${message}`;
+    if (err instanceof DiagnosticError) {
+      throw new DiagnosticError({
+        code: err.code,
+        message: contextMessage,
+        severity: err.severity,
+        table: err.table ?? info.table,
+        column: err.column ?? (info.kind === "computed" ? info.target : undefined),
+        aggregate: err.aggregate ?? (info.kind === "aggregate" ? info.target : undefined),
+        rowKey: err.rowKey ?? info.rowKey,
+        range: err.range,
+      });
+    }
+    throw new DiagnosticError({
+      code: errorCodeFromMessage(message),
+      message: contextMessage,
+      table: info.table,
+      column: info.kind === "computed" ? info.target : undefined,
+      aggregate: info.kind === "aggregate" ? info.target : undefined,
+      rowKey: info.rowKey,
+    });
   }
 }
 
-function splitFrontmatter(raw: string): { frontmatter: string; body: string } {
+function splitFrontmatter(raw: string): { frontmatter: string; body: string; bodyOffset: number } {
   const normalized = raw.replace(/\r\n?/g, "\n");
-  if (!normalized.startsWith("---\n")) return { frontmatter: "", body: normalized };
-  const end = normalized.indexOf("\n---", 4);
-  if (end === -1) throw new Error("Closing --- for frontmatter not found");
-  return { frontmatter: normalized.slice(0, end + 4), body: normalized.slice(end + 4) };
+  const lines = normalized.split("\n");
+  if (!normalized.startsWith("---\n")) return { frontmatter: "", body: normalized, bodyOffset: 0 };
+  const endIndex = lines.findIndex((line, idx) => idx > 0 && line.trim() === "---");
+  if (endIndex === -1) throw new Error("Closing --- for frontmatter not found");
+  const frontmatter = lines.slice(0, endIndex + 1).join("\n");
+  const body = lines.slice(endIndex + 1).join("\n");
+  return { frontmatter, body, bodyOffset: endIndex + 1 };
 }
 
 function coerceValue(text: string, type: ColumnType): Scalar {
@@ -89,13 +114,34 @@ function normalizeCell(raw: string, table: TableFrontmatter, column: string): Sc
 function validateHeaders(table: ParsedTable, schema: TableFrontmatter): void {
   const headerNames = table.headers.map((h) => h.trimmed);
   if (headerNames.length !== schema.columns.length) {
-    throw new Error(`Header column count mismatch for table ${table.name}`);
+    throw new DiagnosticError({
+      code: "E_COLUMN_MISMATCH",
+      message: `Header column count mismatch for table ${table.name}`,
+      table: table.name,
+      range: lineRange(table.headers[0]?.line ?? 0),
+    });
   }
   for (let i = 0; i < headerNames.length; i += 1) {
     if (headerNames[i] !== schema.columns[i]) {
-      throw new Error(`Header mismatch for table ${table.name}: expected ${schema.columns[i]}, got ${headerNames[i]}`);
+      const header = table.headers[i];
+      throw new DiagnosticError({
+        code: "E_COLUMN_MISMATCH",
+        message: `Header mismatch for table ${table.name}: expected ${schema.columns[i]}, got ${headerNames[i]}`,
+        table: table.name,
+        column: schema.columns[i],
+        range: {
+          start: { line: header?.line ?? 0, character: header?.start ?? 0 },
+          end: { line: header?.line ?? 0, character: header?.end ?? 0 },
+        },
+      });
     }
   }
+}
+
+function errorCodeForCell(message: string): string {
+  if (message.startsWith("Empty cell not allowed")) return "E_EMPTY_CELL";
+  if (message.startsWith("Type mismatch")) return "E_TYPE";
+  return errorCodeFromMessage(message);
 }
 
 function parseExpressions(map: Record<string, string> | undefined): Record<string, AstNode> {
@@ -178,18 +224,43 @@ function computeAggregate(
   }
 }
 
-function interpolateAggregates(body: string, aggregates: Record<string, Record<string, Scalar>>): string {
+function interpolateAggregates(
+  body: string,
+  aggregates: Record<string, Record<string, Scalar>>,
+  bodyOffset: number,
+): string {
   const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\}\}/g;
-  const replaceAggregates = (text: string) =>
-    text.replace(aggregateRe, (match, table, name) => {
+  const replaceAggregates = (text: string, lineIndex: number) => {
+    aggregateRe.lastIndex = 0;
+    let result = "";
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = aggregateRe.exec(text))) {
+      const matchStart = match.index;
+      const matchEnd = match.index + match[0].length;
+      result += text.slice(lastIndex, matchStart);
+      const table = match[1];
+      const name = match[2];
       const tableAgg = aggregates[table];
       if (!tableAgg || !(name in tableAgg)) {
-        throw new Error(`Unknown aggregate reference ${table}.${name}`);
+        throw new DiagnosticError({
+          code: "E_AGG_REF",
+          message: `Unknown aggregate reference ${table}.${name}`,
+          table,
+          aggregate: name,
+          range: {
+            start: { line: bodyOffset + lineIndex, character: matchStart },
+            end: { line: bodyOffset + lineIndex, character: matchEnd },
+          },
+        });
       }
       const value = tableAgg[name];
-      if (value === null) return "null";
-      return String(value);
-    });
+      result += value === null ? "null" : String(value);
+      lastIndex = matchEnd;
+    }
+    result += text.slice(lastIndex);
+    return result;
+  };
 
   const lines = body.split("\n");
   const output: string[] = [];
@@ -234,7 +305,7 @@ function interpolateAggregates(body: string, aggregates: Record<string, Record<s
 
       if (!inInline) {
         const text = line.slice(segmentStart, i);
-        lineOut += replaceAggregates(text);
+        lineOut += replaceAggregates(text, output.length);
         inInline = true;
         inlineTicks = tickCount;
         lineOut += line.slice(i, j);
@@ -252,7 +323,7 @@ function interpolateAggregates(body: string, aggregates: Record<string, Record<s
     if (inInline) {
       lineOut += line.slice(segmentStart);
     } else {
-      lineOut += replaceAggregates(line.slice(segmentStart));
+      lineOut += replaceAggregates(line.slice(segmentStart), output.length);
     }
 
     output.push(lineOut);
@@ -270,13 +341,31 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   const tableByName: Record<string, ParsedTable> = {};
   for (const t of tables) {
     if (!schemaNames.has(t.name)) {
-      throw new Error(`Markdown table ${t.name} not declared in frontmatter`);
+      throw new DiagnosticError({
+        code: "E_TABLE",
+        message: `Markdown table ${t.name} not declared in frontmatter`,
+        table: t.name,
+        range: lineRange(t.headers[0]?.line ?? 0),
+      });
     }
-    if (tableByName[t.name]) throw new Error(`Duplicate table ${t.name} in markdown`);
+    if (tableByName[t.name]) {
+      throw new DiagnosticError({
+        code: "E_TABLE",
+        message: `Duplicate table ${t.name} in markdown`,
+        table: t.name,
+        range: lineRange(t.headers[0]?.line ?? 0),
+      });
+    }
     tableByName[t.name] = t;
   }
   for (const name of schemaNames) {
-    if (!tableByName[name]) throw new Error(`Missing markdown table for ${name}`);
+    if (!tableByName[name]) {
+      throw new DiagnosticError({
+        code: "E_TABLE",
+        message: `Missing markdown table for ${name}`,
+        table: name,
+      });
+    }
   }
 
   const computedAsts: Record<string, Record<string, AstNode>> = {};
@@ -293,6 +382,16 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
     const keyName = schema.key ?? "id";
     keyByTable[name] = keyName;
+    const keyIndex = schema.columns.indexOf(keyName);
+    if (keyIndex === -1) {
+      throw new DiagnosticError({
+        code: "E_KEY_COLUMN",
+        message: `Key column ${keyName} not found in schema for table ${name}`,
+        table: name,
+        column: keyName,
+        range: lineRange(table.headers[0]?.line ?? 0),
+      });
+    }
 
     const rows: Record<string, Scalar>[] = [];
     const map = new Map<string, Record<string, Scalar>>();
@@ -300,12 +399,52 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     for (const row of table.rows) {
       const obj: Record<string, Scalar> = {};
       schema.columns.forEach((col, idx) => {
-        obj[col] = normalizeCell(row.cells[idx].raw, schema, col);
+        try {
+          obj[col] = normalizeCell(row.cells[idx].raw, schema, col);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          const cell = row.cells[idx];
+          throw new DiagnosticError({
+            code: errorCodeForCell(message),
+            message,
+            table: name,
+            column: col,
+            range: {
+              start: { line: row.line ?? 0, character: cell?.start ?? 0 },
+              end: { line: row.line ?? 0, character: cell?.end ?? 0 },
+            },
+          });
+        }
       });
       const keyVal = obj[keyName];
-      if (keyVal === null || keyVal === undefined) throw new Error(`Missing key value in table ${name}`);
+      if (keyVal === null || keyVal === undefined) {
+        const cell = row.cells[keyIndex] ?? row.cells[0];
+        throw new DiagnosticError({
+          code: "E_KEY",
+          message: `Missing key value in table ${name}`,
+          table: name,
+          column: keyName,
+          range: {
+            start: { line: row.line ?? 0, character: cell?.start ?? 0 },
+            end: { line: row.line ?? 0, character: cell?.end ?? 0 },
+          },
+        });
+      }
       const key = String(keyVal);
-      if (map.has(key)) throw new Error(`Duplicate key ${key} in table ${name}`);
+      if (map.has(key)) {
+        const cell = row.cells[keyIndex] ?? row.cells[0];
+        throw new DiagnosticError({
+          code: "E_KEY_DUP",
+          message: `Duplicate key ${key} in table ${name}`,
+          table: name,
+          column: keyName,
+          rowKey: key,
+          range: {
+            start: { line: row.line ?? 0, character: cell?.start ?? 0 },
+            end: { line: row.line ?? 0, character: cell?.end ?? 0 },
+          },
+        });
+      }
       map.set(key, obj);
       rows.push(obj);
     }
@@ -322,9 +461,22 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   const computedDone = new WeakSet<Record<string, Scalar>>();
   const lookupRow: LookupRowFn = (table: string, keyValue: Scalar) => {
     const map = rowMap[table];
-    if (!map) throw new Error(`E_LOOKUP: unknown table ${table}`);
+    if (!map) {
+      throw new DiagnosticError({
+        code: "E_LOOKUP",
+        message: `Unknown table ${table}`,
+        table,
+      });
+    }
     const row = map.get(String(keyValue));
-    if (!row) throw new Error(`E_LOOKUP: missing row ${table}[${String(keyValue)}]`);
+    if (!row) {
+      throw new DiagnosticError({
+        code: "E_LOOKUP",
+        message: `Missing row ${table}[${String(keyValue)}]`,
+        table,
+        rowKey: String(keyValue),
+      });
+    }
     const keyName = keyByTable[table];
     const rowKey = String(keyValue);
     return ensureComputed(table, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone);
@@ -375,12 +527,21 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     };
   }
 
-  const { frontmatter: fmText, body } = splitFrontmatter(raw);
-  let renderedBody = interpolateAggregates(body, aggregateResults);
+  const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
+  let renderedBody = interpolateAggregates(body, aggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }
   const rendered = includeFrontmatter ? `${fmText}${renderedBody}` : renderedBody;
 
   return { frontmatter: frontmatter as FrontmatterDocument, tables: results, rendered };
+}
+
+export function validateMdxtab(raw: string, options: CompileOptions = {}): { diagnostics: Diagnostic[] } {
+  try {
+    compileMdxtab(raw, options);
+    return { diagnostics: [] };
+  } catch (err) {
+    return { diagnostics: [toDiagnostic(err)] };
+  }
 }

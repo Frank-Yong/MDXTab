@@ -1,4 +1,5 @@
 import { parse as parseYaml } from "yaml";
+import { DiagnosticError, lineRange } from "./diagnostics.js";
 import type { FrontmatterDocument, TableFrontmatter } from "./types.js";
 
 function expectObject(value: unknown, context: string): Record<string, unknown> {
@@ -78,27 +79,33 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
 }
 
 export function parseFrontmatter(raw: string): FrontmatterDocument {
-  const normalized = raw.replace(/\r\n?/g, "\n");
-  const start = normalized.indexOf("---\n");
-  if (start !== 0) {
-    throw new Error("Frontmatter must start with ---");
-  }
-  const end = normalized.indexOf("\n---", 4);
-  if (end === -1) {
-    throw new Error("Closing --- for frontmatter not found");
-  }
-  const yamlText = normalized.slice(4, end);
-  const parsed = parseYaml(yamlText);
-  const obj = expectObject(parsed, "frontmatter root");
+  try {
+    const normalized = raw.replace(/\r\n?/g, "\n");
+    const start = normalized.indexOf("---\n");
+    if (start !== 0) {
+      throw new Error("Frontmatter must start with ---");
+    }
+    const end = normalized.indexOf("\n---", 4);
+    if (end === -1) {
+      throw new Error("Closing --- for frontmatter not found");
+    }
+    const yamlText = normalized.slice(4, end);
+    const parsed = parseYaml(yamlText);
+    const obj = expectObject(parsed, "frontmatter root");
 
-  const mdxtab = expectString(obj.mdxtab, "mdxtab version");
-  if (mdxtab !== "1.0") throw new Error(`Unsupported mdxtab version: ${mdxtab}`);
+    const mdxtab = expectString(obj.mdxtab, "mdxtab version");
+    if (mdxtab !== "1.0") throw new Error(`Unsupported mdxtab version: ${mdxtab}`);
 
-  const tablesObj = expectObject(obj.tables, "tables");
-  const tables: Record<string, TableFrontmatter> = {};
-  for (const [name, value] of Object.entries(tablesObj)) {
-    tables[name] = validateTable(name, value);
+    const tablesObj = expectObject(obj.tables, "tables");
+    const tables: Record<string, TableFrontmatter> = {};
+    for (const [name, value] of Object.entries(tablesObj)) {
+      tables[name] = validateTable(name, value);
+    }
+
+    return { mdxtab, tables };
+  } catch (err) {
+    if (err instanceof DiagnosticError) throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new DiagnosticError({ code: "E_FRONTMATTER", message, range: lineRange(0) });
   }
-
-  return { mdxtab, tables };
 }

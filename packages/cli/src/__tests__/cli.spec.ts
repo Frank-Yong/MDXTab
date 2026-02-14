@@ -50,4 +50,14 @@ describe("mdxtab CLI", () => {
     expect(ctx.code).toBe(1);
     expect(ctx.err.join("")).toMatch(/Unknown aggregate/);
   });
+
+  it("emits JSON diagnostics on validate", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("invalid.md"), "--json"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    const out = JSON.parse(ctx.out.join(""));
+    expect(out.diagnostics).toHaveLength(1);
+    expect(out.diagnostics[0].code).toBe("E_AGG_REF");
+  });
 });

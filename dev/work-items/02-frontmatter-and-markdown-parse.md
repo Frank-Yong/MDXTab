@@ -1,5 +1,8 @@
 # Work Item: Frontmatter and Markdown parsing
 
+## Status
+- State: DONE
+
 ## Description
 Parse YAML frontmatter and Markdown tables into an internal model with basic schema checks.
 

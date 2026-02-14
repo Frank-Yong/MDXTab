@@ -1,5 +1,8 @@
 # Work Item: Dependency graph and cycle detection
 
+## Status
+- State: DONE
+
 ## Description
 Figure out a safe order to compute computed columns and aggregates; fail on loops.
 
