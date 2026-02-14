@@ -48,7 +48,7 @@
     ]
   },
   "scripts": {
-    "build": "npm run -w @mdxtab/core build --if-present && tsc -p tsconfig.json",
+    "build": "npm run -w @mdxtab/core build --if-present && tsc -p tsconfig.json && node ./scripts/copy-core.mjs",
     "test": "echo \"(no tests yet)\""
   },
   "devDependencies": {

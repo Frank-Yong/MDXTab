@@ -31,7 +31,7 @@ import {
   toDiagnostic,
   validateMdxtab,
   type Diagnostic as CoreDiagnostic,
-} from "@mdxtab/core";
+} from "./core/index.js";
 
 const SCHEME = "mdxtab-preview";
 
