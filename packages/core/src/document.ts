@@ -64,12 +64,15 @@ function evalWithContext(
   }
 }
 
-function splitFrontmatter(raw: string): { frontmatter: string; body: string } {
+function splitFrontmatter(raw: string): { frontmatter: string; body: string; bodyOffset: number } {
   const normalized = raw.replace(/\r\n?/g, "\n");
-  if (!normalized.startsWith("---\n")) return { frontmatter: "", body: normalized };
-  const end = normalized.indexOf("\n---", 4);
-  if (end === -1) throw new Error("Closing --- for frontmatter not found");
-  return { frontmatter: normalized.slice(0, end + 4), body: normalized.slice(end + 4) };
+  const lines = normalized.split("\n");
+  if (!normalized.startsWith("---\n")) return { frontmatter: "", body: normalized, bodyOffset: 0 };
+  const endIndex = lines.findIndex((line, idx) => idx > 0 && line.trim() === "---");
+  if (endIndex === -1) throw new Error("Closing --- for frontmatter not found");
+  const frontmatter = lines.slice(0, endIndex + 1).join("\n");
+  const body = lines.slice(endIndex + 1).join("\n");
+  return { frontmatter, body, bodyOffset: endIndex + 1 };
 }
 
 function coerceValue(text: string, type: ColumnType): Scalar {
@@ -221,10 +224,23 @@ function computeAggregate(
   }
 }
 
-function interpolateAggregates(body: string, aggregates: Record<string, Record<string, Scalar>>): string {
+function interpolateAggregates(
+  body: string,
+  aggregates: Record<string, Record<string, Scalar>>,
+  bodyOffset: number,
+): string {
   const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\}\}/g;
-  const replaceAggregates = (text: string) =>
-    text.replace(aggregateRe, (match, table, name) => {
+  const replaceAggregates = (text: string, lineIndex: number) => {
+    aggregateRe.lastIndex = 0;
+    let result = "";
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = aggregateRe.exec(text))) {
+      const matchStart = match.index;
+      const matchEnd = match.index + match[0].length;
+      result += text.slice(lastIndex, matchStart);
+      const table = match[1];
+      const name = match[2];
       const tableAgg = aggregates[table];
       if (!tableAgg || !(name in tableAgg)) {
         throw new DiagnosticError({
@@ -232,12 +248,19 @@ function interpolateAggregates(body: string, aggregates: Record<string, Record<s
           message: `Unknown aggregate reference ${table}.${name}`,
           table,
           aggregate: name,
+          range: {
+            start: { line: bodyOffset + lineIndex, character: matchStart },
+            end: { line: bodyOffset + lineIndex, character: matchEnd },
+          },
         });
       }
       const value = tableAgg[name];
-      if (value === null) return "null";
-      return String(value);
-    });
+      result += value === null ? "null" : String(value);
+      lastIndex = matchEnd;
+    }
+    result += text.slice(lastIndex);
+    return result;
+  };
 
   const lines = body.split("\n");
   const output: string[] = [];
@@ -282,7 +305,7 @@ function interpolateAggregates(body: string, aggregates: Record<string, Record<s
 
       if (!inInline) {
         const text = line.slice(segmentStart, i);
-        lineOut += replaceAggregates(text);
+        lineOut += replaceAggregates(text, output.length);
         inInline = true;
         inlineTicks = tickCount;
         lineOut += line.slice(i, j);
@@ -300,7 +323,7 @@ function interpolateAggregates(body: string, aggregates: Record<string, Record<s
     if (inInline) {
       lineOut += line.slice(segmentStart);
     } else {
-      lineOut += replaceAggregates(line.slice(segmentStart));
+      lineOut += replaceAggregates(line.slice(segmentStart), output.length);
     }
 
     output.push(lineOut);
@@ -504,8 +527,8 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     };
   }
 
-  const { frontmatter: fmText, body } = splitFrontmatter(raw);
-  let renderedBody = interpolateAggregates(body, aggregateResults);
+  const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
+  let renderedBody = interpolateAggregates(body, aggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }
