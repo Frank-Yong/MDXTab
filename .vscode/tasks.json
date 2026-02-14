@@ -16,6 +16,19 @@
 				"$tsc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "package: vsix -w @mdxtab/vscode",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"vsce",
+				"package"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/packages/vscode"
+			},
+			"isBackground": false
 		}
 	]
 }

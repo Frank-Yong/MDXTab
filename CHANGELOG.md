@@ -10,3 +10,9 @@ All notable changes to MDXTab will be documented in this file.
 
 ## Unreleased
 - Phase 1: core engine implementation planned on branch phase-1-core-engine per the development plan.
+
+## 2026-02-14 - 0.1.0 internal beta
+- Core: parsing, evaluation, aggregates, and diagnostics with ranges.
+- CLI: validate/render plus JSON diagnostics output.
+- VS Code: preview, diagnostics, symbols, hovers, completions, and definitions.
+- Tests: expanded coverage for diagnostics, ranges, and error cases.

@@ -1,7 +1,7 @@
 {
   "name": "@mdxtab/vscode",
   "displayName": "MDXTab",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "private": true,
   "publisher": "mdxtab",
@@ -45,6 +45,6 @@
     "@types/vscode": "^1.88.0"
   },
   "dependencies": {
-    "@mdxtab/core": "0.0.0"
+    "@mdxtab/core": "0.1.0"
   }
 }
