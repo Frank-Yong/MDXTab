@@ -18,7 +18,7 @@
 2) Build extension: `npm run -w @mdxtab/vscode build`
 
 ## Package
-1) Run: `npx vsce package` from packages/vscode
+1) Run: `npx vsce package --no-dependencies` from packages/vscode
 2) Verify the .vsix file was produced.
 
 ## Install and validate

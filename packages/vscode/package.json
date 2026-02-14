@@ -1,10 +1,15 @@
 {
-  "name": "@mdxtab/vscode",
+  "name": "mdxtab",
   "displayName": "MDXTab",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "private": true,
   "publisher": "mdxtab",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Frank-Yong/MDXTab"
+  },
   "engines": {
     "vscode": "^1.88.0"
   },
@@ -14,6 +19,12 @@
     "onCommand:mdxtab.validateDocument"
   ],
   "main": "./dist/extension.js",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
   "contributes": {
     "configuration": {
       "title": "MDXTab",

@@ -23,7 +23,8 @@
 			"command": "npx",
 			"args": [
 				"vsce",
-				"package"
+				"package",
+				"--no-dependencies"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}/packages/vscode"
