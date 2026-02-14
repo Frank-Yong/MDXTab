@@ -27,6 +27,10 @@
       {
         "command": "mdxtab.renderPreview",
         "title": "MDXTab: Render Preview"
+      },
+      {
+        "command": "mdxtab.validateDocument",
+        "title": "MDXTab: Validate Document"
       }
     ]
   },

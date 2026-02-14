@@ -66,19 +66,13 @@ class PreviewProvider implements TextDocumentContentProvider {
 }
 
 class MdxtabSymbolProvider implements DocumentSymbolProvider {
+  constructor(private cache: Map<string, ParsedContext>) {}
+
   provideDocumentSymbols(document: TextDocument): DocumentSymbol[] {
     if (document.languageId !== "markdown") return [];
-    const text = document.getText();
-    if (!looksLikeMdxtab(text)) return [];
-
-    let frontmatter: ReturnType<typeof parseFrontmatter>;
-    let tables: ReturnType<typeof parseMarkdownTables>;
-    try {
-      frontmatter = parseFrontmatter(text);
-      tables = parseMarkdownTables(text);
-    } catch {
-      return [];
-    }
+    const context = getParsedContext(document, this.cache);
+    if (!context.frontmatter || !context.tables) return [];
+    const { frontmatter, tables } = context;
 
     const tableByName = new Map(tables.map((table) => [table.name, table]));
     const symbols: DocumentSymbol[] = [];
@@ -137,11 +131,11 @@ type HoverEntry = {
 };
 
 class MdxtabHoverProvider implements HoverProvider {
+  constructor(private cache: Map<string, ParsedContext>) {}
+
   provideHover(document: TextDocument, position: Position): Hover | undefined {
     if (document.languageId !== "markdown") return undefined;
-    const text = document.getText();
-    if (!looksLikeMdxtab(text)) return undefined;
-    const entry = findHoverEntry(text, position);
+    const entry = findHoverEntry(document, position, this.cache);
     if (!entry) return undefined;
 
     const title = entry.kind === "computed" ? "Computed" : "Aggregate";
@@ -152,26 +146,13 @@ class MdxtabHoverProvider implements HoverProvider {
 }
 
 class MdxtabCompletionProvider {
+  constructor(private cache: Map<string, ParsedContext>) {}
+
   provideCompletionItems(document: TextDocument, position: Position): CompletionItem[] {
     if (document.languageId !== "markdown") return [];
-    const text = document.getText();
-    if (!looksLikeMdxtab(text)) return [];
-
-    const lines = text.replace(/\r\n?/g, "\n").split("\n");
-    const frontmatter = getFrontmatterBounds(lines);
-    if (!frontmatter) return [];
-
-    let parsedFrontmatter: ReturnType<typeof parseFrontmatter> | undefined;
-    let parsedTables: ReturnType<typeof parseMarkdownTables> | undefined;
-    try {
-      parsedFrontmatter = parseFrontmatter(text);
-      parsedTables = parseMarkdownTables(text);
-    } catch {
-      parsedFrontmatter = undefined;
-      parsedTables = undefined;
-    }
-
-    const entries = parseFrontmatterEntries(lines, frontmatter.start + 1, frontmatter.end);
+    const context = getParsedContext(document, this.cache);
+    if (!context.frontmatter || !context.frontmatterBounds) return [];
+    const { frontmatter: parsedFrontmatter, tables: parsedTables, entries, lines } = context;
     const entry = entries.find(
       (item) =>
         item.line === position.line && position.character >= item.exprStart && position.character <= item.exprEnd,
@@ -233,25 +214,13 @@ class MdxtabCompletionProvider {
 }
 
 class MdxtabDefinitionProvider implements DefinitionProvider {
+  constructor(private cache: Map<string, ParsedContext>) {}
+
   provideDefinition(document: TextDocument, position: Position): Location | undefined {
     if (document.languageId !== "markdown") return undefined;
-    const text = document.getText();
-    if (!looksLikeMdxtab(text)) return undefined;
-
-    const lines = text.replace(/\r\n?/g, "\n").split("\n");
-    const frontmatter = getFrontmatterBounds(lines);
-    if (!frontmatter) return undefined;
-
-    let parsedFrontmatter: ReturnType<typeof parseFrontmatter> | undefined;
-    let parsedTables: ReturnType<typeof parseMarkdownTables> | undefined;
-    try {
-      parsedFrontmatter = parseFrontmatter(text);
-      parsedTables = parseMarkdownTables(text);
-    } catch {
-      return undefined;
-    }
-
-    const entries = parseFrontmatterEntries(lines, frontmatter.start + 1, frontmatter.end);
+    const context = getParsedContext(document, this.cache);
+    if (!context.frontmatter || !context.tables || !context.frontmatterBounds) return undefined;
+    const { frontmatter: parsedFrontmatter, tables: parsedTables, entries, lines } = context;
 
     const interpolation = matchAggregateInterpolation(lines[position.line] ?? "", position.character);
     if (interpolation) {
@@ -293,22 +262,16 @@ class MdxtabDefinitionProvider implements DefinitionProvider {
   }
 }
 
-function findHoverEntry(text: string, position: Position): HoverEntry | undefined {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n");
-  const frontmatter = getFrontmatterBounds(lines);
-  if (!frontmatter) return undefined;
-  let parsedFrontmatter: ReturnType<typeof parseFrontmatter> | undefined;
-  let parsedTables: ReturnType<typeof parseMarkdownTables> | undefined;
-  try {
-    parsedFrontmatter = parseFrontmatter(text);
-    parsedTables = parseMarkdownTables(text);
-  } catch {
-    parsedFrontmatter = undefined;
-    parsedTables = undefined;
-  }
+function findHoverEntry(
+  document: TextDocument,
+  position: Position,
+  cache: Map<string, ParsedContext>,
+): HoverEntry | undefined {
+  const context = getParsedContext(document, cache);
+  const { lines, frontmatterBounds, frontmatter, tables, entries } = context;
+  if (!frontmatterBounds) return undefined;
 
-  if (position.line > frontmatter.start && position.line < frontmatter.end) {
-    const entries = parseFrontmatterEntries(lines, frontmatter.start + 1, frontmatter.end);
+  if (position.line > frontmatterBounds.start && position.line < frontmatterBounds.end) {
     for (const entry of entries) {
       if (entry.line !== position.line) continue;
       if (position.character < entry.start || position.character > entry.end) continue;
@@ -316,8 +279,8 @@ function findHoverEntry(text: string, position: Position): HoverEntry | undefine
     }
   }
 
-  if (parsedFrontmatter && parsedTables) {
-    return findBodyHoverEntry(lines, position, parsedFrontmatter, parsedTables);
+  if (frontmatter && tables) {
+    return findBodyHoverEntry(lines, position, frontmatter, tables);
   }
 
   return undefined;
@@ -420,6 +383,8 @@ function findBodyHoverEntry(
         line: position.line,
         start: aggregateMatch.start,
         end: aggregateMatch.end,
+        exprStart: aggregateMatch.start,
+        exprEnd: aggregateMatch.end,
       };
     }
   }
@@ -442,6 +407,8 @@ function findBodyHoverEntry(
         line: header.line ?? position.line,
         start,
         end,
+        exprStart: start,
+        exprEnd: end,
       };
     }
   }
@@ -528,6 +495,51 @@ function looksLikeMdxtab(text: string): boolean {
   return /\nmdxtab\s*:/.test(frontmatter);
 }
 
+type ParsedContext = {
+  version: number;
+  lines: string[];
+  frontmatterBounds?: { start: number; end: number };
+  frontmatter?: ReturnType<typeof parseFrontmatter>;
+  tables?: ReturnType<typeof parseMarkdownTables>;
+  entries: HoverEntry[];
+};
+
+function getParsedContext(document: TextDocument, cache: Map<string, ParsedContext>): ParsedContext {
+  const key = document.uri.toString();
+  const cached = cache.get(key);
+  if (cached && cached.version === document.version) return cached;
+
+  const text = document.getText();
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const frontmatterBounds = getFrontmatterBounds(lines);
+  let frontmatter: ReturnType<typeof parseFrontmatter> | undefined;
+  let tables: ReturnType<typeof parseMarkdownTables> | undefined;
+  let entries: HoverEntry[] = [];
+
+  if (looksLikeMdxtab(text) && frontmatterBounds) {
+    try {
+      frontmatter = parseFrontmatter(text);
+      tables = parseMarkdownTables(text);
+      entries = parseFrontmatterEntries(lines, frontmatterBounds.start + 1, frontmatterBounds.end);
+    } catch {
+      frontmatter = undefined;
+      tables = undefined;
+      entries = [];
+    }
+  }
+
+  const parsed: ParsedContext = {
+    version: document.version,
+    lines,
+    frontmatterBounds,
+    frontmatter,
+    tables,
+    entries,
+  };
+  cache.set(key, parsed);
+  return parsed;
+}
+
 function formatDiagnostics(diagnostics: CoreDiagnostic[]): string {
   const lines = diagnostics.map((diag) => {
     const location = diag.range
@@ -541,6 +553,8 @@ function formatDiagnostics(diagnostics: CoreDiagnostic[]): string {
 export function activate(context: ExtensionContext) {
   const provider = new PreviewProvider();
   context.subscriptions.push(workspace.registerTextDocumentContentProvider(SCHEME, provider));
+
+  const parsedCache = new Map<string, ParsedContext>();
 
   const visiblePreviews = new Set<string>();
   const updateVisiblePreviews = () => {
@@ -562,16 +576,26 @@ export function activate(context: ExtensionContext) {
     workspace.onDidOpenTextDocument((doc) => updateDiagnostics(doc, diagnostics)),
   );
   context.subscriptions.push(
-    languages.registerDocumentSymbolProvider({ language: "markdown" }, new MdxtabSymbolProvider()),
+    workspace.onDidCloseTextDocument((doc) => {
+      diagnostics.delete(doc.uri);
+      parsedCache.delete(doc.uri.toString());
+    }),
   );
   context.subscriptions.push(
-    languages.registerHoverProvider({ language: "markdown" }, new MdxtabHoverProvider()),
+    languages.registerDocumentSymbolProvider({ language: "markdown" }, new MdxtabSymbolProvider(parsedCache)),
   );
   context.subscriptions.push(
-    languages.registerCompletionItemProvider({ language: "markdown" }, new MdxtabCompletionProvider(), "."),
+    languages.registerHoverProvider({ language: "markdown" }, new MdxtabHoverProvider(parsedCache)),
   );
   context.subscriptions.push(
-    languages.registerDefinitionProvider({ language: "markdown" }, new MdxtabDefinitionProvider()),
+    languages.registerCompletionItemProvider(
+      { language: "markdown" },
+      new MdxtabCompletionProvider(parsedCache),
+      ".",
+    ),
+  );
+  context.subscriptions.push(
+    languages.registerDefinitionProvider({ language: "markdown" }, new MdxtabDefinitionProvider(parsedCache)),
   );
   const debounceMs = 200;
   const pendingUpdates = new Map<string, ReturnType<typeof setTimeout>>();
@@ -621,6 +645,22 @@ export function activate(context: ExtensionContext) {
     await commands.executeCommand("vscode.open", previewUri, { preview: true });
   });
   context.subscriptions.push(renderPreview);
+
+  const validateCommand = commands.registerCommand("mdxtab.validateDocument", async () => {
+    const editor = window.activeTextEditor;
+    if (!editor) {
+      window.showErrorMessage("No active editor to validate");
+      return;
+    }
+    updateDiagnostics(editor.document, diagnostics);
+    const { diagnostics: diags } = validateMdxtab(editor.document.getText());
+    if (diags.length === 0) {
+      window.showInformationMessage("MDXTab: no diagnostics");
+    } else {
+      window.showWarningMessage(`MDXTab: ${diags.length} diagnostic(s)`);
+    }
+  });
+  context.subscriptions.push(validateCommand);
 
   const active = window.activeTextEditor?.document;
   if (active) updateDiagnostics(active, diagnostics);
