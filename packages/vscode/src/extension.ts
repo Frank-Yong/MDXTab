@@ -28,6 +28,7 @@ import {
   compileMdxtab,
   parseFrontmatter,
   parseMarkdownTables,
+  toDiagnostic,
   validateMdxtab,
   type Diagnostic as CoreDiagnostic,
 } from "@mdxtab/core";
@@ -54,13 +55,11 @@ class PreviewProvider implements TextDocumentContentProvider {
     try {
       const config = workspace.getConfiguration("mdxtab");
       const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
-      const { diagnostics } = validateMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter });
-      if (diagnostics.length > 0) return formatDiagnostics(diagnostics);
       const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter });
       return result.rendered;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return `Render error: ${message}`;
+      const diag = toDiagnostic(err);
+      return formatDiagnostics([diag]);
     }
   }
 }
