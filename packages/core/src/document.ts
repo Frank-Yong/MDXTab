@@ -41,6 +41,18 @@ function evalWithContext(
     const message = err instanceof Error ? err.message : String(err);
     const rowPart = info.rowKey ? ` ${info.keyName ?? "row"}=${info.rowKey}` : "";
     const contextMessage = `[${info.kind}] table ${info.table} ${info.target}${rowPart}: ${message}`;
+    if (err instanceof DiagnosticError) {
+      throw new DiagnosticError({
+        code: err.code,
+        message: contextMessage,
+        severity: err.severity,
+        table: err.table ?? info.table,
+        column: err.column ?? (info.kind === "computed" ? info.target : undefined),
+        aggregate: err.aggregate ?? (info.kind === "aggregate" ? info.target : undefined),
+        rowKey: err.rowKey ?? info.rowKey,
+        range: err.range,
+      });
+    }
     throw new DiagnosticError({
       code: errorCodeFromMessage(message),
       message: contextMessage,
