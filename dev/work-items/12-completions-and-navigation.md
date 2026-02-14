@@ -1,7 +1,7 @@
 # Work Item: Completions and navigation
 
 ## Status
-- State: TODO
+- State: IN REVIEW
 
 ## Description
 Help authors write expressions with smarter suggestions and navigation.

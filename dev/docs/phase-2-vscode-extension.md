@@ -1,7 +1,7 @@
 # Work Item: Phase 2 VS Code Extension
 
 ## Status
-- State: IN PROGRESS
+- State: IN REVIEW
 - Focus: VS Code authoring experience (diagnostics, preview, editor features).
 
 ## Objectives

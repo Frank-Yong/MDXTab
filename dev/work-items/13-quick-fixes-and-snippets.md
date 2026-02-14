@@ -1,7 +1,7 @@
 # Work Item: Quick fixes and snippets
 
 ## Status
-- State: TODO
+- State: IN REVIEW
 
 ## Description
 Offer small assists to fix common errors and speed up authoring.
