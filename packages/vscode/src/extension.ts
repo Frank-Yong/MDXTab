@@ -613,6 +613,7 @@ export function activate(context: ExtensionContext) {
       { language: "markdown" },
       new MdxtabCompletionProvider(parsedCache),
       ".",
+      "{",
     ),
   );
   context.subscriptions.push(
