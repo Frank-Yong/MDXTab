@@ -1,7 +1,7 @@
 # Work Item: Diagnostics surface
 
 ## Status
-- State: IN REVIEW
+- State: DONE
 
 ## Description
 Produce clear, structured errors and warnings that can be shared by CLI and VS Code.
