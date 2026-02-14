@@ -585,6 +585,12 @@ export function activate(context: ExtensionContext) {
     workspace.onDidCloseTextDocument((doc) => {
       diagnostics.delete(doc.uri);
       parsedCache.delete(doc.uri.toString());
+      const key = doc.uri.toString();
+      const pending = pendingUpdates.get(key);
+      if (pending) {
+        clearTimeout(pending);
+        pendingUpdates.delete(key);
+      }
     }),
   );
   context.subscriptions.push(
