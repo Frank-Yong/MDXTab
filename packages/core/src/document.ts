@@ -464,7 +464,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     if (!map) {
       throw new DiagnosticError({
         code: "E_LOOKUP",
-        message: `E_LOOKUP: unknown table ${table}`,
+        message: `Unknown table ${table}`,
         table,
       });
     }
@@ -472,7 +472,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     if (!row) {
       throw new DiagnosticError({
         code: "E_LOOKUP",
-        message: `E_LOOKUP: missing row ${table}[${String(keyValue)}]`,
+        message: `Missing row ${table}[${String(keyValue)}]`,
         table,
         rowKey: String(keyValue),
       });
