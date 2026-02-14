@@ -71,7 +71,7 @@ class MdxtabSymbolProvider implements DocumentSymbolProvider {
     if (document.languageId !== "markdown") return [];
     const context = getParsedContext(document, this.cache);
     if (!context.frontmatter || !context.tables) return [];
-    const { frontmatter, tables } = context;
+    const { frontmatter, tables, entries } = context;
 
     const tableByName = new Map(tables.map((table) => [table.name, table]));
     const symbols: DocumentSymbol[] = [];
@@ -106,7 +106,16 @@ class MdxtabSymbolProvider implements DocumentSymbolProvider {
 
       const aggregateNames = Object.keys(schema.aggregates ?? {});
       for (const aggName of aggregateNames) {
-        children.push(new DocumentSymbol(aggName, "aggregate", SymbolKind.Function, range, selectionRange));
+        const entry = entries.find(
+          (item) => item.kind === "aggregate" && item.table === name && item.name === aggName,
+        );
+        const aggRange = entry
+          ? new Range(new Position(entry.line, entry.start), new Position(entry.line, entry.end))
+          : range;
+        const aggSelection = entry
+          ? new Range(new Position(entry.line, entry.start), new Position(entry.line, entry.end))
+          : selectionRange;
+        children.push(new DocumentSymbol(aggName, "aggregate", SymbolKind.Function, aggRange, aggSelection));
       }
 
       tableSymbol.children = children;
