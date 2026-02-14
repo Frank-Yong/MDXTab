@@ -9,7 +9,9 @@
     "vscode": "^1.88.0"
   },
   "activationEvents": [
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onCommand:mdxtab.renderPreview",
+    "onCommand:mdxtab.validateDocument"
   ],
   "main": "./dist/extension.js",
   "contributes": {
