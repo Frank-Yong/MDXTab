@@ -481,7 +481,14 @@ function toVsDiagnostic(diag: CoreDiagnostic): Diagnostic {
       )
     : new Range(new Position(0, 0), new Position(0, 1));
   const severity = diag.severity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error;
-  const vsDiag = new Diagnostic(range, diag.message, severity);
+  const contextParts: string[] = [];
+  if (diag.table) contextParts.push(`table=${diag.table}`);
+  if (diag.column) contextParts.push(`column=${diag.column}`);
+  if (diag.aggregate) contextParts.push(`aggregate=${diag.aggregate}`);
+  if (diag.rowKey) contextParts.push(`row=${diag.rowKey}`);
+  const context = contextParts.length > 0 ? ` (${contextParts.join(", ")})` : "";
+  const message = diag.code ? `[${diag.code}] ${diag.message}${context}` : `${diag.message}${context}`;
+  const vsDiag = new Diagnostic(range, message, severity);
   vsDiag.code = diag.code;
   vsDiag.source = "mdxtab";
   return vsDiag;
