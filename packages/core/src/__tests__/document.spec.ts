@@ -117,4 +117,40 @@ Inline: \`{{ expenses.total_net }}\``;
       }),
     ]);
   });
+
+  it("reports cell ranges with indentation offsets", () => {
+    const dataLine = "  | a1 | abc |";
+    const indentedDoc = `---
+mdxtab: "1.0"
+tables:
+  rates:
+    key: id
+    columns: [id, rate]
+    types:
+      rate: number
+---
+
+## rates
+  | id | rate |
+  |----|------|
+${dataLine}
+`;
+    const result = validateMdxtab(indentedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    const diag = result.diagnostics[0];
+    expect(diag.code).toBe("E_TYPE");
+    expect(diag.range).toBeDefined();
+
+    const lines = indentedDoc.replace(/\r\n?/g, "\n").split("\n");
+    const lineIndex = lines.findIndex((line) => line === dataLine);
+    const firstPipe = dataLine.indexOf("|");
+    const secondPipe = dataLine.indexOf("|", firstPipe + 1);
+    const thirdPipe = dataLine.indexOf("|", secondPipe + 1);
+    const expectedStart = secondPipe + 1;
+    const expectedEnd = thirdPipe;
+
+    expect(diag.range?.start.line).toBe(lineIndex);
+    expect(diag.range?.start.character).toBe(expectedStart);
+    expect(diag.range?.end.character).toBe(expectedEnd);
+  });
 });

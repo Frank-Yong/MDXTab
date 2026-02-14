@@ -13,8 +13,11 @@ function parsePipeRow(line: string): string[] {
 }
 
 function parsePipeRowWithPositions(line: string): Array<{ raw: string; start: number; end: number }> {
-  const startIndex = line.startsWith("|") ? 1 : 0;
-  const endIndex = line.endsWith("|") ? line.length - 1 : line.length;
+  const firstPipe = line.indexOf("|");
+  const lastPipe = line.lastIndexOf("|");
+  if (firstPipe === -1 || lastPipe === -1 || lastPipe <= firstPipe) return [];
+  const startIndex = firstPipe + 1;
+  const endIndex = lastPipe;
   const cells: Array<{ raw: string; start: number; end: number }> = [];
   let segStart = startIndex;
   for (let i = startIndex; i <= endIndex; i += 1) {
@@ -64,7 +67,7 @@ export function parseMarkdownTables(raw: string): ParsedTable[] {
       next.endsWith("|") &&
       isSeparator(next)
     ) {
-      const headerCells = parsePipeRowWithPositions(trimmed).map((cell) => ({
+      const headerCells = parsePipeRowWithPositions(line).map((cell) => ({
         raw: cell.raw,
         trimmed: cell.raw.trim(),
         line: offset + i,
@@ -79,7 +82,7 @@ export function parseMarkdownTables(raw: string): ParsedTable[] {
         const dataTrimmed = dataLine.trim();
         if (!(dataTrimmed.startsWith("|") && dataTrimmed.endsWith("|"))) break;
 
-        const cells = parsePipeRowWithPositions(dataTrimmed);
+        const cells = parsePipeRowWithPositions(dataLine);
         if (cells.some((c) => c.raw.includes("\t"))) {
           throw new DiagnosticError({
             code: "E_TABLE_TAB",
