@@ -116,6 +116,18 @@ Inline: \`{{ expenses.total_net }}\``;
         range: expect.any(Object),
       }),
     ]);
+
+    const keyMissing = doc.replace("key: id", "key: row_id");
+    const keyResult = validateMdxtab(keyMissing);
+    expect(keyResult.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "E_KEY_COLUMN",
+        severity: "error",
+        table: "rates",
+        column: "row_id",
+        range: expect.any(Object),
+      }),
+    ]);
   });
 
   it("reports cell ranges with indentation offsets", () => {

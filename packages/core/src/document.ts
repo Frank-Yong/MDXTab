@@ -359,11 +359,20 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
     const keyName = schema.key ?? "id";
     keyByTable[name] = keyName;
+    const keyIndex = schema.columns.indexOf(keyName);
+    if (keyIndex === -1) {
+      throw new DiagnosticError({
+        code: "E_KEY_COLUMN",
+        message: `Key column ${keyName} not found in schema for table ${name}`,
+        table: name,
+        column: keyName,
+        range: lineRange(table.headers[0]?.line ?? 0),
+      });
+    }
 
     const rows: Record<string, Scalar>[] = [];
     const map = new Map<string, Record<string, Scalar>>();
 
-    const keyIndex = schema.columns.indexOf(keyName);
     for (const row of table.rows) {
       const obj: Record<string, Scalar> = {};
       schema.columns.forEach((col, idx) => {
