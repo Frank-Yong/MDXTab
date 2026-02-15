@@ -313,6 +313,18 @@ class MdxtabCodeActionProvider implements CodeActionProvider {
         const action = addMissingLookupRow(document, diag);
         if (action) actions.push(action);
       }
+      if (code === "E_TABLE_COLUMN_COUNT") {
+        const action = fixRowColumnCount(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_KEY") {
+        const action = fillMissingKey(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_KEY_DUP") {
+        const action = fixDuplicateKey(document, diag);
+        if (action) actions.push(action);
+      }
     }
     return actions;
   }
@@ -696,6 +708,106 @@ function addMissingLookupRow(document: TextDocument, diag: Diagnostic): CodeActi
   return action;
 }
 
+function fixRowColumnCount(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  if (!diag.range) return undefined;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const rowLine = diag.range.start.line;
+  const table = findTableByRowLine(tables, rowLine);
+  if (!table) return undefined;
+  const row = table.rows.find((r) => r.line === rowLine);
+  if (!row) return undefined;
+
+  const headerCount = table.headers.length;
+  const currentCells = row.cells.map((cell) => cell.raw.trim());
+  const nextCells = currentCells.slice(0, headerCount);
+  while (nextCells.length < headerCount) nextCells.push("");
+
+  const line = document.lineAt(rowLine);
+  const indent = line.text.match(/^\s*/)?.[0] ?? "";
+  const replacement = `${indent}| ${nextCells.join(" | ")} |`;
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, line.range, replacement);
+  const action = new CodeAction("MDXTab: align row column count", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function fillMissingKey(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  if (!diag.range) return undefined;
+  const tableName = extractTableNameFromMessage(diag.message);
+  if (!tableName) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const keyName = schema.key ?? "id";
+  const keyIndex = schema.columns.indexOf(keyName);
+  if (keyIndex === -1) return undefined;
+
+  const rowLine = diag.range.start.line;
+  const table = tables.find((t) => t.name === tableName);
+  const row = table?.rows.find((r) => r.line === rowLine);
+  if (!row) return undefined;
+  const cell = row.cells[keyIndex];
+  if (!cell || cell.start === undefined || cell.end === undefined) return undefined;
+
+  const value = `row_${rowLine + 1}`;
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, new Range(rowLine, cell.start, rowLine, cell.end), ` ${value} `);
+  const action = new CodeAction("MDXTab: fill missing key", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function fixDuplicateKey(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  if (!diag.range) return undefined;
+  const tableName = extractTableNameFromMessage(diag.message);
+  const keyMatch = diag.message.match(/Duplicate key ([^\s]+)/);
+  const keyValue = keyMatch ? keyMatch[1] : undefined;
+  if (!tableName || !keyValue) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const keyName = schema.key ?? "id";
+  const keyIndex = schema.columns.indexOf(keyName);
+  if (keyIndex === -1) return undefined;
+
+  const rowLine = diag.range.start.line;
+  const table = tables.find((t) => t.name === tableName);
+  const row = table?.rows.find((r) => r.line === rowLine);
+  if (!row) return undefined;
+  const cell = row.cells[keyIndex];
+  if (!cell || cell.start === undefined || cell.end === undefined) return undefined;
+
+  const value = `${keyValue}_${rowLine + 1}`;
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, new Range(rowLine, cell.start, rowLine, cell.end), ` ${value} `);
+  const action = new CodeAction("MDXTab: make key unique", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
 function addColumnToSchema(
   document: TextDocument,
   diag: Diagnostic,
@@ -746,6 +858,13 @@ function findTableLine(lines: string[], start: number, end: number, tableName: s
     if (tableRe.test(lines[i])) return i;
   }
   return undefined;
+}
+
+function findTableByRowLine(
+  tables: ReturnType<typeof parseMarkdownTables>,
+  rowLine: number,
+): ReturnType<typeof parseMarkdownTables>[number] | undefined {
+  return tables.find((table) => table.rows.some((row) => row.line === rowLine));
 }
 
 function findColumnsLine(
