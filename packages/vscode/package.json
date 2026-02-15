@@ -45,6 +45,12 @@
         ]
       }
     ],
+    "snippets": [
+      {
+        "language": "markdown",
+        "path": "./snippets/mdxtab.markdown.json"
+      }
+    ],
     "commands": [
       {
         "command": "mdxtab.renderPreview",

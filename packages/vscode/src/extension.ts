@@ -1,4 +1,7 @@
 import {
+  CodeAction,
+  CodeActionKind,
+  CodeActionProvider,
   commands,
   Diagnostic,
   DiagnosticCollection,
@@ -19,8 +22,10 @@ import {
   SymbolKind,
   TextDocument,
   TextDocumentContentProvider,
+  TextEdit,
   Uri,
   window,
+  WorkspaceEdit,
   workspace,
   EventEmitter,
 } from "vscode";
@@ -270,6 +275,33 @@ class MdxtabDefinitionProvider implements DefinitionProvider {
   }
 }
 
+class MdxtabCodeActionProvider implements CodeActionProvider {
+  provideCodeActions(
+    document: TextDocument,
+    _range: Range,
+    context: { diagnostics: readonly Diagnostic[] },
+  ): CodeAction[] {
+    if (document.languageId !== "markdown") return [];
+    if (!looksLikeMdxtab(document.getText())) return [];
+
+    const actions: CodeAction[] = [];
+    for (const diag of context.diagnostics) {
+      if (diag.source !== "mdxtab") continue;
+      const code = getDiagnosticCode(diag);
+      if (!code) continue;
+      if (code === "E_TABLE_TAB") {
+        const action = fixTabsInRow(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_TABLE") {
+        const action = addMissingTable(document, diag);
+        if (action) actions.push(action);
+      }
+    }
+    return actions;
+  }
+}
+
 function findHoverEntry(
   document: TextDocument,
   position: Position,
@@ -510,6 +542,67 @@ function looksLikeMdxtab(text: string): boolean {
   return /\nmdxtab\s*:/.test(frontmatter);
 }
 
+function getDiagnosticCode(diag: Diagnostic): string | undefined {
+  if (typeof diag.code === "string") return diag.code;
+  if (diag.code && typeof diag.code === "object" && "value" in diag.code) {
+    return String((diag.code as { value: unknown }).value);
+  }
+  return undefined;
+}
+
+function fixTabsInRow(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const lineIndex = diag.range?.start.line;
+  if (lineIndex === undefined) return undefined;
+  const line = document.lineAt(lineIndex);
+  if (!line.text.includes("\t")) return undefined;
+  const replacement = line.text.replace(/\t/g, "  ");
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, line.range, replacement);
+  const action = new CodeAction("MDXTab: replace tabs with spaces", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function addMissingTable(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const tableName = extractMissingTableName(diag.message);
+  if (!tableName) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  if (!frontmatter.tables[tableName]) return undefined;
+  if (tables.some((table) => table.name === tableName)) return undefined;
+
+  const schema = frontmatter.tables[tableName];
+  const columns = schema.columns;
+  if (columns.length === 0) return undefined;
+
+  const header = `| ${columns.join(" | ")} |`;
+  const separator = `|${columns.map(() => "---").join("|")}|`;
+  const row = `| ${columns.map(() => " ").join(" | ")} |`;
+  const suffix = document.getText().endsWith("\n") ? "\n" : "\n\n";
+  const insertText = `${suffix}## ${tableName}\n\n${header}\n${separator}\n${row}\n`;
+
+  const edit = new WorkspaceEdit();
+  edit.insert(document.uri, document.positionAt(document.getText().length), insertText);
+  const action = new CodeAction(`MDXTab: add table '${tableName}'`, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function extractMissingTableName(message: string): string | undefined {
+  const missingMatch = message.match(/Missing markdown table for ([A-Za-z0-9_]+)/);
+  if (missingMatch) return missingMatch[1];
+  const contextMatch = message.match(/table=([A-Za-z0-9_]+)/);
+  return contextMatch ? contextMatch[1] : undefined;
+}
+
 type ParsedContext = {
   version: number;
   lines: string[];
@@ -618,6 +711,13 @@ export function activate(context: ExtensionContext) {
   );
   context.subscriptions.push(
     languages.registerDefinitionProvider({ language: "markdown" }, new MdxtabDefinitionProvider(parsedCache)),
+  );
+  context.subscriptions.push(
+    languages.registerCodeActionsProvider(
+      { language: "markdown" },
+      new MdxtabCodeActionProvider(),
+      { providedCodeActionKinds: [CodeActionKind.QuickFix] },
+    ),
   );
   const debounceMs = 200;
   const pendingUpdates = new Map<string, ReturnType<typeof setTimeout>>();
