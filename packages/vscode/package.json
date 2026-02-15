@@ -19,12 +19,6 @@
     "onCommand:mdxtab.validateDocument"
   ],
   "main": "./dist/extension.js",
-  "files": [
-    "dist",
-    "package.json",
-    "README.md",
-    "LICENSE"
-  ],
   "contributes": {
     "configuration": {
       "title": "MDXTab",
