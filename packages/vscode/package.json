@@ -52,8 +52,9 @@
     "test": "echo \"(no tests yet)\""
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
-    "@types/vscode": "^1.88.0"
+    "@types/vscode": "^1.88.0",
+    "@vscode/vsce": "^2.26.0",
+    "typescript": "^5.5.4"
   },
   "dependencies": {
     "@mdxtab/core": "0.1.0"
