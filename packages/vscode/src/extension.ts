@@ -710,20 +710,15 @@ function addMissingLookupRow(document: TextDocument, diag: Diagnostic): CodeActi
 
 function fixRowColumnCount(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
   if (!diag.range) return undefined;
-  let tables: ReturnType<typeof parseMarkdownTables>;
-  try {
-    tables = parseMarkdownTables(document.getText());
-  } catch {
-    return undefined;
-  }
   const rowLine = diag.range.start.line;
-  const table = findTableByRowLine(tables, rowLine);
-  if (!table) return undefined;
-  const row = table.rows.find((r) => r.line === rowLine);
-  if (!row) return undefined;
+  const lines = document.getText().replace(/\r\n?/g, "\n").split("\n");
+  const headerLine = findHeaderLineForRow(lines, rowLine);
+  if (headerLine === undefined) return undefined;
+  const headerCells = parsePipeRowCells(lines[headerLine]).map((cell) => cell.trim());
+  if (headerCells.length === 0) return undefined;
 
-  const headerCount = table.headers.length;
-  const currentCells = row.cells.map((cell) => cell.raw.trim());
+  const headerCount = headerCells.length;
+  const currentCells = parsePipeRowCells(lines[rowLine]).map((cell) => cell.trim());
   const nextCells = currentCells.slice(0, headerCount);
   while (nextCells.length < headerCount) nextCells.push("");
 
@@ -860,11 +855,36 @@ function findTableLine(lines: string[], start: number, end: number, tableName: s
   return undefined;
 }
 
-function findTableByRowLine(
-  tables: ReturnType<typeof parseMarkdownTables>,
-  rowLine: number,
-): ReturnType<typeof parseMarkdownTables>[number] | undefined {
-  return tables.find((table) => table.rows.some((row) => row.line === rowLine));
+function findHeaderLineForRow(lines: string[], rowLine: number): number | undefined {
+  for (let i = rowLine - 1; i >= 1; i -= 1) {
+    if (isSeparatorLine(lines[i])) {
+      const headerLine = i - 1;
+      if (headerLine >= 0 && isPipeRow(lines[headerLine])) return headerLine;
+    }
+    if (!lines[i].trim()) break;
+  }
+  return undefined;
+}
+
+function isPipeRow(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.endsWith("|");
+}
+
+function parsePipeRowCells(line: string): string[] {
+  const firstPipe = line.indexOf("|");
+  const lastPipe = line.lastIndexOf("|");
+  if (firstPipe === -1 || lastPipe === -1 || lastPipe <= firstPipe) return [];
+  const body = line.slice(firstPipe + 1, lastPipe);
+  return body.split("|");
+}
+
+function isSeparatorLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!(trimmed.startsWith("|") && trimmed.endsWith("|"))) return false;
+  const cells = parsePipeRowCells(trimmed).map((cell) => cell.trim());
+  if (cells.length === 0) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
 function findColumnsLine(
