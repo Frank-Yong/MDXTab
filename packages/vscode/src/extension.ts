@@ -309,6 +309,10 @@ class MdxtabCodeActionProvider implements CodeActionProvider {
         const action = addColumnFromUnknownRef(document, diag);
         if (action) actions.push(action);
       }
+      if (code === "E_LOOKUP") {
+        const action = addMissingLookupRow(document, diag);
+        if (action) actions.push(action);
+      }
     }
     return actions;
   }
@@ -653,6 +657,43 @@ function addColumnFromUnknownRef(document: TextDocument, diag: Diagnostic): Code
   const tableName = extractContextValue(diag.message, "table");
   if (!tableName) return undefined;
   return addColumnToSchema(document, diag, tableName, columnName, `MDXTab: add column '${columnName}'`);
+}
+
+function addMissingLookupRow(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const match = diag.message.match(/Missing row ([A-Za-z0-9_]+)\[([^\]]+)\]/);
+  if (!match) return undefined;
+  const tableName = match[1];
+  const rowKey = match[2];
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const columns = schema.columns;
+  if (columns.length === 0) return undefined;
+  const keyName = schema.key ?? "id";
+  const keyIndex = columns.indexOf(keyName);
+  if (keyIndex === -1) return undefined;
+
+  const table = tables.find((t) => t.name === tableName);
+  const lastRow = table?.rows[table.rows.length - 1];
+  if (!table || !lastRow || lastRow.line === undefined) return undefined;
+
+  const values = columns.map((col) => (col === keyName ? rowKey : ""));
+  const row = `| ${values.join(" | ")} |`;
+  const insertPos = document.lineAt(lastRow.line).range.end;
+
+  const edit = new WorkspaceEdit();
+  edit.insert(document.uri, insertPos, `\n${row}`);
+  const action = new CodeAction(`MDXTab: add missing row '${rowKey}'`, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
 }
 
 function addColumnToSchema(
