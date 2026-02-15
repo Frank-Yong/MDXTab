@@ -297,6 +297,10 @@ class MdxtabCodeActionProvider implements CodeActionProvider {
         const action = addMissingTable(document, diag);
         if (action) actions.push(action);
       }
+      if (code === "E_COLUMN_MISMATCH") {
+        const action = fixTableHeader(document, diag);
+        if (action) actions.push(action);
+      }
     }
     return actions;
   }
@@ -594,6 +598,40 @@ function addMissingTable(document: TextDocument, diag: Diagnostic): CodeAction |
   action.edit = edit;
   action.diagnostics = [diag];
   return action;
+}
+
+function fixTableHeader(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const tableName = diag.table ?? extractTableNameFromMessage(diag.message);
+  if (!tableName) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const table = tables.find((t) => t.name === tableName);
+  const headerLine = table?.headers[0]?.line;
+  if (headerLine === undefined) return undefined;
+
+  const line = document.lineAt(headerLine);
+  const indent = line.text.match(/^\s*/)?.[0] ?? "";
+  const header = `${indent}| ${schema.columns.join(" | ")} |`;
+
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, line.range, header);
+  const action = new CodeAction(`MDXTab: align header for '${tableName}'`, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function extractTableNameFromMessage(message: string): string | undefined {
+  const match = message.match(/table ([A-Za-z0-9_]+)/);
+  return match ? match[1] : undefined;
 }
 
 function extractMissingTableName(message: string): string | undefined {
