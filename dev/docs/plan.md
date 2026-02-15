@@ -45,6 +45,8 @@ Note: Phase status markers reflect the current state of main.
 
 ## Phase 3: Developer Experience (2-3 weeks)
 
+See [phase-3-developer-experience.md](dev/docs/phase-3-developer-experience.md).
+
 - Syntax highlighting (TextMate grammar)
 - Autocomplete for functions, columns, aggregates
 - Quick fixes for common errors
