@@ -1,6 +1,6 @@
 # MDXTab VS Code Extension (Spike)
 
-MDXTab stands for MarkDown eXtended Tables.
+**Markdown Extended Tables**
 
 - Command: **MDXTab: Render Preview** (`mdxtab.renderPreview`) — renders the active Markdown file through the MDXTab compiler into a preview document.
 - Diagnostics: recompiles on open/change/save; errors surface as markdown diagnostics at the top of the file.
