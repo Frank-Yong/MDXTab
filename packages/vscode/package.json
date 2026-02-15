@@ -29,6 +29,11 @@
     "configuration": {
       "title": "MDXTab",
       "properties": {
+        "mdxtab.preview.markdownIt.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable MDXTab rendering in the built-in Markdown preview using a Markdown-It plugin."
+        },
         "mdxtab.preview.showFrontmatter": {
           "type": "boolean",
           "default": false,
@@ -36,6 +41,7 @@
         }
       }
     },
+    "markdown.markdownItPlugins": true,
     "commands": [
       {
         "command": "mdxtab.renderPreview",

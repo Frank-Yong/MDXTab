@@ -687,6 +687,26 @@ export function activate(context: ExtensionContext) {
   const active = window.activeTextEditor?.document;
   if (active) updateDiagnostics(active, diagnostics);
 
+  return { extendMarkdownIt };
+}
+
+function extendMarkdownIt(md: { core: { ruler: { after: (name: string, rule: string, fn: (state: { src: string }) => void) => void } } }) {
+  md.core.ruler.after("normalize", "mdxtab", (state) => {
+    const text = state.src;
+    if (!looksLikeMdxtab(text)) return;
+    const config = workspace.getConfiguration("mdxtab");
+    const enabled = config.get<boolean>("preview.markdownIt.enabled", true);
+    if (!enabled) return;
+    const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+    try {
+      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter });
+      state.src = result.rendered;
+    } catch (err) {
+      const diag = toDiagnostic(err);
+      state.src = formatDiagnostics([diag]);
+    }
+  });
+  return md;
 }
 
 export function deactivate() {
