@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run -w @mdxtab/core build --if-present && vitest run"
+    "test": "npm run -w @mdxtab/core build --if-present && vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@mdxtab/core": "0.1.0"
