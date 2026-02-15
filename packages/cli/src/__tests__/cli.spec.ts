@@ -57,6 +57,10 @@ describe("mdxtab CLI", () => {
     expect(rc).toBe(1);
     expect(ctx.code).toBe(1);
     const out = JSON.parse(ctx.out.join(""));
+    expect(out.file).toContain("invalid.md");
+    expect(out.ok).toBe(false);
+    expect(out.exitCode).toBe(1);
+    expect(out.errors).toEqual([]);
     expect(out.diagnostics).toHaveLength(1);
     expect(out.diagnostics[0].code).toBe("E_AGG_REF");
   });
