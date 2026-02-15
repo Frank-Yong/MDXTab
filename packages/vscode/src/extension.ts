@@ -22,7 +22,6 @@ import {
   SymbolKind,
   TextDocument,
   TextDocumentContentProvider,
-  TextEdit,
   Uri,
   window,
   WorkspaceEdit,
@@ -848,11 +847,15 @@ function addColumnToSchema(
 }
 
 function findTableLine(lines: string[], start: number, end: number, tableName: string): number | undefined {
-  const tableRe = new RegExp(`^\\s*${tableName}\\s*:`);
+  const tableRe = new RegExp(`^\\s*${escapeRegExp(tableName)}\\s*:`);
   for (let i = start; i < end; i += 1) {
     if (tableRe.test(lines[i])) return i;
   }
   return undefined;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function findHeaderLineForRow(lines: string[], rowLine: number): number | undefined {
