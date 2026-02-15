@@ -301,6 +301,14 @@ class MdxtabCodeActionProvider implements CodeActionProvider {
         const action = fixTableHeader(document, diag);
         if (action) actions.push(action);
       }
+      if (code === "E_KEY_COLUMN") {
+        const action = addMissingKeyColumn(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_REF") {
+        const action = addColumnFromUnknownRef(document, diag);
+        if (action) actions.push(action);
+      }
     }
     return actions;
   }
@@ -629,6 +637,91 @@ function fixTableHeader(document: TextDocument, diag: Diagnostic): CodeAction | 
   return action;
 }
 
+function addMissingKeyColumn(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const match = diag.message.match(/Key column ([A-Za-z0-9_]+)/);
+  const keyName = match ? match[1] : undefined;
+  const tableName = extractTableNameFromMessage(diag.message) ?? extractContextValue(diag.message, "table");
+  if (!keyName || !tableName) return undefined;
+  return addColumnToSchema(document, diag, tableName, keyName, `MDXTab: add key column '${keyName}'`);
+}
+
+function addColumnFromUnknownRef(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const columnMatch = diag.message.match(/unknown column ([A-Za-z0-9_]+)/);
+  const identMatch = diag.message.match(/unknown identifier ([A-Za-z0-9_]+)/);
+  const columnName = columnMatch?.[1] ?? identMatch?.[1];
+  if (!columnName) return undefined;
+  const tableName = extractContextValue(diag.message, "table");
+  if (!tableName) return undefined;
+  return addColumnToSchema(document, diag, tableName, columnName, `MDXTab: add column '${columnName}'`);
+}
+
+function addColumnToSchema(
+  document: TextDocument,
+  diag: Diagnostic,
+  tableName: string,
+  columnName: string,
+  title: string,
+): CodeAction | undefined {
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  if (schema.columns.includes(columnName)) return undefined;
+
+  const updated = [...schema.columns, columnName];
+  const lines = document.getText().replace(/\r\n?/g, "\n").split("\n");
+  const bounds = getFrontmatterBounds(lines);
+  if (!bounds) return undefined;
+
+  const tableLine = findTableLine(lines, bounds.start + 1, bounds.end, tableName);
+  if (tableLine === undefined) return undefined;
+  const tableIndent = lines[tableLine].match(/^\s*/)?.[0] ?? "";
+
+  const columnsLine = findColumnsLine(lines, tableLine + 1, bounds.end, tableIndent.length);
+  const columnsText = `${tableIndent}  columns: [${updated.join(", ")}]`;
+
+  const edit = new WorkspaceEdit();
+  if (columnsLine !== undefined) {
+    const targetLine = document.lineAt(columnsLine);
+    edit.replace(document.uri, targetLine.range, columnsText);
+  } else {
+    const insertLine = document.lineAt(tableLine).range.end;
+    edit.insert(document.uri, insertLine, `\n${columnsText}`);
+  }
+
+  const action = new CodeAction(title, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function findTableLine(lines: string[], start: number, end: number, tableName: string): number | undefined {
+  const tableRe = new RegExp(`^\\s*${tableName}\\s*:`);
+  for (let i = start; i < end; i += 1) {
+    if (tableRe.test(lines[i])) return i;
+  }
+  return undefined;
+}
+
+function findColumnsLine(
+  lines: string[],
+  start: number,
+  end: number,
+  tableIndent: number,
+): number | undefined {
+  for (let i = start; i < end; i += 1) {
+    const line = lines[i];
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    if (indent <= tableIndent && /\S/.test(line)) return undefined;
+    if (/^\s*columns\s*:/.test(line)) return i;
+  }
+  return undefined;
+}
+
 function extractTableNameFromMessage(message: string): string | undefined {
   const match = message.match(/table ([A-Za-z0-9_]+)/);
   return match ? match[1] : undefined;
@@ -639,6 +732,11 @@ function extractMissingTableName(message: string): string | undefined {
   if (missingMatch) return missingMatch[1];
   const contextMatch = message.match(/table=([A-Za-z0-9_]+)/);
   return contextMatch ? contextMatch[1] : undefined;
+}
+
+function extractContextValue(message: string, key: string): string | undefined {
+  const match = message.match(new RegExp(`${key}=([A-Za-z0-9_]+)`));
+  return match ? match[1] : undefined;
 }
 
 type ParsedContext = {
