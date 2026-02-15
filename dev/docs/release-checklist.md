@@ -15,7 +15,7 @@
 
 ## Build and test
 1) Run: `npm test`
-2) Build extension: `npm run -w @mdxtab/vscode build`
+2) Build extension: `npm run -w mdxtab build`
 
 ## Package
 1) Run: `npx vsce package --no-dependencies` from packages/vscode
