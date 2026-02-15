@@ -4,8 +4,10 @@
 node_modules/**
 !dist/core/node_modules/yaml/**
 src/**
+scripts/**
 **/*.ts
 **/*.map
 **/tsconfig*.json
 **/.DS_Store
 **/Thumbs.db
+dist/core/__tests__/**

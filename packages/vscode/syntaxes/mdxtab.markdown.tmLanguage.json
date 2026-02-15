@@ -1,0 +1,132 @@
+{
+  "scopeName": "mdxtab.markdown",
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [
+    {
+      "include": "#frontmatter"
+    },
+    {
+      "include": "#tableSeparator"
+    },
+    {
+      "include": "#tableRow"
+    },
+    {
+      "include": "#interpolation"
+    }
+  ],
+  "repository": {
+    "frontmatter": {
+      "begin": "^(---)\\s*$",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.frontmatter.mdxtab"
+        }
+      },
+      "end": "^(---)\\s*$",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.frontmatter.mdxtab"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#frontmatterKeys"
+        },
+        {
+          "include": "#frontmatterTableEntry"
+        },
+        {
+          "include": "#frontmatterNameValue"
+        },
+        {
+          "include": "#frontmatterValues"
+        }
+      ]
+    },
+    "frontmatterKeys": {
+      "patterns": [
+        {
+          "match": "^\\s*(mdxtab|tables|computed|aggregates|columns|types|key|empty_cells)\\s*:(?=\\s|$)",
+          "name": "keyword.control.mdxtab"
+        }
+      ]
+    },
+    "frontmatterTableEntry": {
+      "patterns": [
+        {
+          "match": "^\\s*([A-Za-z0-9_]+)\\s*:(?=\\s*$)",
+          "name": "entity.name.type.mdxtab.table",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.mdxtab.table"
+            }
+          }
+        }
+      ]
+    },
+    "frontmatterNameValue": {
+      "patterns": [
+        {
+          "match": "^\\s*([A-Za-z0-9_]+)\\s*:\\s*(.+)$",
+          "name": "meta.mdxtab.entry",
+          "captures": {
+            "1": {
+              "name": "variable.other.mdxtab.name"
+            },
+            "2": {
+              "name": "string.unquoted.mdxtab.value"
+            }
+          }
+        }
+      ]
+    },
+    "frontmatterValues": {
+      "patterns": [
+        {
+          "match": "^\\s*[A-Za-z0-9_]+\\s*:\\s*.+$",
+          "name": "string.unquoted.mdxtab"
+        }
+      ]
+    },
+    "interpolation": {
+      "match": "\\{\\{\\s*([A-Za-z0-9_]+)\\.([A-Za-z0-9_]+)\\s*\\}\\}",
+      "name": "meta.mdxtab.interpolation",
+      "captures": {
+        "1": {
+          "name": "variable.other.mdxtab.table"
+        },
+        "2": {
+          "name": "variable.other.mdxtab.aggregate"
+        }
+      }
+    },
+    "tableSeparator": {
+      "match": "^(\\s*\\|\\s*:?[-]{3,}:?\\s*)(\\|\\s*:?[-]{3,}:?\\s*)+\\|\\s*$",
+      "name": "meta.mdxtab.table.separator",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.table.mdxtab"
+        },
+        "2": {
+          "name": "punctuation.definition.table.mdxtab"
+        }
+      }
+    },
+    "tableRow": {
+      "match": "^(\\s*\\|)(.*)(\\|)\\s*$",
+      "name": "meta.mdxtab.table.row",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.table.mdxtab"
+        },
+        "2": {
+          "name": "string.unquoted.mdxtab.cell"
+        },
+        "3": {
+          "name": "punctuation.definition.table.mdxtab"
+        }
+      }
+    }
+  }
+}

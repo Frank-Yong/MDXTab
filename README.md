@@ -1,5 +1,7 @@
 # MDXTab
 
+MDXTab stands for MarkDown eXtended Tables.
+
 1. **Proposed format (final choice + rationale)**
 2. **Formal spec (v1)**
 3. **Formula grammar**

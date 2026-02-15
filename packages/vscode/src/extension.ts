@@ -1,4 +1,7 @@
 import {
+  CodeAction,
+  CodeActionKind,
+  CodeActionProvider,
   commands,
   Diagnostic,
   DiagnosticCollection,
@@ -21,6 +24,7 @@ import {
   TextDocumentContentProvider,
   Uri,
   window,
+  WorkspaceEdit,
   workspace,
   EventEmitter,
 } from "vscode";
@@ -270,6 +274,61 @@ class MdxtabDefinitionProvider implements DefinitionProvider {
   }
 }
 
+class MdxtabCodeActionProvider implements CodeActionProvider {
+  provideCodeActions(
+    document: TextDocument,
+    _range: Range,
+    context: { diagnostics: readonly Diagnostic[] },
+  ): CodeAction[] {
+    if (document.languageId !== "markdown") return [];
+    if (!looksLikeMdxtab(document.getText())) return [];
+
+    const actions: CodeAction[] = [];
+    for (const diag of context.diagnostics) {
+      if (diag.source !== "mdxtab") continue;
+      const code = getDiagnosticCode(diag);
+      if (!code) continue;
+      if (code === "E_TABLE_TAB") {
+        const action = fixTabsInRow(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_TABLE") {
+        const action = addMissingTable(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_COLUMN_MISMATCH") {
+        const action = fixTableHeader(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_KEY_COLUMN") {
+        const action = addMissingKeyColumn(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_REF") {
+        const action = addColumnFromUnknownRef(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_LOOKUP") {
+        const action = addMissingLookupRow(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_TABLE_COLUMN_COUNT") {
+        const action = fixRowColumnCount(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_KEY") {
+        const action = fillMissingKey(document, diag);
+        if (action) actions.push(action);
+      }
+      if (code === "E_KEY_DUP") {
+        const action = fixDuplicateKey(document, diag);
+        if (action) actions.push(action);
+      }
+    }
+    return actions;
+  }
+}
+
 function findHoverEntry(
   document: TextDocument,
   position: Position,
@@ -510,6 +569,359 @@ function looksLikeMdxtab(text: string): boolean {
   return /\nmdxtab\s*:/.test(frontmatter);
 }
 
+function getDiagnosticCode(diag: Diagnostic): string | undefined {
+  if (typeof diag.code === "string") return diag.code;
+  if (diag.code && typeof diag.code === "object" && "value" in diag.code) {
+    return String((diag.code as { value: unknown }).value);
+  }
+  return undefined;
+}
+
+function fixTabsInRow(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const lineIndex = diag.range?.start.line;
+  if (lineIndex === undefined) return undefined;
+  const line = document.lineAt(lineIndex);
+  if (!line.text.includes("\t")) return undefined;
+  const replacement = line.text.replace(/\t/g, "  ");
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, line.range, replacement);
+  const action = new CodeAction("MDXTab: replace tabs with spaces", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function addMissingTable(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const tableName = extractMissingTableName(diag.message);
+  if (!tableName) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  if (!frontmatter.tables[tableName]) return undefined;
+  if (tables.some((table) => table.name === tableName)) return undefined;
+
+  const schema = frontmatter.tables[tableName];
+  const columns = schema.columns;
+  if (columns.length === 0) return undefined;
+
+  const header = `| ${columns.join(" | ")} |`;
+  const separator = `|${columns.map(() => "---").join("|")}|`;
+  const row = `| ${columns.map(() => " ").join(" | ")} |`;
+  const suffix = document.getText().endsWith("\n") ? "\n" : "\n\n";
+  const insertText = `${suffix}## ${tableName}\n\n${header}\n${separator}\n${row}\n`;
+
+  const edit = new WorkspaceEdit();
+  edit.insert(document.uri, document.positionAt(document.getText().length), insertText);
+  const action = new CodeAction(`MDXTab: add table '${tableName}'`, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function fixTableHeader(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const tableName = extractTableNameFromMessage(diag.message);
+  if (!tableName) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const table = tables.find((t) => t.name === tableName);
+  const headerLine = table?.headers[0]?.line;
+  if (headerLine === undefined) return undefined;
+
+  const line = document.lineAt(headerLine);
+  const indent = line.text.match(/^\s*/)?.[0] ?? "";
+  const header = `${indent}| ${schema.columns.join(" | ")} |`;
+
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, line.range, header);
+  const action = new CodeAction(`MDXTab: align header for '${tableName}'`, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function addMissingKeyColumn(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const match = diag.message.match(/Key column ([A-Za-z0-9_]+)/);
+  const keyName = match ? match[1] : undefined;
+  const tableName = extractTableNameFromMessage(diag.message) ?? extractContextValue(diag.message, "table");
+  if (!keyName || !tableName) return undefined;
+  return addColumnToSchema(document, diag, tableName, keyName, `MDXTab: add key column '${keyName}'`);
+}
+
+function addColumnFromUnknownRef(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const columnMatch = diag.message.match(/unknown column ([A-Za-z0-9_]+)/);
+  const identMatch = diag.message.match(/unknown identifier ([A-Za-z0-9_]+)/);
+  const columnName = columnMatch?.[1] ?? identMatch?.[1];
+  if (!columnName) return undefined;
+  const tableName = extractContextValue(diag.message, "table");
+  if (!tableName) return undefined;
+  return addColumnToSchema(document, diag, tableName, columnName, `MDXTab: add column '${columnName}'`);
+}
+
+function addMissingLookupRow(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  const match = diag.message.match(/Missing row ([A-Za-z0-9_]+)\[([^\]]+)\]/);
+  if (!match) return undefined;
+  const tableName = match[1];
+  const rowKey = match[2];
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const columns = schema.columns;
+  if (columns.length === 0) return undefined;
+  const keyName = schema.key ?? "id";
+  const keyIndex = columns.indexOf(keyName);
+  if (keyIndex === -1) return undefined;
+
+  const table = tables.find((t) => t.name === tableName);
+  const lastRow = table?.rows[table.rows.length - 1];
+  if (!table || !lastRow || lastRow.line === undefined) return undefined;
+
+  const values = columns.map((col) => (col === keyName ? rowKey : ""));
+  const row = `| ${values.join(" | ")} |`;
+  const insertPos = document.lineAt(lastRow.line).range.end;
+
+  const edit = new WorkspaceEdit();
+  edit.insert(document.uri, insertPos, `\n${row}`);
+  const action = new CodeAction(`MDXTab: add missing row '${rowKey}'`, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function fixRowColumnCount(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  if (!diag.range) return undefined;
+  const rowLine = diag.range.start.line;
+  const lines = document.getText().replace(/\r\n?/g, "\n").split("\n");
+  const headerLine = findHeaderLineForRow(lines, rowLine);
+  if (headerLine === undefined) return undefined;
+  const headerCells = parsePipeRowCells(lines[headerLine]).map((cell) => cell.trim());
+  if (headerCells.length === 0) return undefined;
+
+  const headerCount = headerCells.length;
+  const currentCells = parsePipeRowCells(lines[rowLine]).map((cell) => cell.trim());
+  const nextCells = currentCells.slice(0, headerCount);
+  while (nextCells.length < headerCount) nextCells.push("");
+
+  const line = document.lineAt(rowLine);
+  const indent = line.text.match(/^\s*/)?.[0] ?? "";
+  const replacement = `${indent}| ${nextCells.join(" | ")} |`;
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, line.range, replacement);
+  const action = new CodeAction("MDXTab: align row column count", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function fillMissingKey(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  if (!diag.range) return undefined;
+  const tableName = extractTableNameFromMessage(diag.message);
+  if (!tableName) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const keyName = schema.key ?? "id";
+  const keyIndex = schema.columns.indexOf(keyName);
+  if (keyIndex === -1) return undefined;
+
+  const rowLine = diag.range.start.line;
+  const table = tables.find((t) => t.name === tableName);
+  const row = table?.rows.find((r) => r.line === rowLine);
+  if (!row) return undefined;
+  const cell = row.cells[keyIndex];
+  if (!cell || cell.start === undefined || cell.end === undefined) return undefined;
+
+  const value = `row_${rowLine + 1}`;
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, new Range(rowLine, cell.start, rowLine, cell.end), ` ${value} `);
+  const action = new CodeAction("MDXTab: fill missing key", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function fixDuplicateKey(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
+  if (!diag.range) return undefined;
+  const tableName = extractTableNameFromMessage(diag.message);
+  const keyMatch = diag.message.match(/Duplicate key ([^\s]+)/);
+  const keyValue = keyMatch ? keyMatch[1] : undefined;
+  if (!tableName || !keyValue) return undefined;
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  let tables: ReturnType<typeof parseMarkdownTables>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+    tables = parseMarkdownTables(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  const keyName = schema.key ?? "id";
+  const keyIndex = schema.columns.indexOf(keyName);
+  if (keyIndex === -1) return undefined;
+
+  const rowLine = diag.range.start.line;
+  const table = tables.find((t) => t.name === tableName);
+  const row = table?.rows.find((r) => r.line === rowLine);
+  if (!row) return undefined;
+  const cell = row.cells[keyIndex];
+  if (!cell || cell.start === undefined || cell.end === undefined) return undefined;
+
+  const value = `${keyValue}_${rowLine + 1}`;
+  const edit = new WorkspaceEdit();
+  edit.replace(document.uri, new Range(rowLine, cell.start, rowLine, cell.end), ` ${value} `);
+  const action = new CodeAction("MDXTab: make key unique", CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function addColumnToSchema(
+  document: TextDocument,
+  diag: Diagnostic,
+  tableName: string,
+  columnName: string,
+  title: string,
+): CodeAction | undefined {
+  let frontmatter: ReturnType<typeof parseFrontmatter>;
+  try {
+    frontmatter = parseFrontmatter(document.getText());
+  } catch {
+    return undefined;
+  }
+  const schema = frontmatter.tables[tableName];
+  if (!schema) return undefined;
+  if (schema.columns.includes(columnName)) return undefined;
+
+  const updated = [...schema.columns, columnName];
+  const lines = document.getText().replace(/\r\n?/g, "\n").split("\n");
+  const bounds = getFrontmatterBounds(lines);
+  if (!bounds) return undefined;
+
+  const tableLine = findTableLine(lines, bounds.start + 1, bounds.end, tableName);
+  if (tableLine === undefined) return undefined;
+  const tableIndent = lines[tableLine].match(/^\s*/)?.[0] ?? "";
+
+  const columnsLine = findColumnsLine(lines, tableLine + 1, bounds.end, tableIndent.length);
+  const columnsText = `${tableIndent}  columns: [${updated.join(", ")}]`;
+
+  const edit = new WorkspaceEdit();
+  if (columnsLine !== undefined) {
+    const targetLine = document.lineAt(columnsLine);
+    edit.replace(document.uri, targetLine.range, columnsText);
+  } else {
+    const insertLine = document.lineAt(tableLine).range.end;
+    edit.insert(document.uri, insertLine, `\n${columnsText}`);
+  }
+
+  const action = new CodeAction(title, CodeActionKind.QuickFix);
+  action.edit = edit;
+  action.diagnostics = [diag];
+  return action;
+}
+
+function findTableLine(lines: string[], start: number, end: number, tableName: string): number | undefined {
+  const tableRe = new RegExp(`^\\s*${escapeRegExp(tableName)}\\s*:`);
+  for (let i = start; i < end; i += 1) {
+    if (tableRe.test(lines[i])) return i;
+  }
+  return undefined;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findHeaderLineForRow(lines: string[], rowLine: number): number | undefined {
+  for (let i = rowLine - 1; i >= 1; i -= 1) {
+    if (isSeparatorLine(lines[i])) {
+      const headerLine = i - 1;
+      if (headerLine >= 0 && isPipeRow(lines[headerLine])) return headerLine;
+    }
+    if (!lines[i].trim()) break;
+  }
+  return undefined;
+}
+
+function isPipeRow(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.endsWith("|");
+}
+
+function parsePipeRowCells(line: string): string[] {
+  const firstPipe = line.indexOf("|");
+  const lastPipe = line.lastIndexOf("|");
+  if (firstPipe === -1 || lastPipe === -1 || lastPipe <= firstPipe) return [];
+  const body = line.slice(firstPipe + 1, lastPipe);
+  return body.split("|");
+}
+
+function isSeparatorLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!(trimmed.startsWith("|") && trimmed.endsWith("|"))) return false;
+  const cells = parsePipeRowCells(trimmed).map((cell) => cell.trim());
+  if (cells.length === 0) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function findColumnsLine(
+  lines: string[],
+  start: number,
+  end: number,
+  tableIndent: number,
+): number | undefined {
+  for (let i = start; i < end; i += 1) {
+    const line = lines[i];
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    if (indent <= tableIndent && /\S/.test(line)) return undefined;
+    if (/^\s*columns\s*:/.test(line)) return i;
+  }
+  return undefined;
+}
+
+function extractTableNameFromMessage(message: string): string | undefined {
+  const match = message.match(/table ([A-Za-z0-9_]+)/);
+  return match ? match[1] : undefined;
+}
+
+function extractMissingTableName(message: string): string | undefined {
+  const missingMatch = message.match(/Missing markdown table for ([A-Za-z0-9_]+)/);
+  if (missingMatch) return missingMatch[1];
+  const contextMatch = message.match(/table=([A-Za-z0-9_]+)/);
+  return contextMatch ? contextMatch[1] : undefined;
+}
+
+function extractContextValue(message: string, key: string): string | undefined {
+  const match = message.match(new RegExp(`${key}=([A-Za-z0-9_]+)`));
+  return match ? match[1] : undefined;
+}
+
 type ParsedContext = {
   version: number;
   lines: string[];
@@ -619,6 +1031,13 @@ export function activate(context: ExtensionContext) {
   context.subscriptions.push(
     languages.registerDefinitionProvider({ language: "markdown" }, new MdxtabDefinitionProvider(parsedCache)),
   );
+  context.subscriptions.push(
+    languages.registerCodeActionsProvider(
+      { language: "markdown" },
+      new MdxtabCodeActionProvider(),
+      { providedCodeActionKinds: [CodeActionKind.QuickFix] },
+    ),
+  );
   const debounceMs = 200;
   const pendingUpdates = new Map<string, ReturnType<typeof setTimeout>>();
   const scheduleUpdate = (doc: TextDocument) => {
@@ -687,6 +1106,26 @@ export function activate(context: ExtensionContext) {
   const active = window.activeTextEditor?.document;
   if (active) updateDiagnostics(active, diagnostics);
 
+  return { extendMarkdownIt };
+}
+
+function extendMarkdownIt(md: { core: { ruler: { after: (name: string, rule: string, fn: (state: { src: string }) => void) => void } } }) {
+  md.core.ruler.after("normalize", "mdxtab", (state) => {
+    const text = state.src;
+    if (!looksLikeMdxtab(text)) return;
+    const config = workspace.getConfiguration("mdxtab");
+    const enabled = config.get<boolean>("preview.markdownIt.enabled", true);
+    if (!enabled) return;
+    const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+    try {
+      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter });
+      state.src = result.rendered;
+    } catch (err) {
+      const diag = toDiagnostic(err);
+      state.src = formatDiagnostics([diag]);
+    }
+  });
+  return md;
 }
 
 export function deactivate() {
