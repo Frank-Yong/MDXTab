@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - phase-4-release-pipeline
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: CLI validate sample docs
+        run: |
+          npm run -w @mdxtab/cli build
+          node packages/cli/dist/bin.js validate packages/cli/fixtures/sample.md
+          node packages/cli/dist/bin.js validate packages/cli/fixtures/invalid.md || true
