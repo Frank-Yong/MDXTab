@@ -2,13 +2,13 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "npm: build -w @mdxtab/vscode",
+			"label": "npm: build -w mdxtab",
 			"type": "shell",
 			"command": "npm",
 			"args": [
 				"run",
 				"-w",
-				"@mdxtab/vscode",
+				"mdxtab",
 				"build"
 			],
 			"isBackground": false,
@@ -16,6 +16,20 @@
 				"$tsc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "package: vsix -w mdxtab",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"vsce",
+				"package",
+				"--no-dependencies"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/packages/vscode"
+			},
+			"isBackground": false
 		}
 	]
 }

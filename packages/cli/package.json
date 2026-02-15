@@ -1,6 +1,7 @@
 {
   "name": "@mdxtab/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "mdxtab": "dist/bin.js"
@@ -11,9 +12,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run -w @mdxtab/core build --if-present && vitest run"
+    "test": "npm run -w @mdxtab/core build --if-present && vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@mdxtab/core": "0.0.0"
+    "@mdxtab/core": "0.1.0"
   }
 }

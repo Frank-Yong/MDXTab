@@ -1,0 +1,11 @@
+.git/**
+**/.git/**
+.vscode/**
+node_modules/**
+!dist/core/node_modules/yaml/**
+src/**
+**/*.ts
+**/*.map
+**/tsconfig*.json
+**/.DS_Store
+**/Thumbs.db
