@@ -22,11 +22,12 @@ await fs.mkdir(targetDir, { recursive: true });
 await fs.cp(srcDist, targetDir, { recursive: true });
 
 const yamlPath = await findExistingPath(yamlCandidates);
-if (yamlPath) {
-	await fs.mkdir(path.dirname(targetYaml), { recursive: true });
-	await fs.rm(targetYaml, { recursive: true, force: true });
-	await fs.cp(yamlPath, targetYaml, { recursive: true });
+if (!yamlPath) {
+	throw new Error("yaml dependency not found; run npm install before packaging");
 }
+await fs.mkdir(path.dirname(targetYaml), { recursive: true });
+await fs.rm(targetYaml, { recursive: true, force: true });
+await fs.cp(yamlPath, targetYaml, { recursive: true });
 
 async function findExistingPath(paths) {
 	for (const candidate of paths) {
