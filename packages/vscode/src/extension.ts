@@ -601,7 +601,7 @@ function addMissingTable(document: TextDocument, diag: Diagnostic): CodeAction |
 }
 
 function fixTableHeader(document: TextDocument, diag: Diagnostic): CodeAction | undefined {
-  const tableName = diag.table ?? extractTableNameFromMessage(diag.message);
+  const tableName = extractTableNameFromMessage(diag.message);
   if (!tableName) return undefined;
   let frontmatter: ReturnType<typeof parseFrontmatter>;
   let tables: ReturnType<typeof parseMarkdownTables>;
