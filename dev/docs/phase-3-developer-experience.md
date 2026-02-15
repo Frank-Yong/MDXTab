@@ -16,4 +16,6 @@
 4) Add snippets for frontmatter/table scaffolding. (DONE)
 
 ## Linked work items
-- TBD
+- 11: VS Code diagnostics loop
+- 12: completions and navigation
+- 13: quick fixes and snippets

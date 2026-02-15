@@ -9,9 +9,6 @@
       "include": "#tableSeparator"
     },
     {
-      "include": "#tableHeader"
-    },
-    {
       "include": "#tableRow"
     },
     {
@@ -112,21 +109,6 @@
           "name": "punctuation.definition.table.mdxtab"
         },
         "2": {
-          "name": "punctuation.definition.table.mdxtab"
-        }
-      }
-    },
-    "tableHeader": {
-      "match": "^(\\s*\\|)(.*)(\\|)\\s*$",
-      "name": "meta.mdxtab.table.header",
-      "captures": {
-        "1": {
-          "name": "punctuation.definition.table.mdxtab"
-        },
-        "2": {
-          "name": "variable.other.mdxtab.column"
-        },
-        "3": {
           "name": "punctuation.definition.table.mdxtab"
         }
       }
