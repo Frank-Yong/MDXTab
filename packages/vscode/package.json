@@ -36,6 +36,15 @@
       }
     },
     "markdown.markdownItPlugins": true,
+    "grammars": [
+      {
+        "scopeName": "mdxtab.markdown",
+        "path": "./syntaxes/mdxtab.markdown.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "mdxtab.renderPreview",
