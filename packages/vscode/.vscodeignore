@@ -4,6 +4,7 @@
 node_modules/**
 !dist/core/node_modules/yaml/**
 src/**
+scripts/**
 **/*.ts
 **/*.map
 **/tsconfig*.json
