@@ -53,6 +53,8 @@ See [phase-3-developer-experience.md](phase-3-developer-experience.md).
 
 ## Phase 4: CLI and CI (optional, 2-3 weeks)
 
+See [phase-4-cli-ci.md](phase-4-cli-ci.md).
+
 - CLI commands: DONE
   - mdxtab validate
   - mdxtab render
