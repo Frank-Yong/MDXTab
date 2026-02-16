@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - phase-4-release-pipeline
   pull_request:
 
 jobs:
