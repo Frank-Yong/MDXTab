@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="48" fill="#111827"/>
+  <!-- Grid base -->
+  <rect x="96" y="96" width="320" height="320" fill="none" stroke="#60A5FA" stroke-width="6"/>
+  <!-- Header row fill -->
+  <rect x="96" y="96" width="320" height="106.666" fill="#2563EB"/>
+  <!-- First column fill -->
+  <rect x="96" y="96" width="106.666" height="320" fill="#1D4ED8"/>
+  <!-- Overlap cell highlight -->
+  <rect x="96" y="96" width="106.666" height="106.666" fill="#93C5FD"/>
+  <!-- Grid lines -->
+  <g stroke="#60A5FA" stroke-width="6">
+    <line x1="202.666" y1="96" x2="202.666" y2="416"/>
+    <line x1="309.333" y1="96" x2="309.333" y2="416"/>
+    <line x1="96" y1="202.666" x2="416" y2="202.666"/>
+    <line x1="96" y1="309.333" x2="416" y2="309.333"/>
+  </g>
+</svg>
