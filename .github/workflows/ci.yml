@@ -30,4 +30,5 @@ jobs:
         run: |
           npm run -w @mdxtab/cli build
           node packages/cli/dist/bin.js validate packages/cli/fixtures/sample.md
-          node packages/cli/dist/bin.js validate packages/cli/fixtures/invalid.md || true
+          node packages/cli/dist/bin.js validate packages/cli/fixtures/invalid.md --json > /tmp/mdxtab-invalid.json
+          node -e "const fs=require('fs'); const out=JSON.parse(fs.readFileSync('/tmp/mdxtab-invalid.json','utf8')); if(out.ok || out.exitCode !== 1){ process.exit(1); }"
