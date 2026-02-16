@@ -1,7 +1,7 @@
 # Work Item: Phase 5 Public Repo Readiness
 
 ## Status
-- State: NOT STARTED
+- State: DONE
 - Focus: open-source hygiene and repo governance.
 
 ## Objectives

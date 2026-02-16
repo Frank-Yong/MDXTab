@@ -10,6 +10,34 @@
 
 ---
 
+# Development quickstart
+
+## Prerequisites
+
+- Node.js 20 LTS (includes `node`, `npm`, `npx` on PATH)
+
+## Install
+
+```sh
+npm install
+```
+
+## Build the VS Code extension
+
+```sh
+npm run -w mdxtab build
+```
+
+## Package a VSIX
+
+`npm exec -w mdxtab` runs the command from packages/vscode. The build step copies @mdxtab/core into dist, so `--no-dependencies` keeps the VSIX lean.
+
+```sh
+npm exec -w mdxtab -- vsce package --no-dependencies
+```
+
+---
+
 # 1️⃣ Chosen approach (why this one)
 
 ✅ **Markdown Tables + YAML frontmatter for logic**
