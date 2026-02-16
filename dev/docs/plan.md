@@ -67,4 +67,3 @@ See [phase-4-cli-ci.md](phase-4-cli-ci.md).
 - Keep the extension thin and UI-focused
 - Use golden tests to lock determinism and prevent regressions
 - Prefer pure, deterministic functions to match audit requirements
-
