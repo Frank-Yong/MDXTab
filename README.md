@@ -10,6 +10,34 @@
 
 ---
 
+# Development quickstart
+
+## Prerequisites
+
+- Node.js LTS (includes `node`, `npm`, `npx` on PATH)
+
+## Install
+
+```sh
+npm install
+```
+
+## Build the VS Code extension
+
+```sh
+npm run -w mdxtab build
+```
+
+## Package a VSIX
+
+Run from the repo root to avoid pulling repo-level files into the VSIX.
+
+```sh
+npm exec -w mdxtab -- vsce package --no-dependencies
+```
+
+---
+
 # 1️⃣ Chosen approach (why this one)
 
 ✅ **Markdown Tables + YAML frontmatter for logic**

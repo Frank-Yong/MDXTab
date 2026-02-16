@@ -4,7 +4,7 @@ Thanks for helping improve MDXTab. This repo uses a monorepo layout with core, C
 By contributing, you agree to our Code of Conduct in CODE_OF_CONDUCT.md.
 
 ## Prerequisites
-- Node.js 20+
+- Node.js 20+ (ensure `node`/`npm`/`npx` are on PATH)
 - npm 9+ (recommended)
 
 ## Quick start
@@ -21,6 +21,12 @@ packages/
 - Core/CLI/VS Code packages live under `packages/`.
 - Build VS Code extension: `npm run -w mdxtab build`
 - Build CLI: `npm run -w @mdxtab/cli build`
+
+## Packaging a VSIX
+1) Install deps at repo root: `npm install`
+2) Build the extension: `npm run -w mdxtab build`
+3) Package from repo root (prevents repo-level files like `.git` from being pulled in):
+	`npm exec -w mdxtab -- vsce package --no-dependencies`
 
 ## Running the VS Code extension locally
 1) Build the extension: `npm run -w mdxtab build`
