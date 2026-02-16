@@ -20,10 +20,3 @@ Prepare the VS Code extension for Marketplace publication with branding and list
 - Extension identifiers: `publisher` in package.json matches your publisher ID.
 - Listing basics: ensure icon, README, license, repository URL, and categories are set.
 
-## Publisher profile
-- Publisher ID (slug): frank-yong
-- Publisher URL: https://marketplace.visualstudio.com/manage/publishers/frank-yong
-- Publisher GUID: 21f06dd6-5c02-4406-bc30-073296438619
-- Display name: Frank Yong
-- Contact email: emailen.te.frank@gmail.com
-- Website: NA
