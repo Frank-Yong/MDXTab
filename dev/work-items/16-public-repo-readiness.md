@@ -1,7 +1,7 @@
 # Work Item: Public repo readiness
 
 ## Status
-- State: IN PROGRESS
+- State: DONE
 
 ## Description
 Prepare the repository for public visibility with clear governance, security, and contribution docs.
