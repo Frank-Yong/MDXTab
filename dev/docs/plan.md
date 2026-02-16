@@ -1,5 +1,7 @@
 # MDXTab Development Plan (VS Code Extension)
 
+Note: This plan is updated as phases complete.
+
 ## Language and Stack
 
 - Primary language: TypeScript
