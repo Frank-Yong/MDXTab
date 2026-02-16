@@ -29,4 +29,4 @@ jobs:
         run: |
           npm run -w @mdxtab/cli build
           node packages/cli/dist/bin.js validate packages/cli/fixtures/sample.md
-          node -e "const { execFileSync } = require('child_process'); const out = execFileSync('node', ['packages/cli/dist/bin.js','validate','packages/cli/fixtures/invalid.md','--json'], { encoding: 'utf8' }); const json = JSON.parse(out); if (json.ok || json.exitCode !== 1) { process.exit(1); }"
+          node -e "const { spawnSync } = require('child_process'); const res = spawnSync('node', ['packages/cli/dist/bin.js','validate','packages/cli/fixtures/invalid.md','--json'], { encoding: 'utf8' }); const json = JSON.parse(res.stdout || '{}'); if (res.status !== 1 || json.ok || json.exitCode !== 1) { process.exit(1); }"
