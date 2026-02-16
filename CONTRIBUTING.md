@@ -12,10 +12,12 @@ By contributing, you agree to our Code of Conduct in CODE_OF_CONDUCT.md.
 2) Run tests: `npm test`
 
 ## Repo structure
+```
 packages/
-	core/   # shared logic
-	cli/    # command-line interface
-	vscode/ # VS Code extension
+  core/   # shared logic
+  cli/    # command-line interface
+  vscode/ # VS Code extension
+```
 
 ## Dev workflow
 - Core/CLI/VS Code packages live under `packages/`.
