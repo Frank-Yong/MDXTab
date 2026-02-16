@@ -18,4 +18,3 @@ Prepare the VS Code extension for Marketplace publication with branding and list
 - Access token: create a PAT with Marketplace > Publish scope (Azure DevOps), and confirm `vsce login <publisher>` works.
 - Extension identifiers: `publisher` in package.json matches your publisher ID.
 - Listing basics: ensure icon, README, license, repository URL, and categories are set.
-
