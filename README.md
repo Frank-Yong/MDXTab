@@ -30,7 +30,7 @@ npm run -w mdxtab build
 
 ## Package a VSIX
 
-Run from the repo root to avoid pulling repo-level files into the VSIX.
+`npm exec -w mdxtab` runs the command from packages/vscode. The build step copies @mdxtab/core into dist, so `--no-dependencies` keeps the VSIX lean.
 
 ```sh
 npm exec -w mdxtab -- vsce package --no-dependencies

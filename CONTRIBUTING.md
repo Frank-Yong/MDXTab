@@ -27,8 +27,8 @@ packages/
 ## Packaging a VSIX
 1) Install deps at repo root: `npm install`
 2) Build the extension: `npm run -w mdxtab build`
-3) Package from repo root (prevents repo-level files like `.git` from being pulled in):
-	`npm exec -w mdxtab -- vsce package --no-dependencies`
+3) Package from packages/vscode (via npm workspace). The build step copies @mdxtab/core into dist, so `--no-dependencies` keeps the VSIX lean:
+  `npm exec -w mdxtab -- vsce package --no-dependencies`
 
 ## Running the VS Code extension locally
 1) Build the extension: `npm run -w mdxtab build`

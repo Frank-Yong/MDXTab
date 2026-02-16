@@ -19,7 +19,7 @@
 3) Build CLI: `npm run -w @mdxtab/cli build`
 
 ## Package
-1) Run: `npx vsce package --no-dependencies` from packages/vscode
+1) Run: `npx vsce package --no-dependencies` from packages/vscode (core is copied into dist by the build step)
 2) Verify the .vsix file was produced.
 3) Verify CLI render works: `node packages/cli/dist/bin.js render packages/cli/fixtures/sample.md`
 
