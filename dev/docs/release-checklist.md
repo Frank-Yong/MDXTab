@@ -16,10 +16,12 @@
 ## Build and test
 1) Run: `npm test`
 2) Build extension: `npm run -w mdxtab build`
+3) Build CLI: `npm run -w @mdxtab/cli build`
 
 ## Package
 1) Run: `npx vsce package --no-dependencies` from packages/vscode
 2) Verify the .vsix file was produced.
+3) Verify CLI render works: `node packages/cli/dist/bin.js render packages/cli/fixtures/sample.md`
 
 ## Install and validate
 1) Install the .vsix in VS Code.

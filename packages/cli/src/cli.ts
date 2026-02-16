@@ -57,16 +57,24 @@ export function runCli(argv: string[], io: CliIO = defaultIo): number {
     const raw = fs.readFileSync(file, "utf8");
     if (command === "validate") {
       const result = validateMdxtab(raw);
+      const exitCode = result.diagnostics.length === 0 ? 0 : 1;
       if (jsonOutput) {
-        io.stdout(JSON.stringify(result) + "\n");
+        io.stdout(
+          JSON.stringify({
+            file,
+            ok: exitCode === 0,
+            diagnostics: result.diagnostics,
+            errors: [],
+            exitCode,
+          }) + "\n",
+        );
       } else if (result.diagnostics.length === 0) {
         io.stdout("OK\n");
       } else {
         io.stderr(result.diagnostics[0].message + "\n");
       }
-      const code = result.diagnostics.length === 0 ? 0 : 1;
-      io.exit?.(code);
-      return code;
+      io.exit?.(exitCode);
+      return exitCode;
     } else {
       const result = compileMdxtab(raw);
       io.stdout(result.rendered);
@@ -76,6 +84,19 @@ export function runCli(argv: string[], io: CliIO = defaultIo): number {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (jsonOutput && command === "validate") {
+      io.stdout(
+        JSON.stringify({
+          file,
+          ok: false,
+          diagnostics: [],
+          errors: [message],
+          exitCode: 1,
+        }) + "\n",
+      );
+      io.exit?.(1);
+      return 1;
+    }
     io.stderr(message + "\n");
     io.exit?.(1);
     return 1;
