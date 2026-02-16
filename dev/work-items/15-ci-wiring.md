@@ -1,7 +1,7 @@
 # Work Item: CI wiring
 
 ## Status
-- State: TODO
+- State: DONE
 
 ## Description
 Automate validation and tests in CI to keep the format deterministic.
