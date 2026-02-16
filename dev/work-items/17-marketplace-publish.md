@@ -12,7 +12,6 @@ Prepare the VS Code extension for Marketplace publication with branding and list
 - Refine README/metadata for Marketplace listing.
 - Validate packaging and publish flow with vsce.
 
-
 ## Publisher checklist
 - Publisher profile: publisher ID (slug), display name, contact email, and website.
 - Ownership: confirm the account is tied to your Azure DevOps org and visible at https://marketplace.visualstudio.com/manage.
