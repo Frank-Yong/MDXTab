@@ -4,7 +4,7 @@ Thanks for helping improve MDXTab. This repo uses a monorepo layout with core, C
 By contributing, you agree to our Code of Conduct in CODE_OF_CONDUCT.md.
 
 ## Prerequisites
-- Node.js 20+ (ensure `node`/`npm`/`npx` are on PATH)
+- Node.js 20 LTS (ensure `node`/`npm`/`npx` are on PATH)
 - npm 9+ (recommended)
 
 ## Quick start

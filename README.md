@@ -14,7 +14,7 @@
 
 ## Prerequisites
 
-- Node.js LTS (includes `node`, `npm`, `npx` on PATH)
+- Node.js 20 LTS (includes `node`, `npm`, `npx` on PATH)
 
 ## Install
 
