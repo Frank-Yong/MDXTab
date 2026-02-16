@@ -77,4 +77,17 @@ describe("mdxtab CLI", () => {
     expect(out.errors).toEqual([]);
     expect(out.diagnostics).toEqual([]);
   });
+
+  it("emits JSON errors on missing file", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("missing.md"), "--json"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    const out = JSON.parse(ctx.out.join(""));
+    expect(out.file).toContain("missing.md");
+    expect(out.ok).toBe(false);
+    expect(out.exitCode).toBe(1);
+    expect(out.errors.length).toBeGreaterThan(0);
+    expect(out.diagnostics).toEqual([]);
+  });
 });
