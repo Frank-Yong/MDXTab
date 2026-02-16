@@ -1,4 +1,4 @@
-# MDXTab - Markdown Extended Tables
+# MDXTab - Markdown eXtended Tables
 
 1. **Proposed format (final choice + rationale)**
 2. **Formal spec (v1)**
