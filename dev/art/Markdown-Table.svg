@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="48" fill="#0B1324"/>
+  <!-- Grid area -->
+  <g stroke="#9CA3AF" stroke-width="6">
+    <rect x="96" y="96" width="320" height="320" fill="none"/>
+    <line x1="202.666" y1="96" x2="202.666" y2="416"/>
+    <line x1="309.333" y1="96" x2="309.333" y2="416"/>
+    <line x1="96" y1="202.666" x2="416" y2="202.666"/>
+    <line x1="96" y1="309.333" x2="416" y2="309.333"/>
+  </g>
+  <!-- Markdown bars -->
+  <g stroke="#34D399" stroke-width="8">
+    <line x1="140" y1="140" x2="140" y2="372"/>
+    <line x1="256" y1="140" x2="256" y2="372"/>
+    <line x1="372" y1="140" x2="372" y2="372"/>
+  </g>
+  <!-- Small # mark -->
+  <text x="168" y="168" font-family="Sora, Space Grotesk, Arial, sans-serif" font-size="40" font-weight="700" fill="#34D399">#</text>
+</svg>
