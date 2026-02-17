@@ -2,7 +2,7 @@
 
 All notable changes to MDXTab will be documented in this file.
 
-## Unreleased
+## 2026-02-17 - 0.2.0
 - Add `hours()` helper and `time` column type for time math.
 - Support grouped aggregates with `sum/avg/min/max/count ... by <column>`.
 - Add examples and docs for time entries and grouped aggregates.
