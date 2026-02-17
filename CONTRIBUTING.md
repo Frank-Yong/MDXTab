@@ -40,6 +40,9 @@ packages/
 - Update docs when user-facing behavior changes.
 - Run `npm test` before opening a PR.
 
+## Feature workflow
+See dev/docs/feature-workflow.md and dev/docs/templates/feature-proposal.md for the proposal and implementation flow.
+
 ## Tests and CI
 - Run tests locally: `npm test`
 - CI must pass before merging
