@@ -102,6 +102,21 @@ function roundHalfToEven(value: number, decimals: number): number {
   return Math.round(scaled) / factor;
 }
 
+function parseHoursLiteral(raw: string): number {
+  const text = raw.trim();
+  const match = text.match(/^(\d+):(\d{2})$/);
+  if (!match) throw new Error("E_ARG: hours expects HH:MM");
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    throw new Error("E_ARG: hours expects HH:MM");
+  }
+  if (minutes < 0 || minutes > 59) {
+    throw new Error("E_ARG: hours minutes must be 00-59");
+  }
+  return hours + minutes / 60;
+}
+
 export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
   switch (node.type) {
     case "Number":
@@ -163,6 +178,14 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
         const cond = evaluateAst(args[0], ctx);
         if (typeof cond !== "boolean") throw new Error("E_TYPE: if condition must be boolean");
         return cond ? evaluateAst(args[1], ctx) : evaluateAst(args[2], ctx);
+      }
+      if (fn === "hours") {
+        if (args.length !== 1) throw new Error("E_ARG: hours expects 1 arg");
+        const value = evaluateAst(args[0], ctx);
+        if (value === null) return null;
+        if (typeof value === "number") return value;
+        if (typeof value === "string") return parseHoursLiteral(value);
+        throw new Error("E_TYPE: hours expects string or number");
       }
       throw new Error(`E_FUNC: unknown function ${fn}`);
     }

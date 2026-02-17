@@ -68,7 +68,7 @@ tables:
       - <columnName>
     empty_cells: null|zero|empty-string|error  # optional, default: null
     types:                   # optional
-      <columnName>: number|string|date|bool
+      <columnName>: number|string|date|bool|time
     computed:
       <columnName>: <expression>
     aggregates:
@@ -179,8 +179,15 @@ arguments   ::= expression ("," expression)*
 | `count(col)`     | Non-null count   |
 | `round(x, n)`    | Decimal rounding |
 | `if(cond, a, b)` | Conditional      |
+| `hours(x)`       | HH:MM to hours   |
 
 No volatile functions. No I/O. No side effects.
+
+Example:
+```md
+computed:
+  duration: hours(end) - hours(start) - hours(break)
+```
 
 ---
 
@@ -218,6 +225,18 @@ Aggregates operate over **final column values**:
 ```text
 sum(net)
 sum(gross)
+```
+
+Grouped aggregates:
+
+```text
+sum(duration) by project
+```
+
+Rendered usage:
+
+```md
+{{ time_entries.hours_by_project[Alpha] }}
 ```
 
 ---
@@ -285,7 +304,7 @@ Cycle = error, fail fast.
 ## Determinism guarantee
 
 * No randomness
-* No time functions
+* No wall-clock time functions
 * No mutation
 * Same input → same output
 

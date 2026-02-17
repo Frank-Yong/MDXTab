@@ -18,11 +18,18 @@ import type {
 
 const NUMERIC_RE = /^-?\d+(?:\.\d+)?$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d+:\d{2}$/;
 
-type ColumnType = "number" | "string" | "date" | "bool" | undefined;
+type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
 
 type EvalKind = "computed" | "aggregate";
+
+type GroupedAggregate = {
+  fn: string;
+  column: string;
+  by: string;
+};
 
 function evalWithContext(
   ast: AstNode,
@@ -84,6 +91,21 @@ function coerceValue(text: string, type: ColumnType): Scalar {
   }
   if (DATE_RE.test(text)) {
     if (!type || type === "date") return text;
+  }
+  if (type === "time") {
+    if (!TIME_RE.test(text)) {
+      throw new Error(`Type mismatch: cannot coerce '${text}' to ${type}`);
+    }
+    const [hoursText, minutesText] = text.split(":");
+    const hours = Number(hoursText);
+    const minutes = Number(minutesText);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+      throw new Error(`Type mismatch: cannot coerce '${text}' to ${type}`);
+    }
+    if (minutes < 0 || minutes > 59) {
+      throw new Error(`Type mismatch: cannot coerce '${text}' to ${type}`);
+    }
+    return text;
   }
   if (type && type !== "string") {
     throw new Error(`Type mismatch: cannot coerce '${text}' to ${type}`);
@@ -151,6 +173,25 @@ function parseExpressions(map: Record<string, string> | undefined): Record<strin
   );
 }
 
+function parseAggregates(map: Record<string, string> | undefined): {
+  scalar: Record<string, AstNode>;
+  grouped: Record<string, GroupedAggregate>;
+} {
+  if (!map) return { scalar: {}, grouped: {} };
+  const scalar: Record<string, AstNode> = {};
+  const grouped: Record<string, GroupedAggregate> = {};
+  const groupRe = /^(sum|avg|min|max|count)\s*\(\s*([A-Za-z0-9_]+)\s*\)\s+by\s+([A-Za-z0-9_]+)\s*$/i;
+  for (const [name, expr] of Object.entries(map)) {
+    const match = expr.trim().match(groupRe);
+    if (match) {
+      grouped[name] = { fn: match[1].toLowerCase(), column: match[2], by: match[3] };
+      continue;
+    }
+    scalar[name] = parseExpression(lexExpression(expr));
+  }
+  return { scalar, grouped };
+}
+
 function ensureComputed(
   tableName: string,
   row: Record<string, Scalar>,
@@ -181,18 +222,7 @@ function ensureComputed(
   return row;
 }
 
-function computeAggregate(
-  fn: string,
-  column: string,
-  rows: Record<string, Scalar>[],
-  tableName: string,
-  ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
-): Scalar {
-  const values = rows.map((r) => {
-    const row = ensure(r);
-    if (!(column in row)) throw new Error(`E_REF: unknown column ${column} in ${tableName}`);
-    return row[column];
-  });
+function computeAggregateValues(fn: string, values: Scalar[]): Scalar {
   const nonNull = values.filter((v) => v !== null) as Scalar[];
   switch (fn) {
     case "sum": {
@@ -224,12 +254,54 @@ function computeAggregate(
   }
 }
 
+function computeAggregate(
+  fn: string,
+  column: string,
+  rows: Record<string, Scalar>[],
+  tableName: string,
+  ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
+): Scalar {
+  const values = rows.map((r) => {
+    const row = ensure(r);
+    if (!(column in row)) throw new Error(`E_REF: unknown column ${column} in ${tableName}`);
+    return row[column];
+  });
+  return computeAggregateValues(fn, values);
+}
+
+function computeGroupedAggregate(
+  fn: string,
+  column: string,
+  by: string,
+  rows: Record<string, Scalar>[],
+  tableName: string,
+  ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
+): Record<string, Scalar> {
+  const groups: Record<string, Scalar[]> = {};
+  for (const r of rows) {
+    const row = ensure(r);
+    if (!(column in row)) throw new Error(`E_REF: unknown column ${column} in ${tableName}`);
+    if (!(by in row)) throw new Error(`E_REF: unknown column ${by} in ${tableName}`);
+    const keyVal = row[by];
+    if (keyVal === null || keyVal === undefined) continue;
+    const key = String(keyVal);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(row[column]);
+  }
+  const result: Record<string, Scalar> = {};
+  for (const [key, values] of Object.entries(groups)) {
+    result[key] = computeAggregateValues(fn, values);
+  }
+  return result;
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
+  groupedAggregates: Record<string, Record<string, Record<string, Scalar>>>,
   bodyOffset: number,
 ): string {
-  const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\}\}/g;
+  const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)(?:\[("[^"]+"|'[^']+'|[A-Za-z0-9_]+)\])?\s*\}\}/g;
   const replaceAggregates = (text: string, lineIndex: number) => {
     aggregateRe.lastIndex = 0;
     let result = "";
@@ -241,21 +313,42 @@ function interpolateAggregates(
       result += text.slice(lastIndex, matchStart);
       const table = match[1];
       const name = match[2];
-      const tableAgg = aggregates[table];
-      if (!tableAgg || !(name in tableAgg)) {
-        throw new DiagnosticError({
-          code: "E_AGG_REF",
-          message: `Unknown aggregate reference ${table}.${name}`,
-          table,
-          aggregate: name,
-          range: {
-            start: { line: bodyOffset + lineIndex, character: matchStart },
-            end: { line: bodyOffset + lineIndex, character: matchEnd },
-          },
-        });
+      const groupKeyRaw = match[3];
+      if (groupKeyRaw) {
+        const groupKey = groupKeyRaw.replace(/^['"]|['"]$/g, "");
+        const tableGroups = groupedAggregates[table];
+        const aggGroups = tableGroups?.[name];
+        if (!aggGroups || !(groupKey in aggGroups)) {
+          throw new DiagnosticError({
+            code: "E_AGG_REF",
+            message: `Unknown aggregate reference ${table}.${name}[${groupKey}]`,
+            table,
+            aggregate: name,
+            range: {
+              start: { line: bodyOffset + lineIndex, character: matchStart },
+              end: { line: bodyOffset + lineIndex, character: matchEnd },
+            },
+          });
+        }
+        const value = aggGroups[groupKey];
+        result += value === null ? "null" : String(value);
+      } else {
+        const tableAgg = aggregates[table];
+        if (!tableAgg || !(name in tableAgg)) {
+          throw new DiagnosticError({
+            code: "E_AGG_REF",
+            message: `Unknown aggregate reference ${table}.${name}`,
+            table,
+            aggregate: name,
+            range: {
+              start: { line: bodyOffset + lineIndex, character: matchStart },
+              end: { line: bodyOffset + lineIndex, character: matchEnd },
+            },
+          });
+        }
+        const value = tableAgg[name];
+        result += value === null ? "null" : String(value);
       }
-      const value = tableAgg[name];
-      result += value === null ? "null" : String(value);
       lastIndex = matchEnd;
     }
     result += text.slice(lastIndex);
@@ -370,6 +463,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
   const computedAsts: Record<string, Record<string, AstNode>> = {};
   const aggregateAsts: Record<string, Record<string, AstNode>> = {};
+  const groupedAggregateDefs: Record<string, Record<string, GroupedAggregate>> = {};
   const computedOrder: Record<string, string[]> = {};
   const keyByTable: Record<string, string> = {};
 
@@ -455,7 +549,9 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     const computed = parseExpressions(schema.computed);
     computedAsts[name] = computed;
     computedOrder[name] = buildDependencyGraph(computed).order;
-    aggregateAsts[name] = parseExpressions(schema.aggregates);
+    const parsedAggregates = parseAggregates(schema.aggregates);
+    aggregateAsts[name] = parsedAggregates.scalar;
+    groupedAggregateDefs[name] = parsedAggregates.grouped;
   }
 
   const computedDone = new WeakSet<Record<string, Scalar>>();
@@ -498,6 +594,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const aggregateResults: Record<string, Record<string, Scalar>> = {};
+  const groupedAggregateResults: Record<string, Record<string, Record<string, Scalar>>> = {};
   for (const [name, asts] of Object.entries(aggregateAsts)) {
     const rows = rowList[name];
     const ensure = ensureByTable[name];
@@ -517,6 +614,16 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     aggregateResults[name] = aggMap;
   }
 
+  for (const [name, defs] of Object.entries(groupedAggregateDefs)) {
+    const rows = rowList[name];
+    const ensure = ensureByTable[name];
+    const groupMap: Record<string, Record<string, Scalar>> = {};
+    for (const [aggName, def] of Object.entries(defs)) {
+      groupMap[aggName] = computeGroupedAggregate(def.fn, def.column, def.by, rows, name, ensure);
+    }
+    groupedAggregateResults[name] = groupMap;
+  }
+
   const results: Record<string, TableEvaluation> = {};
   for (const [name, rows] of Object.entries(rowList)) {
     const ensure = ensureByTable[name];
@@ -524,11 +631,12 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
       name,
       rows: rows.map((r) => ensure(r)),
       aggregates: aggregateResults[name] ?? {},
+      groupedAggregates: groupedAggregateResults[name] ?? {},
     };
   }
 
   const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
-  let renderedBody = interpolateAggregates(body, aggregateResults, bodyOffset);
+  let renderedBody = interpolateAggregates(body, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }
