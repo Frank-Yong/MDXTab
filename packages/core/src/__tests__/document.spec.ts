@@ -141,6 +141,32 @@ Summary: {{ time_entries.hours_by_project[Alpha] }} / {{ time_entries.hours_by_p
     expect(result.rendered).toContain("Summary: 15 / 7");
   });
 
+  it("reports diagnostics for invalid grouped aggregates", () => {
+    const badGroupedDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, project, duration]
+    types:
+      duration: number
+    aggregates:
+      hours_by_project: sum(duration) by missing_col
+---
+
+## time_entries
+| id | project | duration |
+|----|---------|----------|
+| e1 | Alpha   | 1 |
+`;
+    const result = validateMdxtab(badGroupedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    const diag = result.diagnostics[0];
+    expect(diag.code).toBe("E_REF");
+    expect(diag.table).toBe("time_entries");
+    expect(diag.aggregate).toBe("hours_by_project");
+  });
+
   it("returns diagnostics with aggregate context", () => {
     const badDoc = doc.replace("{{ expenses.total_net }}", "{{ expenses.missing }}");
     const result = validateMdxtab(badDoc);
