@@ -301,7 +301,7 @@ function interpolateAggregates(
   groupedAggregates: Record<string, Record<string, Record<string, Scalar>>>,
   bodyOffset: number,
 ): string {
-  const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)(?:\[("[^"]+"|'[^']+'|[A-Za-z0-9_]+)\])?\s*\}\}/g;
+  const aggregateRe = /\{\{\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)(?:\[("[^"]*"|'[^']*'|[A-Za-z0-9_]+)\])?\s*\}\}/g;
   const replaceAggregates = (text: string, lineIndex: number) => {
     aggregateRe.lastIndex = 0;
     let result = "";
@@ -619,7 +619,17 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     const ensure = ensureByTable[name];
     const groupMap: Record<string, Record<string, Scalar>> = {};
     for (const [aggName, def] of Object.entries(defs)) {
-      groupMap[aggName] = computeGroupedAggregate(def.fn, def.column, def.by, rows, name, ensure);
+      try {
+        groupMap[aggName] = computeGroupedAggregate(def.fn, def.column, def.by, rows, name, ensure);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new DiagnosticError({
+          code: errorCodeFromMessage(message),
+          message: `[aggregate] table ${name} ${aggName}: ${message}`,
+          table: name,
+          aggregate: aggName,
+        });
+      }
     }
     groupedAggregateResults[name] = groupMap;
   }

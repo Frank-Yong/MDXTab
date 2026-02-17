@@ -105,11 +105,11 @@ function roundHalfToEven(value: number, decimals: number): number {
 function parseHoursLiteral(raw: string): number {
   const text = raw.trim();
   const match = text.match(/^(\d+):(\d{2})$/);
-  if (!match) throw new Error("E_ARG: hours expects HH:MM");
+  if (!match) throw new Error("E_ARG: hours expects H:MM");
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    throw new Error("E_ARG: hours expects HH:MM");
+    throw new Error("E_ARG: hours expects H:MM");
   }
   if (minutes < 0 || minutes > 59) {
     throw new Error("E_ARG: hours minutes must be 00-59");
