@@ -179,7 +179,7 @@ arguments   ::= expression ("," expression)*
 | `count(col)`     | Non-null count   |
 | `round(x, n)`    | Decimal rounding |
 | `if(cond, a, b)` | Conditional      |
-| `hours(x)`       | HH:MM to hours   |
+| `hours(x)`       | H:MM to hours    |
 
 No volatile functions. No I/O. No side effects.
 
