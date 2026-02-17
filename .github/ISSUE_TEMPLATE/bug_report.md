@@ -1,7 +1,9 @@
 ---
 name: Bug report
-description: Report a problem with MDXTab
+about: Report a problem with MDXTab
+title: "[Bug]: "
 labels: [bug]
+assignees: ""
 ---
 
 ## Summary
