@@ -180,7 +180,7 @@ function parseAggregates(map: Record<string, string> | undefined): {
   if (!map) return { scalar: {}, grouped: {} };
   const scalar: Record<string, AstNode> = {};
   const grouped: Record<string, GroupedAggregate> = {};
-  const groupRe = /^(sum|avg|min|max|count)\s*\(\s*([A-Za-z0-9_]+)\s*\)\s+by\s+([A-Za-z0-9_]+)\s*$/i;
+  const groupRe = /^(sum|avg|min|max|count)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s+by\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i;
   for (const [name, expr] of Object.entries(map)) {
     const match = expr.trim().match(groupRe);
     if (match) {
