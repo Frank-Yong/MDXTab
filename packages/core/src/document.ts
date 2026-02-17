@@ -623,6 +623,18 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
         groupMap[aggName] = computeGroupedAggregate(def.fn, def.column, def.by, rows, name, ensure);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof DiagnosticError) {
+          throw new DiagnosticError({
+            code: err.code,
+            message: `[aggregate] table ${name} ${aggName}: ${err.message}`,
+            severity: err.severity,
+            table: err.table ?? name,
+            column: err.column,
+            aggregate: aggName,
+            rowKey: err.rowKey,
+            range: err.range,
+          });
+        }
         throw new DiagnosticError({
           code: errorCodeFromMessage(message),
           message: `[aggregate] table ${name} ${aggName}: ${message}`,
