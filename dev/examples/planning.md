@@ -18,6 +18,9 @@ tables:
       total_monthly: sum(monthly_cost)
 ---
 
+### Explanation
+Looks up role pay, computes per-row monthly cost, and aggregates the total. Calculation: monthly_cost = round(fte * roles[role_id].monthly_base, 2); total_monthly = sum(monthly_cost).
+
 ## roles
 
 | id | title    | monthly_base |

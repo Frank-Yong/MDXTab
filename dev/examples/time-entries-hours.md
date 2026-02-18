@@ -15,6 +15,9 @@ tables:
       total_hours: sum(duration)
 ---
 
+### Explanation
+Parses H:MM time values, computes per-row duration, and sums total hours. Calculation: duration = hours(end) - hours(start) - hours(break); total_hours = sum(duration).
+
 ## time_entries
 
 | id | date       | start | end  | break | duration |

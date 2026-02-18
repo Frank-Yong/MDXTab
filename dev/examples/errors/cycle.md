@@ -8,6 +8,9 @@ tables:
       b: a + 1
 ---
 
+### Explanation
+Computed columns cannot depend on each other in a cycle. Here a depends on b and b depends on a, which yields E_CYCLE.
+
 | a | b |
 |---|---|
 | 1 | 2 |

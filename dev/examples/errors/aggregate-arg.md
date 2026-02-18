@@ -7,6 +7,9 @@ tables:
       bad: sum(net + 1)
 ---
 
+### Explanation
+Aggregate arguments must be a single column identifier, not an expression. Here sum(net + 1) should fail with E_AGG_ARGUMENT.
+
 | id | net |
 |----|-----|
 | a  | 1   |

@@ -11,6 +11,9 @@ tables:
       role_title: roles[role_id].title
 ---
 
+### Explanation
+Shows a lookup that fails because the referenced key is missing. roles[role_id].title cannot resolve role_id "missing".
+
 ## Roles
 
 | id | title    |

@@ -15,6 +15,9 @@ tables:
       total_hours: sum(duration)
 ---
 
+### Explanation
+Computes duration from numeric start/end/break values and sums total hours. Calculation: duration = row.end - row.start - row.break; total_hours = sum(duration).
+
 ## time_entries
 
 | id | date       | project | start | end  | break | duration |

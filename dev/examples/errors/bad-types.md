@@ -8,6 +8,9 @@ tables:
       net: number
 ---
 
+### Explanation
+Shows a type coercion failure when a non-numeric value appears in a number column. Here net expects number but row h2 has "bad".
+
 | id | net   |
 |----|-------|
 | h1 | 100   |

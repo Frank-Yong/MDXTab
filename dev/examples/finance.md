@@ -17,6 +17,9 @@ tables:
       gross_total: sum(gross)
 ---
 
+### Explanation
+Computes per-row tax and gross, then aggregates totals. Calculation: tax = round(net * 0.25, 2); gross = round(net + tax, 2); net_total = sum(net), tax_total = sum(tax), gross_total = sum(gross).
+
 ## expenses
 
 | id | category | net |

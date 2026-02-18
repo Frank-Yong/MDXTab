@@ -6,6 +6,9 @@ tables:
     columns: [id, category, net]
 ---
 
+  ### Explanation
+  Shows a header that does not match the schema column list. The extra column causes E_COLUMN_MISMATCH.
+
 | id | category | net | extra |
 |----|----------|-----|-------|
 | h1 | Hosting  | 100 | oops  |

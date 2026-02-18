@@ -8,6 +8,9 @@ tables:
     aggregates:
       total: sum(value)
 ---
+### Explanation
+Shows aggregate interpolation in normal text while leaving inline code untouched. Calculation: total = sum(value) = 1.5 + 2.25 = 3.75.
+
 ## sample
 
 | id | value |

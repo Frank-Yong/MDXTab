@@ -22,6 +22,9 @@ tables:
       net_by_category: sum(net) by category
 ---
 
+### Explanation
+Uses grouped aggregates for time entries by project and expenses by category. Calculation: duration = hours(end) - hours(start) - hours(break); hours_by_project = sum(duration) by project; net_by_category = sum(net) by category.
+
 ## time_entries
 
 | id | project | start | end  | break | duration |
