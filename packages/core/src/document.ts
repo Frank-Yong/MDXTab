@@ -318,7 +318,7 @@ function interpolateAggregates(
         const groupKey = groupKeyRaw.replace(/^['"]|['"]$/g, "");
         const tableGroups = groupedAggregates[table];
         const aggGroups = tableGroups?.[name];
-        if (!aggGroups || !(groupKey in aggGroups)) {
+        if (!aggGroups || !Object.prototype.hasOwnProperty.call(aggGroups, groupKey)) {
           throw new DiagnosticError({
             code: "E_AGG_REF",
             message: `Unknown aggregate reference ${table}.${name}[${groupKey}]`,
