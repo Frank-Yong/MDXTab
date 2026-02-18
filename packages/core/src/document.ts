@@ -277,7 +277,7 @@ function computeGroupedAggregate(
   tableName: string,
   ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
 ): Record<string, Scalar> {
-  const groups: Record<string, Scalar[]> = {};
+  const groups: Record<string, Scalar[]> = Object.create(null);
   for (const r of rows) {
     const row = ensure(r);
     if (!(column in row)) throw new Error(`E_REF: unknown column ${column} in ${tableName}`);
@@ -285,10 +285,12 @@ function computeGroupedAggregate(
     const keyVal = row[by];
     if (keyVal === null || keyVal === undefined) continue;
     const key = String(keyVal);
-    if (!groups[key]) groups[key] = [];
+    if (!Object.prototype.hasOwnProperty.call(groups, key)) {
+      groups[key] = [];
+    }
     groups[key].push(row[column]);
   }
-  const result: Record<string, Scalar> = {};
+  const result: Record<string, Scalar> = Object.create(null);
   for (const [key, values] of Object.entries(groups)) {
     result[key] = computeAggregateValues(fn, values);
   }
