@@ -24,6 +24,8 @@ Reconsider later only as an explicit, opt-in experimental mode with strict const
 ### Summary
 Support per-row time math (start - end - break = duration) and grouped summaries for planning/ops use cases.
 
+Links: dev/work-items/18-time-calculations-grouped-summaries.md, https://github.com/Frank-Yong/MDXTab/issues/11
+
 ### Proposed solution
 - Time arithmetic via computed columns in frontmatter (no inline formulas in row cells).
 - Parse time literals like "9:30" into hours (e.g., 1:30 -> 1.5) via a built-in helper or type coercion.
@@ -69,6 +71,21 @@ Support per-row time math (start - end - break = duration) and grouped summaries
     - Period total equals sum of the period's rows.
     - Group total equals sum of rows with matching group key.
 
+  ## Generalized time units and formats
+  ### Summary
+  Support minutes, hours, and days with multiple input formats beyond HH:MM.
+
+  ### Proposed solution
+  - Add helpers like minutes("90"), hours("1.5"), and days("1.25").
+  - Accept compact duration strings (e.g., "1h 30m") in a deterministic parser.
+  - Define strict, locale-agnostic parsing rules and validation errors.
+
+  ### Alternatives considered
+  - Keep only HH:MM parsing and decimal hours.
+
+  ### Additional context
+  - Defer to a follow-on after time calculations with grouped summaries is stable.
+
 ## Preview rendering of computed columns
 ### Summary
 Render computed columns in preview/output tables so per-row values are visible without modifying source markdown.
@@ -81,6 +98,41 @@ Render computed columns in preview/output tables so per-row values are visible w
 
 ### Alternatives considered
 - Keep computed values summary-only (current behavior).
+
+## Reusable table schemas
+### Summary
+Allow multiple tables to reuse a shared schema definition to avoid duplicate YAML.
+
+### Proposed solution
+- Add a `schemas` section in frontmatter for reusable definitions.
+- Allow tables to reference a schema via `schema: <name>`.
+- Support optional overrides for columns, types, computed, and aggregates.
+
+### Alternatives considered
+- Keep duplicate table definitions (status quo).
+
+### Additional context
+- Example:
+  ```md
+  ---
+  mdxtab: "1.0"
+  schemas:
+    time_entry:
+      columns: [id, project, start, end, break, duration]
+      types:
+        start: time
+        end: time
+        break: time
+        duration: number
+      computed:
+        duration: hours(end) - hours(start) - hours(break)
+  tables:
+    monday:
+      schema: time_entry
+    tuesday:
+      schema: time_entry
+  ---
+  ```
 
 ## Built-in Markdown preview rendering (DONE)
 ### Summary

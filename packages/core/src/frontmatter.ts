@@ -50,7 +50,7 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
   const types: TableFrontmatter["types"] = obj.types
     ? Object.fromEntries(
         Object.entries(expectObject(obj.types, `types for table ${name}`)).map(([k, v]) => {
-          if (v !== "number" && v !== "string" && v !== "date" && v !== "bool") {
+          if (v !== "number" && v !== "string" && v !== "date" && v !== "bool" && v !== "time") {
             throw new Error(`Invalid type for ${name}.${k}: ${String(v)}`);
           }
           return [k, v];

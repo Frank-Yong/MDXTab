@@ -34,3 +34,8 @@
 ## Publish (internal)
 - Share the .vsix and the version number with the beta group.
 - Record feedback and known issues for the next release.
+
+## Publish (Marketplace)
+1) Bump versions (root, core, cli, vscode) and update dependencies to match.
+2) Create a GitHub Release with a matching tag (e.g., v0.1.1).
+3) The "Publish VS Code Extension" workflow runs on release and publishes using `VSCE_PAT`.

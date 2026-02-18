@@ -114,4 +114,22 @@ describe("evaluator", () => {
   it("errors on unknown functions", () => {
     expect(() => run("foo(1)")).toThrow(/E_FUNC/);
   });
+
+  it("parses HH:MM strings with hours()", () => {
+    expect(run("hours(\"1:30\")")).toBe(1.5);
+    expect(run("hours(\"09:05\")")).toBeCloseTo(9.083333, 6);
+  });
+
+  it("accepts numeric values with hours()", () => {
+    expect(run("hours(1.25)")).toBe(1.25);
+  });
+
+  it("propagates null in hours()", () => {
+    expect(run("hours(a)", { row: { a: null } })).toBeNull();
+  });
+
+  it("rejects invalid hours() formats", () => {
+    expect(() => run("hours(\"1:5\")")).toThrow(/E_ARG/);
+    expect(() => run("hours(\"1:60\")")).toThrow(/E_ARG/);
+  });
 });

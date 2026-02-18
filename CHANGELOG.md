@@ -2,8 +2,10 @@
 
 All notable changes to MDXTab will be documented in this file.
 
-## Unreleased
-- Phase 1: core engine implementation planned on branch phase-1-core-engine per the development plan.
+## 2026-02-17 - 0.2.0
+- Add `hours()` helper and `time` column type for time math.
+- Support grouped aggregates with `sum/avg/min/max/count ... by <column>`.
+- Add examples and docs for time entries and grouped aggregates.
 
 ## 2026-02-14 - 0.1.0 internal beta
 - Core: parsing, evaluation, aggregates, and diagnostics with ranges.

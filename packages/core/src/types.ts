@@ -2,7 +2,7 @@ export type Scalar = number | string | boolean | null;
 
 export interface ColumnSchema {
   name: string;
-  type?: "number" | "string" | "date" | "bool";
+  type?: "number" | "string" | "date" | "bool" | "time";
 }
 
 export interface ComputedColumn {
@@ -63,6 +63,7 @@ export interface TableEvaluation {
   name: string;
   rows: Record<string, Scalar>[];
   aggregates: Record<string, Scalar>;
+  groupedAggregates?: Record<string, Record<string, Scalar>>;
 }
 
 export interface CompileResult {

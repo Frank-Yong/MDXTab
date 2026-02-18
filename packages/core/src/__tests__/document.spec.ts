@@ -76,6 +76,97 @@ Inline: \`{{ expenses.total_net }}\``;
     expect(() => compileMdxtab(badDoc)).toThrow(/different number of columns/);
   });
 
+  it("accepts time-typed columns and hours()", () => {
+    const timeDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, start, end, break, duration]
+    types:
+      start: time
+      end: time
+      break: time
+      duration: number
+    computed:
+      duration: hours(end) - hours(start) - hours(break)
+    aggregates:
+      total_hours: sum(duration)
+---
+
+## time_entries
+| id | start | end  | break | duration |
+|----|-------|------|-------|----------|
+| e1 | 09:00 | 17:30| 00:30 |          |
+| e2 | 10:00 | 18:00| 01:00 |          |
+`;
+    const result = compileMdxtab(timeDoc);
+    const rows = result.tables.time_entries.rows;
+    expect(rows.map((r) => r.duration)).toEqual([8, 7]);
+    expect(result.tables.time_entries.aggregates.total_hours).toBe(15);
+  });
+
+  it("computes grouped aggregates", () => {
+    const groupedDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, project, start, end, break, duration]
+    types:
+      start: time
+      end: time
+      break: time
+      duration: number
+    computed:
+      duration: hours(end) - hours(start) - hours(break)
+    aggregates:
+      hours_by_project: sum(duration) by project
+---
+
+## time_entries
+| id | project | start | end  | break | duration |
+|----|---------|-------|------|-------|----------|
+| e1 | Alpha   | 09:00 | 17:30| 00:30 |          |
+| e2 | Beta    | 10:00 | 18:00| 01:00 |          |
+| e3 | Alpha   | 08:30 | 16:00| 00:30 |          |
+
+Summary: {{ time_entries.hours_by_project[Alpha] }} / {{ time_entries.hours_by_project[Beta] }}
+`;
+    const result = compileMdxtab(groupedDoc);
+    const groups = result.tables.time_entries.groupedAggregates?.hours_by_project;
+    expect(groups).toBeDefined();
+    expect(groups?.Alpha).toBe(15);
+    expect(groups?.Beta).toBe(7);
+    expect(result.rendered).toContain("Summary: 15 / 7");
+  });
+
+  it("reports diagnostics for invalid grouped aggregates", () => {
+    const badGroupedDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, project, duration]
+    types:
+      duration: number
+    aggregates:
+      hours_by_project: sum(duration) by missing_col
+---
+
+## time_entries
+| id | project | duration |
+|----|---------|----------|
+| e1 | Alpha   | 1 |
+`;
+    const result = validateMdxtab(badGroupedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    const diag = result.diagnostics[0];
+    expect(diag.code).toBe("E_REF");
+    expect(diag.table).toBe("time_entries");
+    expect(diag.aggregate).toBe("hours_by_project");
+  });
+
   it("returns diagnostics with aggregate context", () => {
     const badDoc = doc.replace("{{ expenses.total_net }}", "{{ expenses.missing }}");
     const result = validateMdxtab(badDoc);

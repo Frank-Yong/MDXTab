@@ -67,3 +67,7 @@ See [phase-4-cli-ci.md](phase-4-cli-ci.md).
 - Keep the extension thin and UI-focused
 - Use golden tests to lock determinism and prevent regressions
 - Prefer pure, deterministic functions to match audit requirements
+
+## Backlog pointers
+- See dev/docs/backlog.md for feature backlog items.
+- Issue #11 (time calculations): https://github.com/Frank-Yong/MDXTab/issues/11
