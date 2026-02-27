@@ -147,3 +147,41 @@ Implemented via Markdown-It integration in the VS Code extension.
 
 ### Additional context
 - Effort (original estimate): ~2-4 days once extension API wiring is finalized.
+
+
+## Expenses 2D Sheet
+### Summary
+Support a matrix-style expenses sheet (rows = categories, columns = periods) with:
+- partial column summaries (subset totals), and
+- a `Running Balance` summary row where each period cell is a running accumulation,
+using formulas defined in table frontmatter (no inline cell formulas).
+
+### Proposed solution
+- Model periods as explicit numeric columns (for example `p1`, `p2`, `p3`, ...).
+- Add a grouping/dimension column (for example `category`) used to filter which rows are included in the summary row.
+- Define `Running Balance` as a synthetic preview row (not authored data) with deterministic left-to-right evaluation:
+  - `RunningBalance[p1] = sum_above(p1, filter: category == <selected>)`
+  - `RunningBalance[pN] = RunningBalance[pN-1] + sum_above(pN, filter: category == <selected>)`
+- Keep formulas in frontmatter by introducing a table-level summary formula construct for matrix columns (follow-on syntax proposal):
+  - `summary_rows.running_balance = running_sum_above([p1, p2, p3, p4, p5], by: category)`
+- Assume computed-column preview rendering is already available; render the synthetic `Running Balance` row in preview/output.
+
+### Alternatives considered
+- Keep `Running Balance` manually authored in Markdown (error-prone and duplicated logic).
+- Use inline cell formulas (rejected for v1).
+
+### Additional context
+- Current v1 expressions cannot reference the left neighbor summary cell (`RunningBalance[pN-1]`) inside a row-major matrix summary, so a dedicated matrix-summary helper is required.
+- `sum_above` means all non-summary rows above `Current` in the same table section; the optional `category` filter is applied before summing.
+- Determinism rule: evaluate period columns strictly in declared order.
+- Example target layout:
+
+| #               | 1    | 2    | 3    | 4   | 5   | Row Total |
+| -               | -    | -    | -    | -   | -   | -         |
+| Salary          | 1000 |      |      |     |     | 1000      |
+| Electricity     |      | -100 |      |     |     | -100      |
+| Mortgage        |      |      | -200 |     |     | -200      |
+| Food            | -10  |      | -10  |     | -10 | -20       |
+| ...             | ...  | ...  | ...  | ... | ... | ...       |
+| Running Balance | 990  | 890  | 680  | 680 | 670 | ...       |
+
