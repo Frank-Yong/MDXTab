@@ -32,15 +32,6 @@
       "patterns": [
         {
           "include": "#frontmatterKeys"
-        },
-        {
-          "include": "#frontmatterTableEntry"
-        },
-        {
-          "include": "#frontmatterNameValue"
-        },
-        {
-          "include": "#frontmatterValues"
         }
       ]
     },
