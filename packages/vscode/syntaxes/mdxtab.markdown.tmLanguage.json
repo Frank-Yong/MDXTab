@@ -17,7 +17,7 @@
   ],
   "repository": {
     "frontmatter": {
-      "begin": "^(---)\\s*$(?=[\\s\\S]*?^\\s*mdxtab\\s*:[\\s\\S]*?^---\\s*$)",
+      "begin": "\\A(---)\\s*$",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.frontmatter.mdxtab"
@@ -32,15 +32,6 @@
       "patterns": [
         {
           "include": "#frontmatterKeys"
-        },
-        {
-          "include": "#frontmatterTableEntry"
-        },
-        {
-          "include": "#frontmatterNameValue"
-        },
-        {
-          "include": "#frontmatterValues"
         }
       ]
     },
@@ -49,43 +40,6 @@
         {
           "match": "^\\s*(mdxtab|tables|computed|aggregates|columns|types|key|empty_cells)\\s*:(?=\\s|$)",
           "name": "keyword.control.mdxtab"
-        }
-      ]
-    },
-    "frontmatterTableEntry": {
-      "patterns": [
-        {
-          "match": "^\\s*([A-Za-z0-9_]+)\\s*:(?=\\s*$)",
-          "name": "entity.name.type.mdxtab.table",
-          "captures": {
-            "1": {
-              "name": "entity.name.type.mdxtab.table"
-            }
-          }
-        }
-      ]
-    },
-    "frontmatterNameValue": {
-      "patterns": [
-        {
-          "match": "^\\s*([A-Za-z0-9_]+)\\s*:\\s*(.+)$",
-          "name": "meta.mdxtab.entry",
-          "captures": {
-            "1": {
-              "name": "variable.other.mdxtab.name"
-            },
-            "2": {
-              "name": "string.unquoted.mdxtab.value"
-            }
-          }
-        }
-      ]
-    },
-    "frontmatterValues": {
-      "patterns": [
-        {
-          "match": "^\\s*[A-Za-z0-9_]+\\s*:\\s*.+$",
-          "name": "string.unquoted.mdxtab"
         }
       ]
     },
