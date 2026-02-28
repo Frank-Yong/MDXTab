@@ -17,7 +17,7 @@
   ],
   "repository": {
     "frontmatter": {
-      "begin": "^(---)\\s*$(?=[\\s\\S]*?^\\s*mdxtab\\s*:[\\s\\S]*?^---\\s*$)",
+      "begin": "\\A(---)\\s*$",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.frontmatter.mdxtab"
