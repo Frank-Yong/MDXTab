@@ -300,7 +300,9 @@ function computeGroupedAggregate(
 function formatScalar(value: Scalar): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "number") {
-    // Avoid floating-point noise: round to 10 significant digits
+    if (!Number.isFinite(value)) return String(value);
+    // Only round non-integers to remove floating-point noise
+    if (Number.isInteger(value)) return String(value);
     const rounded = Number(value.toPrecision(10));
     return String(rounded);
   }
