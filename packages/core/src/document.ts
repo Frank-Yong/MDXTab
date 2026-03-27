@@ -342,21 +342,22 @@ function injectComputedColumns(
       }
     }
 
-    // Fill in existing authored cells with computed values
-    for (const { name, colIdx } of inlineCols) {
-      for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
-        const row = pt.rows[rowIdx];
+    // Fill in existing authored cells with computed values.
+    // Process columns in descending start-position order per row so that
+    // earlier slice indices remain valid after each replacement.
+    const sortedInline = [...inlineCols].sort((a, b) => b.colIdx - a.colIdx);
+    for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
+      const row = pt.rows[rowIdx];
+      const dataLine = (row.line ?? 0) - bodyOffset;
+      if (dataLine < 0 || dataLine >= lines.length) continue;
+
+      const evalRow = evaluated.rows[rowIdx];
+      for (const { name, colIdx } of sortedInline) {
         const cell = row.cells[colIdx];
         if (!cell) continue;
 
-        const dataLine = (row.line ?? 0) - bodyOffset;
-        if (dataLine < 0 || dataLine >= lines.length) continue;
-
-        const evalRow = evaluated.rows[rowIdx];
         const value = evalRow && name in evalRow ? formatScalar(evalRow[name]) : "#ERR";
         const line = lines[dataLine];
-
-        // Replace the cell content between its start and end positions
         lines[dataLine] = line.slice(0, cell.start) + " " + value + " " + line.slice(cell.end);
       }
     }

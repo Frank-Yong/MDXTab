@@ -415,6 +415,42 @@ tables:
     expect((header?.match(/total/g) ?? []).length).toBe(1);
   });
 
+  it("fills multiple inline computed columns in the same row without corruption", () => {
+    const multiInlineDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty, subtotal, tax]
+    types:
+      price: number
+      qty: number
+      subtotal: number
+      tax: number
+    computed:
+      subtotal: price * qty
+      tax: price * qty * 0.1
+---
+
+## items
+| id | price | qty | subtotal | tax |
+|----|-------|-----|----------|-----|
+| a  | 10    | 2   |          |     |
+| b  | 5     | 4   |          |     |
+`;
+    const result = compileMdxtab(multiInlineDoc, { includeComputedColumns: true });
+    const lines = result.rendered.split("\n");
+    const rowA = lines.find((l) => l.includes("| a "));
+    const rowB = lines.find((l) => l.includes("| b "));
+    expect(rowA).toContain(" 20 ");
+    expect(rowA).toContain(" 2 ");
+    expect(rowB).toContain(" 20 ");
+    expect(rowB).toContain(" 2 ");
+    // Ensure the row isn't corrupted — should still have the right number of pipes
+    const pipeCountA = (rowA?.match(/\|/g) ?? []).length;
+    expect(pipeCountA).toBe(6); // | id | price | qty | subtotal | tax |
+  });
+
   it("does not inject computed columns when includeComputedColumns is false", () => {
     const withFlag = compileMdxtab(singleComputedDoc, { includeComputedColumns: true });
     const without = compileMdxtab(singleComputedDoc, { includeComputedColumns: false });
