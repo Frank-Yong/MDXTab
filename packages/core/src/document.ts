@@ -318,12 +318,38 @@ function injectComputedColumns(
 ): string {
   const lines = body.split("\n");
 
+  // Build a set of line indices inside fenced code blocks so we skip them.
+  const fencedLines = new Set<number>();
+  let inFence = false;
+  let fenceTicks = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (inFence) {
+      fencedLines.add(i);
+      const closeRe = new RegExp(`^\\s*` + "`".repeat(fenceTicks) + `\\s*$`);
+      if (closeRe.test(lines[i])) {
+        inFence = false;
+        fenceTicks = 0;
+      }
+      continue;
+    }
+    const openMatch = lines[i].match(/^\s*(`{3,})/);
+    if (openMatch) {
+      inFence = true;
+      fenceTicks = openMatch[1].length;
+      fencedLines.add(i);
+    }
+  }
+
   for (const pt of parsedTables) {
     const schema = schemas[pt.name];
     if (!schema?.computed) continue;
 
     const evaluated = evaluatedTables[pt.name];
     if (!evaluated) continue;
+
+    // Skip tables whose header line falls inside a fenced code block.
+    const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+    if (fencedLines.has(headerLine)) continue;
 
     const authoredHeaders = pt.headers.map((h) => h.trimmed);
     const authoredSet = new Set(authoredHeaders);
@@ -371,7 +397,6 @@ function injectComputedColumns(
 
     // Append new columns for computed columns not already in headers
     if (extraCols.length > 0) {
-      const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
       const separatorLine = headerLine + 1;
 
       if (headerLine >= 0 && headerLine < lines.length) {
