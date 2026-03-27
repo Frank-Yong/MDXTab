@@ -36,7 +36,7 @@
         "mdxtab.preview.showComputedColumns": {
           "type": "boolean",
           "default": true,
-          "description": "Show computed columns in preview tables. When enabled, columns defined in frontmatter 'computed' are appended to tables with their evaluated values."
+          "description": "Show computed columns in preview tables. When enabled, empty cells for authored computed columns are filled with evaluated values, and computed columns not in the source table are appended."
         }
       }
     },
