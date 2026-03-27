@@ -319,6 +319,9 @@ function injectComputedColumns(
   const lines = body.split("\n");
 
   // Build a set of line indices inside fenced code blocks so we skip them.
+  // Note: parseMarkdownTables() also does not skip fences (pre-existing issue),
+  // so fenced tables currently cause parse/validation errors before this code
+  // runs. This guard is defensive for when the parser is updated to skip fences.
   const fencedLines = new Set<number>();
   let inFence = false;
   let fenceTicks = 0;
