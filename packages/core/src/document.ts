@@ -360,6 +360,9 @@ function injectComputedColumns(
         // Only fill empty cells; preserve non-empty authored values
         if (cell.raw.trim() !== "") continue;
 
+        // Defensive: #ERR if row data is unexpectedly missing.
+        // In practice, ensureComputed() throws on evaluation errors before
+        // rendering, so this path is not reachable under normal operation.
         const value = evalRow && name in evalRow ? formatScalar(evalRow[name]) : "#ERR";
         const line = lines[dataLine];
         lines[dataLine] = line.slice(0, cell.start) + " " + value + " " + line.slice(cell.end);
@@ -387,6 +390,7 @@ function injectComputedColumns(
 
         const evalRow = evaluated.rows[rowIdx];
         const suffix = extraCols.map((c) => {
+          // Defensive guard; see inline-cell comment above.
           if (!evalRow || !(c in evalRow)) return " #ERR |";
           return " " + formatScalar(evalRow[c]) + " |";
         }).join("");

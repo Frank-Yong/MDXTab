@@ -57,7 +57,8 @@ that can be used to locate table boundaries in the source markdown.
 
 ### 3. Handle edge cases
 - [x] Computed columns that fail to evaluate (type errors, divide-by-zero, lookup
-  misses) should render as an empty cell or a short error marker (e.g., `#ERR`).
+  misses) abort compilation with a diagnostic (same as before). Defensive `#ERR`
+  guards exist in the renderer but are not reachable under normal operation.
 - [x] Null computed values should render as an empty cell.
 - [x] Tables with no computed columns should pass through unchanged.
 - [x] Tables where the computed column name already appears in the authored headers
