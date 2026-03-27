@@ -297,6 +297,71 @@ function computeGroupedAggregate(
   return result;
 }
 
+function formatScalar(value: Scalar): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") {
+    // Avoid floating-point noise: round to 10 significant digits
+    const rounded = Number(value.toPrecision(10));
+    return String(rounded);
+  }
+  return String(value);
+}
+
+function injectComputedColumns(
+  body: string,
+  parsedTables: ParsedTable[],
+  schemas: Record<string, TableFrontmatter>,
+  evaluatedTables: Record<string, TableEvaluation>,
+  bodyOffset: number,
+): string {
+  const lines = body.split("\n");
+
+  for (const pt of parsedTables) {
+    const schema = schemas[pt.name];
+    if (!schema?.computed) continue;
+
+    const authoredHeaders = new Set(pt.headers.map((h) => h.trimmed));
+    // Computed columns to inject: those declared in computed but not already authored as headers
+    const extraCols = Object.keys(schema.computed).filter((c) => !authoredHeaders.has(c));
+    if (extraCols.length === 0) continue;
+
+    const evaluated = evaluatedTables[pt.name];
+    if (!evaluated) continue;
+
+    // Header line (relative to body)
+    const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+    // Separator is the next line after header
+    const separatorLine = headerLine + 1;
+
+    // Append computed column headers
+    if (headerLine >= 0 && headerLine < lines.length) {
+      const suffix = extraCols.map((c) => ` ${c} |`).join("");
+      lines[headerLine] = lines[headerLine].replace(/\|\s*$/, "|" + suffix);
+    }
+
+    // Append separator dashes
+    if (separatorLine >= 0 && separatorLine < lines.length) {
+      const suffix = extraCols.map((c) => " " + "-".repeat(Math.max(c.length, 3)) + " |").join("");
+      lines[separatorLine] = lines[separatorLine].replace(/\|\s*$/, "|" + suffix);
+    }
+
+    // Append cell values for each data row
+    for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
+      const dataLine = (pt.rows[rowIdx].line ?? 0) - bodyOffset;
+      if (dataLine < 0 || dataLine >= lines.length) continue;
+
+      const evalRow = evaluated.rows[rowIdx];
+      const suffix = extraCols.map((c) => {
+        if (!evalRow || !(c in evalRow)) return " #ERR |";
+        return " " + formatScalar(evalRow[c]) + " |";
+      }).join("");
+      lines[dataLine] = lines[dataLine].replace(/\|\s*$/, "|" + suffix);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
@@ -428,7 +493,7 @@ function interpolateAggregates(
 }
 
 export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
-  const { includeFrontmatter = true } = options;
+  const { includeFrontmatter = true, includeComputedColumns = false } = options;
   const frontmatter = parseFrontmatter(raw);
   const tables = parseMarkdownTables(raw);
 
@@ -661,6 +726,9 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
   const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
   let renderedBody = interpolateAggregates(body, aggregateResults, groupedAggregateResults, bodyOffset);
+  if (includeComputedColumns) {
+    renderedBody = injectComputedColumns(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
+  }
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }

@@ -32,6 +32,11 @@
           "type": "boolean",
           "default": false,
           "description": "Show frontmatter and formulas in the MDXTab preview. Disable to hide formulas/frontmatter so only the rendered markdown body is shown."
+        },
+        "mdxtab.preview.showComputedColumns": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show computed columns in preview tables. When enabled, columns defined in frontmatter 'computed' are appended to tables with their evaluated values."
         }
       }
     },

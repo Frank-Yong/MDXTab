@@ -74,6 +74,7 @@ export interface CompileResult {
 
 export interface CompileOptions {
   includeFrontmatter?: boolean;
+  includeComputedColumns?: boolean;
 }
 
 export interface DiagnosticPosition {

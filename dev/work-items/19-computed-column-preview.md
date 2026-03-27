@@ -41,49 +41,49 @@ that can be used to locate table boundaries in the source markdown.
 ## Tasks
 
 ### 1. Identify computed columns per table
-- [ ] For each table in the frontmatter, determine which columns are in `computed`
+- [x] For each table in the frontmatter, determine which columns are in `computed`
   but NOT already present as authored header columns in the parsed markdown table.
-- [ ] These are the columns to append.
+- [x] These are the columns to append.
 
 ### 2. Inject computed columns into rendered markdown
-- [ ] After `interpolateAggregates()` produces the `renderedBody`, post-process the
+- [x] After `interpolateAggregates()` produces the `renderedBody`, post-process the
   markdown to append computed column(s) to each table:
-  - [ ] Add the computed column header(s) to the header row.
-  - [ ] Add the corresponding separator dashes (`---`) to the separator row.
-  - [ ] Add the evaluated cell value for each data row.
-- [ ] Use the `ParsedTable` position info to precisely locate each table's header,
+  - [x] Add the computed column header(s) to the header row.
+  - [x] Add the corresponding separator dashes (`---`) to the separator row.
+  - [x] Add the evaluated cell value for each data row.
+- [x] Use the `ParsedTable` position info to precisely locate each table's header,
   separator, and data rows in the rendered string.
-- [ ] Format numeric values sensibly (avoid excessive decimal places).
+- [x] Format numeric values sensibly (avoid excessive decimal places).
 
 ### 3. Handle edge cases
-- [ ] Computed columns that fail to evaluate (type errors, divide-by-zero, lookup
+- [x] Computed columns that fail to evaluate (type errors, divide-by-zero, lookup
   misses) should render as an empty cell or a short error marker (e.g., `#ERR`).
-- [ ] Null computed values should render as an empty cell.
-- [ ] Tables with no computed columns should pass through unchanged.
-- [ ] Tables where the computed column name already appears in the authored headers
+- [x] Null computed values should render as an empty cell.
+- [x] Tables with no computed columns should pass through unchanged.
+- [x] Tables where the computed column name already appears in the authored headers
   should skip that column (it was authored manually).
-- [ ] Preserve original table alignment and pipe formatting.
+- [x] Preserve original table alignment and pipe formatting.
 
 ### 4. Add a VS Code setting to toggle the feature
-- [ ] Add a new setting `mdxtab.preview.showComputedColumns` (default: `true`).
-- [ ] When disabled, the preview renders tables exactly as authored (current behavior).
-- [ ] Wire the setting in the Markdown-It plugin (`extendMarkdownIt`) and pass it
+- [x] Add a new setting `mdxtab.preview.showComputedColumns` (default: `true`).
+- [x] When disabled, the preview renders tables exactly as authored (current behavior).
+- [x] Wire the setting in the Markdown-It plugin (`extendMarkdownIt`) and pass it
   through `CompileOptions`.
 
 ### 5. Update `CompileOptions` and `compileMdxtab` signature
-- [ ] Add an `includeComputedColumns?: boolean` option to `CompileOptions`.
-- [ ] When true, the `rendered` output includes computed columns in table markdown.
-- [ ] When false (or omitted for backward compatibility), behavior is unchanged.
+- [x] Add an `includeComputedColumns?: boolean` option to `CompileOptions`.
+- [x] When true, the `rendered` output includes computed columns in table markdown.
+- [x] When false (or omitted for backward compatibility), behavior is unchanged.
 
 ### 6. Write unit tests
-- [ ] Test: table with one computed column → rendered output has extra column.
-- [ ] Test: table with multiple computed columns → all appended in declaration order.
-- [ ] Test: computed column that errors → renders `#ERR` or empty cell.
-- [ ] Test: computed column with null value → renders empty cell.
-- [ ] Test: no computed columns → rendered output unchanged.
-- [ ] Test: computed column name matches an authored header → not duplicated.
-- [ ] Test: `includeComputedColumns: false` → rendered output unchanged.
-- [ ] Test: formatting of numeric values (e.g., `8.0` not `8.000000000000001`).
+- [x] Test: table with one computed column → rendered output has extra column.
+- [x] Test: table with multiple computed columns → all appended in declaration order.
+- [x] Test: computed column that errors → renders `#ERR` or empty cell.
+- [x] Test: computed column with null value → renders empty cell.
+- [x] Test: no computed columns → rendered output unchanged.
+- [x] Test: computed column name matches an authored header → not duplicated.
+- [x] Test: `includeComputedColumns: false` → rendered output unchanged.
+- [x] Test: formatting of numeric values (e.g., `8.0` not `8.000000000000001`).
 
 ### 7. Manual smoke-test in VS Code
 - [ ] Open a markdown file with computed columns (e.g., `dev/examples/time-entries.md`
