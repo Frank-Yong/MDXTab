@@ -257,3 +257,265 @@ ${dataLine}
     expect(diag.range?.end.character).toBe(expectedEnd);
   });
 });
+
+describe("computed column preview rendering", () => {
+  const singleComputedDoc = `---
+mdxtab: "1.0"
+tables:
+  expenses:
+    key: id
+    columns: [id, net]
+    types:
+      net: number
+    computed:
+      tax: net * 0.2
+---
+
+## expenses
+| id | net |
+|----|-----|
+| h1 | 100 |
+| a1 | 200 |
+`;
+
+  it("appends one computed column when includeComputedColumns is true", () => {
+    const result = compileMdxtab(singleComputedDoc, { includeComputedColumns: true });
+    expect(result.rendered).toContain("| id | net | tax |");
+    expect(result.rendered).toContain("| h1 | 100 | 20 |");
+    expect(result.rendered).toContain("| a1 | 200 | 40 |");
+  });
+
+  it("appends multiple computed columns in declaration order", () => {
+    const multiDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty]
+    types:
+      price: number
+      qty: number
+    computed:
+      subtotal: price * qty
+      tax: price * qty * 0.1
+---
+
+## items
+| id | price | qty |
+|----|-------|-----|
+| a  | 10    | 2   |
+| b  | 5     | 4   |
+`;
+    const result = compileMdxtab(multiDoc, { includeComputedColumns: true });
+    expect(result.rendered).toContain("| id | price | qty | subtotal | tax |");
+    expect(result.rendered).toContain("| a  | 10    | 2   | 20 | 2 |");
+    expect(result.rendered).toContain("| b  | 5     | 4   | 20 | 2 |");
+  });
+
+  it("renders empty cell for null computed values", () => {
+    const nullDoc = `---
+mdxtab: "1.0"
+tables:
+  data:
+    key: id
+    columns: [id, val]
+    empty_cells: "null"
+    computed:
+      doubled: val * 2
+---
+
+## data
+| id | val |
+|----|-----|
+| a  | 5   |
+| b  |     |
+`;
+    const result = compileMdxtab(nullDoc, { includeComputedColumns: true });
+    // Row "a" gets 10, row "b" gets null → empty
+    expect(result.rendered).toContain("| a  | 5   | 10 |");
+    expect(result.rendered).toContain("| b  |     |  |");
+  });
+
+  it("does not change rendered output when no computed columns exist", () => {
+    const noComputedDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, name]
+---
+
+## items
+| id | name |
+|----|------|
+| a  | Foo  |
+`;
+    const withFlag = compileMdxtab(noComputedDoc, { includeComputedColumns: true });
+    const without = compileMdxtab(noComputedDoc, { includeComputedColumns: false });
+    expect(withFlag.rendered).toBe(without.rendered);
+  });
+
+  it("does not duplicate column when computed name matches authored header", () => {
+    // "duration" appears both as an authored header and a computed column
+    const dupeDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, start, end, break, duration]
+    types:
+      start: time
+      end: time
+      break: time
+      duration: number
+    computed:
+      duration: hours(end) - hours(start) - hours(break)
+---
+
+## time_entries
+| id | start | end  | break | duration |
+|----|-------|------|-------|----------|
+| e1 | 09:00 | 17:30| 00:30 |          |
+`;
+    const result = compileMdxtab(dupeDoc, { includeComputedColumns: true });
+    // Should NOT have "duration" appended a second time
+    const headerLine = result.rendered.split("\n").find((l) => l.includes("| id |"));
+    const count = (headerLine?.match(/duration/g) ?? []).length;
+    expect(count).toBe(1);
+    // But the empty cell should be filled with the computed value
+    expect(result.rendered).toContain("8");
+  });
+
+  it("fills in authored empty cells with computed values", () => {
+    const inlineDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty, total]
+    types:
+      price: number
+      qty: number
+      total: number
+    computed:
+      total: price * qty
+---
+
+## items
+| id | price | qty | total |
+|----|-------|-----|-------|
+| a  | 10    | 3   |       |
+| b  | 5     | 4   |       |
+`;
+    const result = compileMdxtab(inlineDoc, { includeComputedColumns: true });
+    expect(result.rendered).toContain(" 30 ");
+    expect(result.rendered).toContain(" 20 ");
+    // Header count should still be 1
+    const header = result.rendered.split("\n").find((l) => l.includes("| id |"));
+    expect((header?.match(/total/g) ?? []).length).toBe(1);
+  });
+
+  it("fills multiple inline computed columns in the same row without corruption", () => {
+    const multiInlineDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty, subtotal, tax]
+    types:
+      price: number
+      qty: number
+      subtotal: number
+      tax: number
+    computed:
+      subtotal: price * qty
+      tax: price * qty * 0.1
+---
+
+## items
+| id | price | qty | subtotal | tax |
+|----|-------|-----|----------|-----|
+| a  | 10    | 2   |          |     |
+| b  | 5     | 4   |          |     |
+`;
+    const result = compileMdxtab(multiInlineDoc, { includeComputedColumns: true });
+    const lines = result.rendered.split("\n");
+    const rowA = lines.find((l) => l.includes("| a "));
+    const rowB = lines.find((l) => l.includes("| b "));
+    expect(rowA).toContain(" 20 ");
+    expect(rowA).toContain(" 2 ");
+    expect(rowB).toContain(" 20 ");
+    expect(rowB).toContain(" 2 ");
+    // Ensure the row isn't corrupted — should still have the right number of pipes
+    const pipeCountA = (rowA?.match(/\|/g) ?? []).length;
+    expect(pipeCountA).toBe(6); // | id | price | qty | subtotal | tax |
+  });
+
+  it("preserves non-empty authored cells and only fills empty ones", () => {
+    const mixedDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty, total]
+    types:
+      price: number
+      qty: number
+      total: number
+    computed:
+      total: price * qty
+---
+
+## items
+| id | price | qty | total |
+|----|-------|-----|-------|
+| a  | 10    | 3   |       |
+| b  | 5     | 4   | 999   |
+`;
+    const result = compileMdxtab(mixedDoc, { includeComputedColumns: true });
+    const lines = result.rendered.split("\n");
+    const rowA = lines.find((l) => l.includes("| a "));
+    const rowB = lines.find((l) => l.includes("| b "));
+    // Row a has empty cell → filled with computed value 30
+    expect(rowA).toContain(" 30 ");
+    // Row b has authored value 999 → preserved, NOT overwritten with 20
+    expect(rowB).toContain("999");
+    expect(rowB).not.toContain(" 20 ");
+  });
+
+  it("does not inject computed columns when includeComputedColumns is false", () => {
+    const withFlag = compileMdxtab(singleComputedDoc, { includeComputedColumns: true });
+    const without = compileMdxtab(singleComputedDoc, { includeComputedColumns: false });
+    expect(withFlag.rendered).toContain("| tax |");
+    expect(without.rendered).not.toContain("| tax |");
+  });
+
+  it("defaults to not injecting computed columns (backward compat)", () => {
+    const result = compileMdxtab(singleComputedDoc);
+    expect(result.rendered).not.toContain("| tax |");
+  });
+
+  it("formats numeric values cleanly without floating-point noise", () => {
+    const fpDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, a, b]
+    types:
+      a: number
+      b: number
+    computed:
+      total: a + b
+---
+
+## items
+| id | a   | b   |
+|----|-----|-----|
+| x  | 0.1 | 0.2 |
+`;
+    const result = compileMdxtab(fpDoc, { includeComputedColumns: true });
+    // 0.1 + 0.2 should render as "0.3", not "0.30000000000000004"
+    expect(result.rendered).toContain("| x  | 0.1 | 0.2 | 0.3 |");
+  });
+});

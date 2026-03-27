@@ -59,7 +59,8 @@ class PreviewProvider implements TextDocumentContentProvider {
     try {
       const config = workspace.getConfiguration("mdxtab");
       const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
-      const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter });
+      const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
+      const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns });
       return result.rendered;
     } catch (err) {
       const diag = toDiagnostic(err);
@@ -1117,8 +1118,9 @@ function extendMarkdownIt(md: { core: { ruler: { after: (name: string, rule: str
     const enabled = config.get<boolean>("preview.markdownIt.enabled", true);
     if (!enabled) return;
     const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+    const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
     try {
-      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter });
+      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns });
       state.src = result.rendered;
     } catch (err) {
       const diag = toDiagnostic(err);

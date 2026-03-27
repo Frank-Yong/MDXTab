@@ -297,6 +297,140 @@ function computeGroupedAggregate(
   return result;
 }
 
+function formatScalar(value: Scalar): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return String(value);
+    // Only round non-integers to remove floating-point noise
+    if (Number.isInteger(value)) return String(value);
+    const rounded = Number(value.toPrecision(10));
+    return String(rounded);
+  }
+  // Escape characters that would break markdown table structure
+  return String(value).replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+function injectComputedColumns(
+  body: string,
+  parsedTables: ParsedTable[],
+  schemas: Record<string, TableFrontmatter>,
+  evaluatedTables: Record<string, TableEvaluation>,
+  bodyOffset: number,
+): string {
+  const lines = body.split("\n");
+
+  // Build a set of line indices inside fenced code blocks so we skip them.
+  // Note: parseMarkdownTables() also does not skip fences (pre-existing issue),
+  // so fenced tables currently cause parse/validation errors before this code
+  // runs. This guard is defensive for when the parser is updated to skip fences.
+  const fencedLines = new Set<number>();
+  let inFence = false;
+  let fenceTicks = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (inFence) {
+      fencedLines.add(i);
+      const closeRe = new RegExp(`^\\s*` + "`".repeat(fenceTicks) + `\\s*$`);
+      if (closeRe.test(lines[i])) {
+        inFence = false;
+        fenceTicks = 0;
+      }
+      continue;
+    }
+    const openMatch = lines[i].match(/^\s*(`{3,})/);
+    if (openMatch) {
+      inFence = true;
+      fenceTicks = openMatch[1].length;
+      fencedLines.add(i);
+    }
+  }
+
+  for (const pt of parsedTables) {
+    const schema = schemas[pt.name];
+    if (!schema?.computed) continue;
+
+    const evaluated = evaluatedTables[pt.name];
+    if (!evaluated) continue;
+
+    // Skip tables whose header line falls inside a fenced code block.
+    const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+    if (fencedLines.has(headerLine)) continue;
+
+    const authoredHeaders = pt.headers.map((h) => h.trimmed);
+    const authoredSet = new Set(authoredHeaders);
+
+    // Split computed columns into two groups:
+    // 1. inlineCols: already authored as headers → fill in cell values in-place
+    // 2. extraCols: not yet in headers → append as new columns
+    const computedNames = Object.keys(schema.computed);
+    const inlineCols: { name: string; colIdx: number }[] = [];
+    const extraCols: string[] = [];
+
+    for (const c of computedNames) {
+      if (authoredSet.has(c)) {
+        const idx = authoredHeaders.indexOf(c);
+        if (idx !== -1) inlineCols.push({ name: c, colIdx: idx });
+      } else {
+        extraCols.push(c);
+      }
+    }
+
+    // Fill in existing authored cells with computed values.
+    // Process columns in descending column-index (right-to-left) order per row
+    // so that earlier cell positions remain valid after each replacement.
+    const sortedInline = [...inlineCols].sort((a, b) => b.colIdx - a.colIdx);
+    for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
+      const row = pt.rows[rowIdx];
+      const dataLine = (row.line ?? 0) - bodyOffset;
+      if (dataLine < 0 || dataLine >= lines.length) continue;
+
+      const evalRow = evaluated.rows[rowIdx];
+      for (const { name, colIdx } of sortedInline) {
+        const cell = row.cells[colIdx];
+        if (!cell) continue;
+        // Only fill empty cells; preserve non-empty authored values
+        if (cell.raw.trim() !== "") continue;
+
+        // Defensive: #ERR if row data is unexpectedly missing.
+        // In practice, ensureComputed() throws on evaluation errors before
+        // rendering, so this path is not reachable under normal operation.
+        const value = evalRow && name in evalRow ? formatScalar(evalRow[name]) : "#ERR";
+        const line = lines[dataLine];
+        lines[dataLine] = line.slice(0, cell.start) + " " + value + " " + line.slice(cell.end);
+      }
+    }
+
+    // Append new columns for computed columns not already in headers
+    if (extraCols.length > 0) {
+      const separatorLine = headerLine + 1;
+
+      if (headerLine >= 0 && headerLine < lines.length) {
+        const suffix = extraCols.map((c) => ` ${c} |`).join("");
+        lines[headerLine] = lines[headerLine].replace(/\|\s*$/, "|" + suffix);
+      }
+
+      if (separatorLine >= 0 && separatorLine < lines.length) {
+        const suffix = extraCols.map((c) => " " + "-".repeat(Math.max(c.length, 3)) + " |").join("");
+        lines[separatorLine] = lines[separatorLine].replace(/\|\s*$/, "|" + suffix);
+      }
+
+      for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
+        const dataLine = (pt.rows[rowIdx].line ?? 0) - bodyOffset;
+        if (dataLine < 0 || dataLine >= lines.length) continue;
+
+        const evalRow = evaluated.rows[rowIdx];
+        const suffix = extraCols.map((c) => {
+          // Defensive guard; see inline-cell comment above.
+          if (!evalRow || !(c in evalRow)) return " #ERR |";
+          return " " + formatScalar(evalRow[c]) + " |";
+        }).join("");
+        lines[dataLine] = lines[dataLine].replace(/\|\s*$/, "|" + suffix);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
@@ -428,7 +562,7 @@ function interpolateAggregates(
 }
 
 export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
-  const { includeFrontmatter = true } = options;
+  const { includeFrontmatter = true, includeComputedColumns = false } = options;
   const frontmatter = parseFrontmatter(raw);
   const tables = parseMarkdownTables(raw);
 
@@ -660,7 +794,13 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
-  let renderedBody = interpolateAggregates(body, aggregateResults, groupedAggregateResults, bodyOffset);
+  // Inject computed columns first (uses original cell positions from parseMarkdownTables),
+  // then interpolate aggregates (regex-based, position-independent).
+  let renderedBody = body;
+  if (includeComputedColumns) {
+    renderedBody = injectComputedColumns(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
+  }
+  renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }
