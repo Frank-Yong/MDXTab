@@ -345,8 +345,8 @@ function injectComputedColumns(
     }
 
     // Fill in existing authored cells with computed values.
-    // Process columns in descending start-position order per row so that
-    // earlier slice indices remain valid after each replacement.
+    // Process columns in descending column-index (right-to-left) order per row
+    // so that earlier cell positions remain valid after each replacement.
     const sortedInline = [...inlineCols].sort((a, b) => b.colIdx - a.colIdx);
     for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
       const row = pt.rows[rowIdx];
