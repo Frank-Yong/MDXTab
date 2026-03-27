@@ -306,7 +306,8 @@ function formatScalar(value: Scalar): string {
     const rounded = Number(value.toPrecision(10));
     return String(rounded);
   }
-  return String(value);
+  // Escape characters that would break markdown table structure
+  return String(value).replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
 function injectComputedColumns(
