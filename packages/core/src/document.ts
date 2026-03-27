@@ -759,10 +759,13 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
-  let renderedBody = interpolateAggregates(body, aggregateResults, groupedAggregateResults, bodyOffset);
+  // Inject computed columns first (uses original cell positions from parseMarkdownTables),
+  // then interpolate aggregates (regex-based, position-independent).
+  let renderedBody = body;
   if (includeComputedColumns) {
     renderedBody = injectComputedColumns(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
   }
+  renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }
