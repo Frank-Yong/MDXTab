@@ -15,6 +15,11 @@ export interface AggregateDefinition {
   expression: string;
 }
 
+export interface SummaryRowDefinition {
+  label: string;
+  cells: Record<string, string>;
+}
+
 export interface TableFrontmatter {
   key?: string;
   columns: string[];
@@ -22,6 +27,7 @@ export interface TableFrontmatter {
   aggregates?: Record<string, string>;
   types?: Record<string, ColumnSchema["type"]>;
   empty_cells?: "null" | "zero" | "empty-string" | "error";
+  summary_rows?: Record<string, SummaryRowDefinition>;
 }
 
 export interface FrontmatterDocument {
@@ -59,11 +65,18 @@ export interface ParseResult {
   tables: ParsedTable[];
 }
 
+export interface SummaryRowEvaluation {
+  key: string;
+  label: string;
+  cells: Record<string, Scalar>;
+}
+
 export interface TableEvaluation {
   name: string;
   rows: Record<string, Scalar>[];
   aggregates: Record<string, Scalar>;
   groupedAggregates?: Record<string, Record<string, Scalar>>;
+  summaryRows?: SummaryRowEvaluation[];
 }
 
 export interface CompileResult {

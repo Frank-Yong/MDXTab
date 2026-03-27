@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { DiagnosticError, lineRange } from "./diagnostics.js";
-import type { FrontmatterDocument, TableFrontmatter } from "./types.js";
+import type { FrontmatterDocument, SummaryRowDefinition, TableFrontmatter } from "./types.js";
 
 function expectObject(value: unknown, context: string): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -22,6 +22,45 @@ function expectStringArray(value: unknown, context: string): string[] {
   });
   if (arr.length === 0) throw new Error(`Invalid ${context}: must not be empty`);
   return arr;
+}
+
+function parseSummaryRows(
+  tableName: string,
+  value: unknown,
+  columns: string[],
+): Record<string, SummaryRowDefinition> {
+  const obj = expectObject(value, `summary_rows for table ${tableName}`);
+  const result: Record<string, SummaryRowDefinition> = {};
+
+  for (const [rowKey, rowValue] of Object.entries(obj)) {
+    const rowObj = expectObject(rowValue, `summary_rows.${rowKey} for table ${tableName}`);
+
+    if (rowObj.label === undefined) {
+      throw new Error(`summary_rows.${rowKey} for table ${tableName}: label is required`);
+    }
+    const label = expectString(rowObj.label, `summary_rows.${rowKey}.label for table ${tableName}`);
+
+    if (rowObj.cells === undefined) {
+      throw new Error(`summary_rows.${rowKey} for table ${tableName}: cells is required`);
+    }
+    const cellsObj = expectObject(rowObj.cells, `summary_rows.${rowKey}.cells for table ${tableName}`);
+    const cells: Record<string, string> = {};
+    for (const [col, expr] of Object.entries(cellsObj)) {
+      if (!columns.includes(col)) {
+        throw new Error(
+          `summary_rows.${rowKey}.cells references unknown column "${col}" in table ${tableName}`,
+        );
+      }
+      cells[col] = expectString(expr, `summary_rows.${rowKey}.cells.${col} for table ${tableName}`);
+    }
+    if (Object.keys(cells).length === 0) {
+      throw new Error(`summary_rows.${rowKey}.cells for table ${tableName}: must not be empty`);
+    }
+
+    result[rowKey] = { label, cells };
+  }
+
+  return result;
 }
 
 function validateTable(name: string, value: unknown): TableFrontmatter {
@@ -68,6 +107,10 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
     throw new Error(`Invalid empty_cells value for table ${name}: ${String(obj.empty_cells)}`);
   }
 
+  const summary_rows: Record<string, SummaryRowDefinition> | undefined = obj.summary_rows
+    ? parseSummaryRows(name, obj.summary_rows, columns)
+    : undefined;
+
   return {
     key: keyName,
     columns,
@@ -75,6 +118,7 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
     aggregates,
     types,
     empty_cells: obj.empty_cells,
+    summary_rows,
   };
 }
 
