@@ -156,24 +156,28 @@ Support a matrix-style expenses sheet (rows = categories, columns = periods) wit
 - a `Running Balance` summary row where each period cell is a running accumulation,
 using formulas defined in table frontmatter (no inline cell formulas).
 
-### Proposed solution
+Links: dev/work-items/20-expenses-2d-sheet.md, specs/RFC-0002.md, https://github.com/Frank-Yong/MDXTab/issues/21
+
+### Proposed solution (RFC-0002: Cells-as-Expressions with `self` references)
 - Model periods as explicit numeric columns (for example `p1`, `p2`, `p3`, ...).
-- Add a grouping/dimension column (for example `category`) used to filter which rows are included in the summary row.
-- Define `Running Balance` as a synthetic preview row (not authored data) with deterministic left-to-right evaluation:
-  - `RunningBalance[p1] = sum_above(p1, filter: category == <selected>)`
-  - `RunningBalance[pN] = RunningBalance[pN-1] + sum_above(pN, filter: category == <selected>)`
-- Keep formulas in frontmatter by introducing a table-level summary formula construct for matrix columns (follow-on syntax proposal):
-  - `summary_rows.running_balance = running_sum_above([p1, p2, p3, p4, p5], by: category)`
-- Assume computed-column preview rendering is already available; render the synthetic `Running Balance` row in preview/output.
+- Add a `summary_rows` section to table frontmatter where each summary row
+  defines a `label` and a `cells` map of column → expression.
+- Cells are evaluated left-to-right; `self.<col>` references earlier cells in
+  the same summary row.
+- Aggregate functions (`sum`, `avg`, etc.) in cell expressions operate over
+  data rows only.
+- Render synthetic summary rows in the markdown preview (depends on computed-
+  column preview, shipped in v0.3.0).
 
 ### Alternatives considered
 - Keep `Running Balance` manually authored in Markdown (error-prone and duplicated logic).
 - Use inline cell formulas (rejected for v1).
 
 ### Additional context
-- Current v1 expressions cannot reference the left neighbor summary cell (`RunningBalance[pN-1]`) inside a row-major matrix summary, so a dedicated matrix-summary helper is required.
-- `sum_above` means all non-summary rows above `Current` in the same table section; the optional `category` filter is applied before summing.
+- Design decision documented in [RFC-0002](../../specs/RFC-0002.md).
+- `self.<col>` resolves left-to-right; forward references are an error.
 - Determinism rule: evaluate period columns strictly in declared order.
+- A `scan` shorthand may be added later as syntactic sugar (see RFC-0002, Option D — deferred).
 - Example target layout:
 
 | #               | 1    | 2    | 3    | 4   | 5   | Row Total |
