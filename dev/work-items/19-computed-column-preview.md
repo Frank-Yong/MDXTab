@@ -46,8 +46,8 @@ that can be used to locate table boundaries in the source markdown.
 - [x] These are the columns to append.
 
 ### 2. Inject computed columns into rendered markdown
-- [x] After `interpolateAggregates()` produces the `renderedBody`, post-process the
-  markdown to append computed column(s) to each table:
+- [x] Before `interpolateAggregates()`, post-process the body to inject
+  computed column(s) into each table (preserves original cell positions):
   - [x] Add the computed column header(s) to the header row.
   - [x] Add the corresponding separator dashes (`---`) to the separator row.
   - [x] Add the evaluated cell value for each data row.
