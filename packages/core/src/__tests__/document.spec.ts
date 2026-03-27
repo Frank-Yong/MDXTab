@@ -451,6 +451,38 @@ tables:
     expect(pipeCountA).toBe(6); // | id | price | qty | subtotal | tax |
   });
 
+  it("preserves non-empty authored cells and only fills empty ones", () => {
+    const mixedDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty, total]
+    types:
+      price: number
+      qty: number
+      total: number
+    computed:
+      total: price * qty
+---
+
+## items
+| id | price | qty | total |
+|----|-------|-----|-------|
+| a  | 10    | 3   |       |
+| b  | 5     | 4   | 999   |
+`;
+    const result = compileMdxtab(mixedDoc, { includeComputedColumns: true });
+    const lines = result.rendered.split("\n");
+    const rowA = lines.find((l) => l.includes("| a "));
+    const rowB = lines.find((l) => l.includes("| b "));
+    // Row a has empty cell → filled with computed value 30
+    expect(rowA).toContain(" 30 ");
+    // Row b has authored value 999 → preserved, NOT overwritten with 20
+    expect(rowB).toContain("999");
+    expect(rowB).not.toContain(" 20 ");
+  });
+
   it("does not inject computed columns when includeComputedColumns is false", () => {
     const withFlag = compileMdxtab(singleComputedDoc, { includeComputedColumns: true });
     const without = compileMdxtab(singleComputedDoc, { includeComputedColumns: false });

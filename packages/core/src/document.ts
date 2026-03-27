@@ -355,6 +355,8 @@ function injectComputedColumns(
       for (const { name, colIdx } of sortedInline) {
         const cell = row.cells[colIdx];
         if (!cell) continue;
+        // Only fill empty cells; preserve non-empty authored values
+        if (cell.raw.trim() !== "") continue;
 
         const value = evalRow && name in evalRow ? formatScalar(evalRow[name]) : "#ERR";
         const line = lines[dataLine];
