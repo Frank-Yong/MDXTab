@@ -79,7 +79,7 @@ that can be used to locate table boundaries in the source markdown.
 ### 6. Write unit tests
 - [x] Test: table with one computed column → rendered output has extra column.
 - [x] Test: table with multiple computed columns → all appended in declaration order.
-- [x] Test: computed column that errors → renders `#ERR` or empty cell.
+- [x] Test: computed column that errors → aborts compilation with a diagnostic (existing behavior; `#ERR` guard is defensive only).
 - [x] Test: computed column with null value → renders empty cell.
 - [x] Test: no computed columns → rendered output unchanged.
 - [x] Test: computed column name matches an authored header → not duplicated.
