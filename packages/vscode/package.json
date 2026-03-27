@@ -77,6 +77,6 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@mdxtab/core": "0.2.2"
+    "@mdxtab/core": "0.3.0"
   }
 }
