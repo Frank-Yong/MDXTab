@@ -2,6 +2,13 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-03-27 - 0.3.0
+- Show computed columns in the Markdown preview (Issue #12, PR #18).
+- New VS Code setting `mdxtab.preview.showComputedColumns` (default: on).
+- Computed columns that match an authored header fill in empty cells in-place;
+  new computed columns are appended to the right of the table.
+- `formatScalar()` escapes pipes and newlines to keep table structure intact.
+
 ## 2026-02-17 - 0.2.0
 - Add `hours()` helper and `time` column type for time math.
 - Support grouped aggregates with `sum/avg/min/max/count ... by <column>`.
