@@ -382,6 +382,37 @@ tables:
     const headerLine = result.rendered.split("\n").find((l) => l.includes("| id |"));
     const count = (headerLine?.match(/duration/g) ?? []).length;
     expect(count).toBe(1);
+    // But the empty cell should be filled with the computed value
+    expect(result.rendered).toContain("8");
+  });
+
+  it("fills in authored empty cells with computed values", () => {
+    const inlineDoc = `---
+mdxtab: "1.0"
+tables:
+  items:
+    key: id
+    columns: [id, price, qty, total]
+    types:
+      price: number
+      qty: number
+      total: number
+    computed:
+      total: price * qty
+---
+
+## items
+| id | price | qty | total |
+|----|-------|-----|-------|
+| a  | 10    | 3   |       |
+| b  | 5     | 4   |       |
+`;
+    const result = compileMdxtab(inlineDoc, { includeComputedColumns: true });
+    expect(result.rendered).toContain(" 30 ");
+    expect(result.rendered).toContain(" 20 ");
+    // Header count should still be 1
+    const header = result.rendered.split("\n").find((l) => l.includes("| id |"));
+    expect((header?.match(/total/g) ?? []).length).toBe(1);
   });
 
   it("does not inject computed columns when includeComputedColumns is false", () => {

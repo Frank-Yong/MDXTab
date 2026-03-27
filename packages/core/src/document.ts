@@ -320,42 +320,73 @@ function injectComputedColumns(
     const schema = schemas[pt.name];
     if (!schema?.computed) continue;
 
-    const authoredHeaders = new Set(pt.headers.map((h) => h.trimmed));
-    // Computed columns to inject: those declared in computed but not already authored as headers
-    const extraCols = Object.keys(schema.computed).filter((c) => !authoredHeaders.has(c));
-    if (extraCols.length === 0) continue;
-
     const evaluated = evaluatedTables[pt.name];
     if (!evaluated) continue;
 
-    // Header line (relative to body)
-    const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
-    // Separator is the next line after header
-    const separatorLine = headerLine + 1;
+    const authoredHeaders = pt.headers.map((h) => h.trimmed);
+    const authoredSet = new Set(authoredHeaders);
 
-    // Append computed column headers
-    if (headerLine >= 0 && headerLine < lines.length) {
-      const suffix = extraCols.map((c) => ` ${c} |`).join("");
-      lines[headerLine] = lines[headerLine].replace(/\|\s*$/, "|" + suffix);
+    // Split computed columns into two groups:
+    // 1. inlineCols: already authored as headers → fill in cell values in-place
+    // 2. extraCols: not yet in headers → append as new columns
+    const computedNames = Object.keys(schema.computed);
+    const inlineCols: { name: string; colIdx: number }[] = [];
+    const extraCols: string[] = [];
+
+    for (const c of computedNames) {
+      if (authoredSet.has(c)) {
+        const idx = authoredHeaders.indexOf(c);
+        if (idx !== -1) inlineCols.push({ name: c, colIdx: idx });
+      } else {
+        extraCols.push(c);
+      }
     }
 
-    // Append separator dashes
-    if (separatorLine >= 0 && separatorLine < lines.length) {
-      const suffix = extraCols.map((c) => " " + "-".repeat(Math.max(c.length, 3)) + " |").join("");
-      lines[separatorLine] = lines[separatorLine].replace(/\|\s*$/, "|" + suffix);
+    // Fill in existing authored cells with computed values
+    for (const { name, colIdx } of inlineCols) {
+      for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
+        const row = pt.rows[rowIdx];
+        const cell = row.cells[colIdx];
+        if (!cell) continue;
+
+        const dataLine = (row.line ?? 0) - bodyOffset;
+        if (dataLine < 0 || dataLine >= lines.length) continue;
+
+        const evalRow = evaluated.rows[rowIdx];
+        const value = evalRow && name in evalRow ? formatScalar(evalRow[name]) : "#ERR";
+        const line = lines[dataLine];
+
+        // Replace the cell content between its start and end positions
+        lines[dataLine] = line.slice(0, cell.start) + " " + value + " " + line.slice(cell.end);
+      }
     }
 
-    // Append cell values for each data row
-    for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
-      const dataLine = (pt.rows[rowIdx].line ?? 0) - bodyOffset;
-      if (dataLine < 0 || dataLine >= lines.length) continue;
+    // Append new columns for computed columns not already in headers
+    if (extraCols.length > 0) {
+      const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+      const separatorLine = headerLine + 1;
 
-      const evalRow = evaluated.rows[rowIdx];
-      const suffix = extraCols.map((c) => {
-        if (!evalRow || !(c in evalRow)) return " #ERR |";
-        return " " + formatScalar(evalRow[c]) + " |";
-      }).join("");
-      lines[dataLine] = lines[dataLine].replace(/\|\s*$/, "|" + suffix);
+      if (headerLine >= 0 && headerLine < lines.length) {
+        const suffix = extraCols.map((c) => ` ${c} |`).join("");
+        lines[headerLine] = lines[headerLine].replace(/\|\s*$/, "|" + suffix);
+      }
+
+      if (separatorLine >= 0 && separatorLine < lines.length) {
+        const suffix = extraCols.map((c) => " " + "-".repeat(Math.max(c.length, 3)) + " |").join("");
+        lines[separatorLine] = lines[separatorLine].replace(/\|\s*$/, "|" + suffix);
+      }
+
+      for (let rowIdx = 0; rowIdx < pt.rows.length; rowIdx++) {
+        const dataLine = (pt.rows[rowIdx].line ?? 0) - bodyOffset;
+        if (dataLine < 0 || dataLine >= lines.length) continue;
+
+        const evalRow = evaluated.rows[rowIdx];
+        const suffix = extraCols.map((c) => {
+          if (!evalRow || !(c in evalRow)) return " #ERR |";
+          return " " + formatScalar(evalRow[c]) + " |";
+        }).join("");
+        lines[dataLine] = lines[dataLine].replace(/\|\s*$/, "|" + suffix);
+      }
     }
   }
 

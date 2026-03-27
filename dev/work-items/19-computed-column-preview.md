@@ -1,7 +1,7 @@
 # Work Item: Preview rendering of computed columns
 
 ## Status
-- State: IN PROGRESS
+- State: DONE
 - Branch: `issue-12-computed-column-preview`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/12
 
@@ -86,15 +86,15 @@ that can be used to locate table boundaries in the source markdown.
 - [x] Test: formatting of numeric values (e.g., `8.0` not `8.000000000000001`).
 
 ### 7. Manual smoke-test in VS Code
-- [ ] Open a markdown file with computed columns (e.g., `dev/examples/time-entries.md`
+- [x] Open a markdown file with computed columns (e.g., `dev/examples/time-entries.md`
   or `dev/examples/finance.md`).
-- [ ] Verify preview shows the computed column with correct values.
-- [ ] Toggle `mdxtab.preview.showComputedColumns` and verify column hides/shows.
-- [ ] Verify diagnostics still work correctly.
+- [x] Verify preview shows the computed column with correct values.
+- [x] Toggle `mdxtab.preview.showComputedColumns` and verify column hides/shows.
+- [x] Verify diagnostics still work correctly.
 
 ### 8. Update documentation
-- [ ] Add a note to the VS Code extension README about the computed column preview.
-- [ ] Document the new `mdxtab.preview.showComputedColumns` setting.
+- [x] Add a note to the VS Code extension README about the computed column preview.
+- [x] Document the new `mdxtab.preview.showComputedColumns` setting.
 
 ## Acceptance criteria
 - Computed columns appear in the Markdown preview with correct per-row values.
