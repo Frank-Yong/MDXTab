@@ -519,3 +519,239 @@ tables:
     expect(result.rendered).toContain("| x  | 0.1 | 0.2 | 0.3 |");
   });
 });
+
+describe("summary row preview rendering", () => {
+  const baseSummaryDoc = `---
+mdxtab: "1.0"
+tables:
+  expenses:
+    key: category
+    columns: [category, p1, p2, p3, row_total]
+    empty_cells: zero
+    types:
+      p1: number
+      p2: number
+      p3: number
+      row_total: number
+    computed:
+      row_total: p1 + p2 + p3
+    summary_rows:
+      running_balance:
+        label: Running Balance
+        cells:
+          p1: sum(p1)
+          p2: self.p1 + sum(p2)
+          p3: self.p2 + sum(p3)
+---
+
+## expenses
+| category    | p1   | p2   | p3   | row_total |
+|-------------|------|------|------|-----------|
+| Salary      | 1000 |      |      |           |
+| Electricity |      | -100 |      |           |
+| Food        | -10  |      | -10  |           |
+`;
+
+  it("renders running balance with cumulative self references", () => {
+    const result = compileMdxtab(baseSummaryDoc, {
+      includeComputedColumns: true,
+      includeSummaryRows: true,
+    });
+    expect(result.rendered).toContain("| Running Balance | 990 | 890 | 880 |");
+  });
+
+  it("renders simple sum summary rows", () => {
+    const sumDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: category
+    columns: [category, p1, p2]
+    empty_cells: zero
+    types:
+      p1: number
+      p2: number
+    summary_rows:
+      totals:
+        label: Totals
+        cells:
+          p1: sum(p1)
+          p2: sum(p2)
+---
+
+## t
+| category | p1 | p2 |
+|----------|----|----|
+| A        | 1  |    |
+| B        |    | 2  |
+`;
+    const result = compileMdxtab(sumDoc, { includeSummaryRows: true });
+    expect(result.rendered).toContain("| Totals | 1 | 2 |");
+  });
+
+  it("treats null and empty numeric inputs as zero for sum-based summary rows", () => {
+    const nullDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1]
+    empty_cells: "null"
+    types:
+      p1: number
+    summary_rows:
+      totals:
+        label: Totals
+        cells:
+          p1: sum(p1)
+---
+
+## t
+| id | p1 |
+|----|----|
+| a  |    |
+| b  | 3  |
+| c  |    |
+`;
+    const result = compileMdxtab(nullDoc, { includeSummaryRows: true });
+    expect(result.rendered).toContain("| Totals | 3 |");
+  });
+
+  it("coexists with computed row_total column", () => {
+    const result = compileMdxtab(baseSummaryDoc, {
+      includeComputedColumns: true,
+      includeSummaryRows: true,
+    });
+    expect(result.rendered).toContain("| Salary      | 1000 |      |      | 1000 |");
+    expect(result.rendered).toContain("| Electricity |      | -100 |      | -100 |");
+    expect(result.rendered).toContain("| Food        | -10  |      | -10  | -20 |");
+    // row_total column exists and summary row leaves it empty unless explicitly set
+    expect(result.rendered).toContain("| Running Balance | 990 | 890 | 880 | |");
+  });
+
+  it("emits diagnostic for forward self reference", () => {
+    const badDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1, p2]
+    empty_cells: zero
+    types:
+      p1: number
+      p2: number
+    summary_rows:
+      rb:
+        label: RB
+        cells:
+          p2: self.p1 + sum(p2)
+          p1: sum(p1)
+---
+
+## t
+| id | p1 | p2 |
+|----|----|----|
+| a  | 1  | 2  |
+`;
+    const result = validateMdxtab(badDoc, { includeSummaryRows: true });
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_REF");
+    expect(result.diagnostics[0].table).toBe("t");
+  });
+
+  it("emits diagnostic for invalid summary row definition", () => {
+    const badSchemaDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1]
+    summary_rows:
+      totals:
+        cells:
+          p1: sum(p1)
+---
+
+## t
+| id | p1 |
+|----|----|
+| a  | 1  |
+`;
+    const result = validateMdxtab(badSchemaDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("label is required");
+  });
+
+  it("does not change output when no summary rows are defined", () => {
+    const noSummaryDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1]
+    types:
+      p1: number
+---
+
+## t
+| id | p1 |
+|----|----|
+| a  | 1  |
+`;
+    const withFlag = compileMdxtab(noSummaryDoc, { includeSummaryRows: true });
+    const without = compileMdxtab(noSummaryDoc, { includeSummaryRows: false });
+    expect(withFlag.rendered).toBe(without.rendered);
+  });
+
+  it("does not inject summary rows when includeSummaryRows is false", () => {
+    const withFlag = compileMdxtab(baseSummaryDoc, {
+      includeComputedColumns: true,
+      includeSummaryRows: true,
+    });
+    const without = compileMdxtab(baseSummaryDoc, {
+      includeComputedColumns: true,
+      includeSummaryRows: false,
+    });
+    expect(withFlag.rendered).toContain("| Running Balance |");
+    expect(without.rendered).not.toContain("| Running Balance |");
+  });
+
+  it("renders multiple summary rows in declaration order", () => {
+    const multiSummaryDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1, p2]
+    empty_cells: zero
+    types:
+      p1: number
+      p2: number
+    summary_rows:
+      totals:
+        label: Totals
+        cells:
+          p1: sum(p1)
+          p2: sum(p2)
+      running:
+        label: Running
+        cells:
+          p1: sum(p1)
+          p2: self.p1 + sum(p2)
+---
+
+## t
+| id | p1 | p2 |
+|----|----|----|
+| a  | 1  | 2  |
+| b  | 3  | 4  |
+`;
+    const result = compileMdxtab(multiSummaryDoc, { includeSummaryRows: true });
+    const idxTotals = result.rendered.indexOf("| Totals | 4 | 6 |");
+    const idxRunning = result.rendered.indexOf("| Running | 4 | 10 |");
+    expect(idxTotals).toBeGreaterThan(-1);
+    expect(idxRunning).toBeGreaterThan(-1);
+    expect(idxTotals).toBeLessThan(idxRunning);
+  });
+});

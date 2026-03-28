@@ -125,15 +125,15 @@ tables:
 - [x] Verify it renders correctly in preview.
 
 ### 6. Write unit tests
-- [ ] Test: summary row with cumulative `self` references (running balance).
-- [ ] Test: summary row with simple `sum()` per column (totals row).
-- [ ] Test: null/empty data cells treated as 0.
-- [ ] Test: summary row coexists with computed `row_total` column.
-- [ ] Test: forward `self` reference → diagnostic emitted.
-- [ ] Test: invalid summary row definition (missing label, bad column) → diagnostic.
-- [ ] Test: no summary rows defined → behavior unchanged.
-- [ ] Test: summary row toggle off → no synthetic rows in output.
-- [ ] Test: multiple summary rows render in declaration order.
+- [x] Test: summary row with cumulative `self` references (running balance).
+- [x] Test: summary row with simple `sum()` per column (totals row).
+- [x] Test: null/empty data cells treated as 0.
+- [x] Test: summary row coexists with computed `row_total` column.
+- [x] Test: forward `self` reference → diagnostic emitted.
+- [x] Test: invalid summary row definition (missing label, bad column) → diagnostic.
+- [x] Test: no summary rows defined → behavior unchanged.
+- [x] Test: summary row toggle off → no synthetic rows in output.
+- [x] Test: multiple summary rows render in declaration order.
 
 ### 7. Manual smoke-test in VS Code
 - [ ] Open `dev/examples/expenses.md` in VS Code.
