@@ -60,7 +60,8 @@ class PreviewProvider implements TextDocumentContentProvider {
       const config = workspace.getConfiguration("mdxtab");
       const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
       const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
-      const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns });
+      const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
+      const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns, includeSummaryRows: showSummaryRows });
       return result.rendered;
     } catch (err) {
       const diag = toDiagnostic(err);
@@ -1119,8 +1120,9 @@ function extendMarkdownIt(md: { core: { ruler: { after: (name: string, rule: str
     if (!enabled) return;
     const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
     const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
+    const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
     try {
-      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns });
+      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns, includeSummaryRows: showSummaryRows });
       state.src = result.rendered;
     } catch (err) {
       const diag = toDiagnostic(err);

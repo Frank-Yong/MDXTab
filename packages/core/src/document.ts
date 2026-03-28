@@ -12,6 +12,8 @@ import type {
   FrontmatterDocument,
   ParsedTable,
   Scalar,
+  SummaryRowDefinition,
+  SummaryRowEvaluation,
   TableEvaluation,
   TableFrontmatter,
 } from "./types.js";
@@ -23,7 +25,11 @@ const TIME_RE = /^\d+:\d{2}$/;
 type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
 
-type EvalKind = "computed" | "aggregate";
+interface EvalRowContext {
+  [key: string]: Scalar | EvalRowContext;
+}
+
+type EvalKind = "computed" | "aggregate" | "summary-row";
 
 type GroupedAggregate = {
   fn: string;
@@ -34,7 +40,7 @@ type GroupedAggregate = {
 function evalWithContext(
   ast: AstNode,
   ctx: {
-    row: Record<string, Scalar>;
+    row: EvalRowContext;
     lookup: (table: string, key: Scalar, column: string) => Record<string, Scalar>;
     aggregate: (fn: string, col: string) => Scalar;
   },
@@ -54,7 +60,9 @@ function evalWithContext(
         message: contextMessage,
         severity: err.severity,
         table: err.table ?? info.table,
-        column: err.column ?? (info.kind === "computed" ? info.target : undefined),
+        column:
+          err.column ??
+          (info.kind === "computed" || info.kind === "summary-row" ? info.target : undefined),
         aggregate: err.aggregate ?? (info.kind === "aggregate" ? info.target : undefined),
         rowKey: err.rowKey ?? info.rowKey,
         range: err.range,
@@ -64,7 +72,7 @@ function evalWithContext(
       code: errorCodeFromMessage(message),
       message: contextMessage,
       table: info.table,
-      column: info.kind === "computed" ? info.target : undefined,
+      column: info.kind === "computed" || info.kind === "summary-row" ? info.target : undefined,
       aggregate: info.kind === "aggregate" ? info.target : undefined,
       rowKey: info.rowKey,
     });
@@ -297,6 +305,53 @@ function computeGroupedAggregate(
   return result;
 }
 
+function evaluateSummaryRows(
+  tableName: string,
+  defs: Record<string, SummaryRowDefinition>,
+  rows: Record<string, Scalar>[],
+  ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
+): SummaryRowEvaluation[] {
+  const results: SummaryRowEvaluation[] = [];
+  for (const [rowKey, def] of Object.entries(defs)) {
+    const selfCells: Record<string, Scalar> = {};
+    const cellEntries = Object.entries(def.cells);
+
+    for (const [col, exprStr] of cellEntries) {
+      let ast: AstNode;
+      try {
+        ast = parseExpression(lexExpression(exprStr));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new DiagnosticError({
+          code: errorCodeFromMessage(message),
+          message: `[summary-row] table ${tableName} ${col} summary_row=${rowKey}: ${message}`,
+          table: tableName,
+          column: col,
+          rowKey,
+        });
+      }
+      const aggregateFn = (fn: string, column: string) =>
+        computeAggregate(fn, column, rows, tableName, ensure);
+
+      const value = evalWithContext(
+        ast,
+        {
+          row: { self: selfCells },
+          lookup: () => {
+            throw new Error("E_REF: lookup not supported in summary row expressions");
+          },
+          aggregate: aggregateFn,
+        },
+        { table: tableName, target: col, kind: "summary-row", keyName: "summary_row", rowKey },
+      );
+      selfCells[col] = value;
+    }
+
+    results.push({ key: rowKey, label: def.label, cells: selfCells });
+  }
+  return results;
+}
+
 function formatScalar(value: Scalar): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "number") {
@@ -310,19 +365,7 @@ function formatScalar(value: Scalar): string {
   return String(value).replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
-function injectComputedColumns(
-  body: string,
-  parsedTables: ParsedTable[],
-  schemas: Record<string, TableFrontmatter>,
-  evaluatedTables: Record<string, TableEvaluation>,
-  bodyOffset: number,
-): string {
-  const lines = body.split("\n");
-
-  // Build a set of line indices inside fenced code blocks so we skip them.
-  // Note: parseMarkdownTables() also does not skip fences (pre-existing issue),
-  // so fenced tables currently cause parse/validation errors before this code
-  // runs. This guard is defensive for when the parser is updated to skip fences.
+function getFencedLines(lines: string[]): Set<number> {
   const fencedLines = new Set<number>();
   let inFence = false;
   let fenceTicks = 0;
@@ -343,6 +386,23 @@ function injectComputedColumns(
       fencedLines.add(i);
     }
   }
+  return fencedLines;
+}
+
+function injectComputedColumns(
+  body: string,
+  parsedTables: ParsedTable[],
+  schemas: Record<string, TableFrontmatter>,
+  evaluatedTables: Record<string, TableEvaluation>,
+  bodyOffset: number,
+): string {
+  const lines = body.split("\n");
+
+  // Build a set of line indices inside fenced code blocks so we skip them.
+  // Note: parseMarkdownTables() also does not skip fences (pre-existing issue),
+  // so fenced tables currently cause parse/validation errors before this code
+  // runs. This guard is defensive for when the parser is updated to skip fences.
+  const fencedLines = getFencedLines(lines);
 
   for (const pt of parsedTables) {
     const schema = schemas[pt.name];
@@ -426,6 +486,83 @@ function injectComputedColumns(
         lines[dataLine] = lines[dataLine].replace(/\|\s*$/, "|" + suffix);
       }
     }
+  }
+
+  return lines.join("\n");
+}
+
+function injectSummaryRows(
+  body: string,
+  parsedTables: ParsedTable[],
+  schemas: Record<string, TableFrontmatter>,
+  evaluatedTables: Record<string, TableEvaluation>,
+  bodyOffset: number,
+  includeComputedColumns: boolean,
+): string {
+  const lines = body.split("\n");
+  const fencedLines = getFencedLines(lines);
+
+  // Process tables in reverse document order so that line insertions
+  // for earlier tables don't shift the line indices of later tables.
+  const tablesWithSummary = parsedTables
+    .filter((pt) => {
+      const evaluated = evaluatedTables[pt.name];
+      return evaluated?.summaryRows && evaluated.summaryRows.length > 0;
+    })
+    .map((pt) => {
+      // Determine insertion point in the body:
+      // - after last data row when data rows exist
+      // - otherwise after the separator row (header + 1)
+      const lastRow = pt.rows[pt.rows.length - 1];
+      const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+      const insertAfterLine = lastRow
+        ? (lastRow.line ?? 0) - bodyOffset
+        : headerLine + 1;
+      return { pt, insertAfterLine };
+    })
+    .sort((a, b) => b.insertAfterLine - a.insertAfterLine);
+
+  for (const { pt, insertAfterLine } of tablesWithSummary) {
+    if (insertAfterLine < 0 || insertAfterLine >= lines.length) continue;
+
+    // Skip tables whose header line falls inside a fenced code block.
+    const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+    if (fencedLines.has(headerLine)) continue;
+
+    const schema = schemas[pt.name];
+    const evaluated = evaluatedTables[pt.name];
+    if (!evaluated?.summaryRows) continue;
+
+    // Build the effective column list for the current render mode.
+    // Extra computed columns only exist in the table when computed-column
+    // injection is enabled.
+    const authoredHeaders = pt.headers.map((h) => h.trimmed);
+    const extraComputed = includeComputedColumns && schema.computed
+      ? Object.keys(schema.computed).filter((c) => !authoredHeaders.includes(c))
+      : [];
+    const allColumns = [...authoredHeaders, ...extraComputed];
+    const keyCol = schema.key ?? "id";
+    const keyIndex = allColumns.indexOf(keyCol);
+
+    // Build one pipe-delimited row per summary row
+    const summaryLines: string[] = [];
+    for (const sr of evaluated.summaryRows) {
+      const cells = allColumns.map((col, idx) => {
+        // The label goes in the key column (first identifying column)
+        if (idx === keyIndex || (keyIndex === -1 && idx === 0)) {
+          return ` ${formatScalar(sr.label)} `;
+        }
+        if (col in sr.cells) {
+          const val = formatScalar(sr.cells[col]);
+          return val === "" ? " " : ` ${val} `;
+        }
+        return " ";
+      });
+      summaryLines.push(`|${cells.join("|")}|`);
+    }
+
+    // Insert after last data row (or after separator when table has no data rows)
+    lines.splice(insertAfterLine + 1, 0, ...summaryLines);
   }
 
   return lines.join("\n");
@@ -562,7 +699,7 @@ function interpolateAggregates(
 }
 
 export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
-  const { includeFrontmatter = true, includeComputedColumns = false } = options;
+  const { includeFrontmatter = true, includeComputedColumns = false, includeSummaryRows = false } = options;
   const frontmatter = parseFrontmatter(raw);
   const tables = parseMarkdownTables(raw);
 
@@ -785,20 +922,36 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   const results: Record<string, TableEvaluation> = {};
   for (const [name, rows] of Object.entries(rowList)) {
     const ensure = ensureByTable[name];
+    const schema = frontmatter.tables[name];
+    const summaryRows = schema.summary_rows
+      ? evaluateSummaryRows(name, schema.summary_rows, rows, ensure)
+      : undefined;
     results[name] = {
       name,
       rows: rows.map((r) => ensure(r)),
       aggregates: aggregateResults[name] ?? {},
       groupedAggregates: groupedAggregateResults[name] ?? {},
+      summaryRows,
     };
   }
 
   const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
   // Inject computed columns first (uses original cell positions from parseMarkdownTables),
+  // then summary rows (appended after last data row),
   // then interpolate aggregates (regex-based, position-independent).
   let renderedBody = body;
   if (includeComputedColumns) {
     renderedBody = injectComputedColumns(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
+  }
+  if (includeSummaryRows) {
+    renderedBody = injectSummaryRows(
+      renderedBody,
+      tables,
+      frontmatter.tables as Record<string, TableFrontmatter>,
+      results,
+      bodyOffset,
+      includeComputedColumns,
+    );
   }
   renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {

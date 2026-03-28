@@ -37,6 +37,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show computed columns in preview tables. When enabled, empty cells for authored computed columns are filled with evaluated values, and computed columns not in the source table are appended."
+        },
+        "mdxtab.preview.showSummaryRows": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show summary rows in preview tables. When enabled, synthetic rows defined via summary_rows in frontmatter are appended at the bottom of the table."
         }
       }
     },
