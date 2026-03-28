@@ -25,6 +25,8 @@ const TIME_RE = /^\d+:\d{2}$/;
 type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
 
+type EvalRowContext = Record<string, Scalar | EvalRowContext>;
+
 type EvalKind = "computed" | "aggregate" | "summary-row";
 
 type GroupedAggregate = {
@@ -36,7 +38,7 @@ type GroupedAggregate = {
 function evalWithContext(
   ast: AstNode,
   ctx: {
-    row: Record<string, Scalar>;
+    row: EvalRowContext;
     lookup: (table: string, key: Scalar, column: string) => Record<string, Scalar>;
     aggregate: (fn: string, col: string) => Scalar;
   },
@@ -320,7 +322,7 @@ function evaluateSummaryRows(
       const value = evalWithContext(
         ast,
         {
-          row: { self: selfCells as unknown as Scalar },
+          row: { self: selfCells },
           lookup: () => {
             throw new Error("E_REF: lookup not supported in summary row expressions");
           },
