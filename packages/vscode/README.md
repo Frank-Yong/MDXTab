@@ -25,18 +25,18 @@ summary row via `self.<column>`.
 
 ```yaml
 tables:
-	expenses:
-		key: category
-		columns: [category, p1, p2, p3, row_total]
-		computed:
-			row_total: p1 + p2 + p3
-		summary_rows:
-			running_balance:
-				label: Running Balance
-				cells:
-					p1: sum(p1)
-					p2: self.p1 + sum(p2)
-					p3: self.p2 + sum(p3)
+  expenses:
+    key: category
+    columns: [category, p1, p2, p3, row_total]
+    computed:
+      row_total: p1 + p2 + p3
+    summary_rows:
+      running_balance:
+        label: Running Balance
+        cells:
+          p1: sum(p1)
+          p2: self.p1 + sum(p2)
+          p3: self.p2 + sum(p3)
 ```
 
 In preview, the synthetic row is appended after the last data row.
