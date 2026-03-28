@@ -28,9 +28,11 @@ function parseSummaryRows(
   tableName: string,
   value: unknown,
   columns: string[],
+  computed: Record<string, string> | undefined,
 ): Record<string, SummaryRowDefinition> {
   const obj = expectObject(value, `summary_rows for table ${tableName}`);
   const result: Record<string, SummaryRowDefinition> = {};
+  const allowedColumns = new Set<string>([...columns, ...Object.keys(computed ?? {})]);
 
   for (const [rowKey, rowValue] of Object.entries(obj)) {
     const rowObj = expectObject(rowValue, `summary_rows.${rowKey} for table ${tableName}`);
@@ -46,7 +48,7 @@ function parseSummaryRows(
     const cellsObj = expectObject(rowObj.cells, `summary_rows.${rowKey}.cells for table ${tableName}`);
     const cells: Record<string, string> = {};
     for (const [col, expr] of Object.entries(cellsObj)) {
-      if (!columns.includes(col)) {
+      if (!allowedColumns.has(col)) {
         throw new Error(
           `summary_rows.${rowKey}.cells references unknown column "${col}" in table ${tableName}`,
         );
@@ -108,7 +110,7 @@ function validateTable(name: string, value: unknown): TableFrontmatter {
   }
 
   const summary_rows: Record<string, SummaryRowDefinition> | undefined = obj.summary_rows
-    ? parseSummaryRows(name, obj.summary_rows, columns)
+    ? parseSummaryRows(name, obj.summary_rows, columns, computed)
     : undefined;
 
   return {

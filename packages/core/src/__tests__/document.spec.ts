@@ -796,4 +796,36 @@ tables:
     const result = compileMdxtab(emptyTableDoc, { includeSummaryRows: true });
     expect(result.rendered).toContain("| Totals | 0 | 0 |");
   });
+
+  it("allows summary row cells targeting computed-only columns", () => {
+    const computedOnlyDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1]
+    types:
+      p1: number
+    computed:
+      p2: p1 * 2
+    summary_rows:
+      totals:
+        label: Totals
+        cells:
+          p2: sum(p2)
+---
+
+## t
+| id | p1 |
+|----|----|
+| a  | 3  |
+| b  | 4  |
+`;
+    const result = compileMdxtab(computedOnlyDoc, {
+      includeComputedColumns: true,
+      includeSummaryRows: true,
+    });
+    expect(result.rendered).toContain("| id | p1 | p2 |");
+    expect(result.rendered).toContain("| Totals | | 14 |");
+  });
 });
