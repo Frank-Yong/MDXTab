@@ -1,7 +1,7 @@
 # Work Item: Expenses 2D Sheet
 
 ## Status
-- State: IN PROGRESS
+- State: DONE
 - Branch: `issue-21-expenses-2d-sheet`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/21
 
@@ -142,16 +142,16 @@ tables:
 - [x] Toggle settings and verify behavior.
 
 ### 8. Update documentation
-- [ ] Document `summary_rows` in the extension README or a usage guide.
-- [ ] Add the new frontmatter keys to any schema/spec docs.
+- [x] Document `summary_rows` in the extension README or a usage guide.
+- [x] Add the new frontmatter keys to any schema/spec docs.
 
 ## Acceptance criteria
-- [ ] `summary_rows` frontmatter schema is parsed, validated, and produces
+- [x] `summary_rows` frontmatter schema is parsed, validated, and produces
   diagnostics on errors.
-- [ ] `running_sum` and `sum` summary formulas evaluate correctly.
-- [ ] Summary rows appear in the rendered markdown preview as the last row(s)
+- [x] `self`-based cumulative and `sum(...)` summary-row formulas evaluate correctly.
+- [x] Summary rows appear in the rendered markdown preview as the last row(s)
   of the table.
-- [ ] Computed columns (e.g., `row_total`) and summary rows coexist correctly.
-- [ ] All existing tests continue to pass.
-- [ ] New tests cover the scenarios listed in Task 6.
-- [ ] Example file `dev/examples/expenses.md` demonstrates the feature.
+- [x] Computed columns (e.g., `row_total`) and summary rows coexist correctly.
+- [x] All existing tests continue to pass.
+- [x] New tests cover the scenarios listed in Task 6.
+- [x] Example file `dev/examples/expenses.md` demonstrates the feature.

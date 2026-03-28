@@ -20,6 +20,11 @@ tables:
       <columnName>: <expression>
     aggregates:                      # optional
       <name>: <expression>
+    summary_rows:                    # optional
+      <rowName>:
+        label: <string>
+        cells:
+          <columnName>: <expression>
 ---
 
 # Markdown body (data + presentation)
@@ -35,6 +40,8 @@ tables:
 - `types` applies optional static typing; validation fails on mismatches.
 - `computed` defines per-row derived columns; computed columns must not appear in Markdown data rows.
 - `aggregates` defines table-level scalars evaluated after row computation.
+- `summary_rows` defines synthetic rows appended in rendered preview/output; each row requires `label` and `cells`.
+- `summary_rows.<row>.cells` maps table columns to expressions; expressions evaluate left-to-right and may reference prior summary cells via `self.<column>`.
 
 ## Markdown Body Rules
 - Contains only literal values; no inline formulas or expressions.
@@ -119,7 +126,8 @@ arguments   ::= expression ( "," expression )*
 2) Validate schema, column presence, types, and dependency graph (no cycles).
 3) Evaluate computed columns per row in dependency order.
 4) Evaluate aggregates over final column values.
-5) Render outputs (interpolation, exports).
+5) Evaluate `summary_rows` cell expressions in declaration order.
+6) Render outputs (computed columns/summary rows/interpolation, exports).
 
 ### Aggregate Null Handling
 - Aggregates skip null inputs.
