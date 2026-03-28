@@ -468,6 +468,70 @@ function injectComputedColumns(
   return lines.join("\n");
 }
 
+function injectSummaryRows(
+  body: string,
+  parsedTables: ParsedTable[],
+  schemas: Record<string, TableFrontmatter>,
+  evaluatedTables: Record<string, TableEvaluation>,
+  bodyOffset: number,
+): string {
+  const lines = body.split("\n");
+
+  // Process tables in reverse document order so that line insertions
+  // for earlier tables don't shift the line indices of later tables.
+  const tablesWithSummary = parsedTables
+    .filter((pt) => {
+      const evaluated = evaluatedTables[pt.name];
+      return evaluated?.summaryRows && evaluated.summaryRows.length > 0;
+    })
+    .map((pt) => {
+      // Determine the last data row line in the body
+      const lastRow = pt.rows[pt.rows.length - 1];
+      const lastDataLine = (lastRow?.line ?? 0) - bodyOffset;
+      return { pt, lastDataLine };
+    })
+    .sort((a, b) => b.lastDataLine - a.lastDataLine);
+
+  for (const { pt, lastDataLine } of tablesWithSummary) {
+    if (lastDataLine < 0 || lastDataLine >= lines.length) continue;
+
+    const schema = schemas[pt.name];
+    const evaluated = evaluatedTables[pt.name];
+    if (!evaluated?.summaryRows) continue;
+
+    // Build the full column list: authored headers + any extra computed columns
+    const authoredHeaders = pt.headers.map((h) => h.trimmed);
+    const extraComputed = schema.computed
+      ? Object.keys(schema.computed).filter((c) => !authoredHeaders.includes(c))
+      : [];
+    const allColumns = [...authoredHeaders, ...extraComputed];
+    const keyCol = schema.key ?? "id";
+    const keyIndex = allColumns.indexOf(keyCol);
+
+    // Build one pipe-delimited row per summary row
+    const summaryLines: string[] = [];
+    for (const sr of evaluated.summaryRows) {
+      const cells = allColumns.map((col, idx) => {
+        // The label goes in the key column (first identifying column)
+        if (idx === keyIndex || (keyIndex === -1 && idx === 0)) {
+          return ` ${formatScalar(sr.label)} `;
+        }
+        if (col in sr.cells) {
+          const val = formatScalar(sr.cells[col]);
+          return val === "" ? " " : ` ${val} `;
+        }
+        return " ";
+      });
+      summaryLines.push(`|${cells.join("|")}|`);
+    }
+
+    // Insert after the last data row
+    lines.splice(lastDataLine + 1, 0, ...summaryLines);
+  }
+
+  return lines.join("\n");
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
@@ -599,7 +663,7 @@ function interpolateAggregates(
 }
 
 export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
-  const { includeFrontmatter = true, includeComputedColumns = false } = options;
+  const { includeFrontmatter = true, includeComputedColumns = false, includeSummaryRows = false } = options;
   const frontmatter = parseFrontmatter(raw);
   const tables = parseMarkdownTables(raw);
 
@@ -837,10 +901,14 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
   const { frontmatter: fmText, body, bodyOffset } = splitFrontmatter(raw);
   // Inject computed columns first (uses original cell positions from parseMarkdownTables),
+  // then summary rows (appended after last data row),
   // then interpolate aggregates (regex-based, position-independent).
   let renderedBody = body;
   if (includeComputedColumns) {
     renderedBody = injectComputedColumns(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
+  }
+  if (includeSummaryRows) {
+    renderedBody = injectSummaryRows(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
   }
   renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {

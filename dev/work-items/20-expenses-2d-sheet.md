@@ -106,18 +106,18 @@ tables:
 - [x] Handle nulls: treat null/empty data cells as 0 for numeric aggregation.
 
 ### 3. Inject summary rows into rendered markdown
-- [ ] Extend `injectComputedColumns()` (or add a new `injectSummaryRows()`)
+- [x] Extend `injectComputedColumns()` (or add a new `injectSummaryRows()`)
   to append synthetic rows at the bottom of each table.
-- [ ] Format: `| <label> | <val1> | <val2> | … |` matching the table's column
+- [x] Format: `| <label> | <val1> | <val2> | … |` matching the table's column
   count and alignment.
-- [ ] Summary row cells for columns not in the summary's `columns` list render
+- [x] Summary row cells for columns not in the summary's `columns` list render
   as empty.
-- [ ] Respect `includeComputedColumns` — if off, skip summary row injection.
+- [x] Respect `includeComputedColumns` — if off, skip summary row injection.
 
 ### 4. Add a VS Code setting (optional, or reuse existing)
-- [ ] Decide whether summary rows follow `showComputedColumns` or need their
+- [x] Decide whether summary rows follow `showComputedColumns` or need their
   own toggle (e.g., `mdxtab.preview.showSummaryRows`).
-- [ ] Wire the setting through `CompileOptions`.
+- [x] Wire the setting through `CompileOptions`.
 
 ### 5. Create an example document
 - [ ] Create `dev/examples/expenses.md` with the target layout.

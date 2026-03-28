@@ -88,6 +88,7 @@ export interface CompileResult {
 export interface CompileOptions {
   includeFrontmatter?: boolean;
   includeComputedColumns?: boolean;
+  includeSummaryRows?: boolean;
 }
 
 export interface DiagnosticPosition {
