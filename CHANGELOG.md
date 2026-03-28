@@ -2,6 +2,11 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-03-28 - 0.4.1
+- Fix VS Code marketplace releases to include the current preview rendering behavior.
+- Ensure extension packaging/publishing rebuilds before shipping via `vscode:prepublish`.
+- Restore preview support for `mdxtab.preview.showComputedColumns` and `mdxtab.preview.showSummaryRows` in the shipped extension build.
+
 ## 2026-03-28 - 0.4.0
 - Add `summary_rows` support for synthetic table rows in preview/output.
 - Summary-row cells support left-to-right `self.<column>` references.

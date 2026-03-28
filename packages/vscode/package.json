@@ -1,7 +1,7 @@
 {
   "name": "mdxtab",
   "displayName": "MDXTab",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "license": "MIT",
   "type": "module",
   "private": true,
@@ -73,6 +73,7 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run build",
     "build": "npm run -w @mdxtab/core build --if-present && tsc -p tsconfig.json && node ./scripts/copy-core.mjs",
     "test": "echo \"(no tests yet)\""
   },
@@ -82,6 +83,6 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@mdxtab/core": "0.4.0"
+    "@mdxtab/core": "0.4.1"
   }
 }
