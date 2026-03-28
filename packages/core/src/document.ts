@@ -317,7 +317,19 @@ function evaluateSummaryRows(
     const cellEntries = Object.entries(def.cells);
 
     for (const [col, exprStr] of cellEntries) {
-      const ast = parseExpression(lexExpression(exprStr));
+      let ast: AstNode;
+      try {
+        ast = parseExpression(lexExpression(exprStr));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new DiagnosticError({
+          code: errorCodeFromMessage(message),
+          message: `[summary-row] table ${tableName} ${col} summary_row=${rowKey}: ${message}`,
+          table: tableName,
+          column: col,
+          rowKey,
+        });
+      }
       const aggregateFn = (fn: string, column: string) =>
         computeAggregate(fn, column, rows, tableName, ensure);
 
