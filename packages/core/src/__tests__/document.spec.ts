@@ -717,6 +717,18 @@ tables:
     expect(without.rendered).not.toContain("| Running Balance |");
   });
 
+  it("keeps summary row column count aligned when includeComputedColumns is false", () => {
+    const result = compileMdxtab(baseSummaryDoc, {
+      includeComputedColumns: false,
+      includeSummaryRows: true,
+    });
+    const line = result.rendered.split("\n").find((l) => l.includes("| Running Balance |"));
+    expect(line).toBeDefined();
+    const pipeCount = (line?.match(/\|/g) ?? []).length;
+    // Header: | category | p1 | p2 | p3 | row_total | => 6 pipes
+    expect(pipeCount).toBe(6);
+  });
+
   it("renders multiple summary rows in declaration order", () => {
     const multiSummaryDoc = `---
 mdxtab: "1.0"

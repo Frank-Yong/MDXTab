@@ -474,6 +474,7 @@ function injectSummaryRows(
   schemas: Record<string, TableFrontmatter>,
   evaluatedTables: Record<string, TableEvaluation>,
   bodyOffset: number,
+  includeComputedColumns: boolean,
 ): string {
   const lines = body.split("\n");
 
@@ -499,9 +500,11 @@ function injectSummaryRows(
     const evaluated = evaluatedTables[pt.name];
     if (!evaluated?.summaryRows) continue;
 
-    // Build the full column list: authored headers + any extra computed columns
+    // Build the effective column list for the current render mode.
+    // Extra computed columns only exist in the table when computed-column
+    // injection is enabled.
     const authoredHeaders = pt.headers.map((h) => h.trimmed);
-    const extraComputed = schema.computed
+    const extraComputed = includeComputedColumns && schema.computed
       ? Object.keys(schema.computed).filter((c) => !authoredHeaders.includes(c))
       : [];
     const allColumns = [...authoredHeaders, ...extraComputed];
@@ -908,7 +911,14 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     renderedBody = injectComputedColumns(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
   }
   if (includeSummaryRows) {
-    renderedBody = injectSummaryRows(renderedBody, tables, frontmatter.tables as Record<string, TableFrontmatter>, results, bodyOffset);
+    renderedBody = injectSummaryRows(
+      renderedBody,
+      tables,
+      frontmatter.tables as Record<string, TableFrontmatter>,
+      results,
+      bodyOffset,
+      includeComputedColumns,
+    );
   }
   renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
