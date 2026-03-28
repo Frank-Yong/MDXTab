@@ -120,9 +120,9 @@ tables:
 - [x] Wire the setting through `CompileOptions`.
 
 ### 5. Create an example document
-- [ ] Create `dev/examples/expenses.md` with the target layout.
-- [ ] Include frontmatter with `summary_rows` and `computed` (row_total).
-- [ ] Verify it renders correctly in preview.
+- [x] Create `dev/examples/expenses.md` with the target layout.
+- [x] Include frontmatter with `summary_rows` and `computed` (row_total).
+- [x] Verify it renders correctly in preview.
 
 ### 6. Write unit tests
 - [ ] Test: summary row with cumulative `self` references (running balance).
