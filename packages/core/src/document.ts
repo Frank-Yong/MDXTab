@@ -353,19 +353,7 @@ function formatScalar(value: Scalar): string {
   return String(value).replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
-function injectComputedColumns(
-  body: string,
-  parsedTables: ParsedTable[],
-  schemas: Record<string, TableFrontmatter>,
-  evaluatedTables: Record<string, TableEvaluation>,
-  bodyOffset: number,
-): string {
-  const lines = body.split("\n");
-
-  // Build a set of line indices inside fenced code blocks so we skip them.
-  // Note: parseMarkdownTables() also does not skip fences (pre-existing issue),
-  // so fenced tables currently cause parse/validation errors before this code
-  // runs. This guard is defensive for when the parser is updated to skip fences.
+function getFencedLines(lines: string[]): Set<number> {
   const fencedLines = new Set<number>();
   let inFence = false;
   let fenceTicks = 0;
@@ -386,6 +374,23 @@ function injectComputedColumns(
       fencedLines.add(i);
     }
   }
+  return fencedLines;
+}
+
+function injectComputedColumns(
+  body: string,
+  parsedTables: ParsedTable[],
+  schemas: Record<string, TableFrontmatter>,
+  evaluatedTables: Record<string, TableEvaluation>,
+  bodyOffset: number,
+): string {
+  const lines = body.split("\n");
+
+  // Build a set of line indices inside fenced code blocks so we skip them.
+  // Note: parseMarkdownTables() also does not skip fences (pre-existing issue),
+  // so fenced tables currently cause parse/validation errors before this code
+  // runs. This guard is defensive for when the parser is updated to skip fences.
+  const fencedLines = getFencedLines(lines);
 
   for (const pt of parsedTables) {
     const schema = schemas[pt.name];
@@ -483,6 +488,7 @@ function injectSummaryRows(
   includeComputedColumns: boolean,
 ): string {
   const lines = body.split("\n");
+  const fencedLines = getFencedLines(lines);
 
   // Process tables in reverse document order so that line insertions
   // for earlier tables don't shift the line indices of later tables.
@@ -506,6 +512,10 @@ function injectSummaryRows(
 
   for (const { pt, insertAfterLine } of tablesWithSummary) {
     if (insertAfterLine < 0 || insertAfterLine >= lines.length) continue;
+
+    // Skip tables whose header line falls inside a fenced code block.
+    const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+    if (fencedLines.has(headerLine)) continue;
 
     const schema = schemas[pt.name];
     const evaluated = evaluatedTables[pt.name];
