@@ -2,6 +2,13 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-03-28 - 0.4.0
+- Add `summary_rows` support for synthetic table rows in preview/output.
+- Summary-row cells support left-to-right `self.<column>` references.
+- Add VS Code setting `mdxtab.preview.showSummaryRows` (default: on).
+- Add expenses matrix example and expanded summary-row test coverage.
+- Improve diagnostics attribution for summary-row expression failures.
+
 ## 2026-03-27 - 0.3.0
 - Show computed columns in the Markdown preview (Issue #12, PR #18).
 - New VS Code setting `mdxtab.preview.showComputedColumns` (default: on).
