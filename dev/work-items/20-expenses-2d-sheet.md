@@ -112,7 +112,8 @@ tables:
   count and alignment.
 - [x] Summary row cells for columns not in the summary's `columns` list render
   as empty.
-- [x] Respect `includeComputedColumns` — if off, skip summary row injection.
+- [x] Respect independent toggles: `includeSummaryRows` controls summary-row
+  injection, and `includeComputedColumns` controls computed-column injection.
 
 ### 4. Add a VS Code setting (optional, or reuse existing)
 - [x] Decide whether summary rows follow `showComputedColumns` or need their
