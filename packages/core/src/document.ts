@@ -25,7 +25,9 @@ const TIME_RE = /^\d+:\d{2}$/;
 type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
 
-type EvalRowContext = Record<string, Scalar | EvalRowContext>;
+interface EvalRowContext {
+  [key: string]: Scalar | EvalRowContext;
+}
 
 type EvalKind = "computed" | "aggregate" | "summary-row";
 
