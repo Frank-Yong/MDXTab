@@ -136,10 +136,10 @@ tables:
 - [x] Test: multiple summary rows render in declaration order.
 
 ### 7. Manual smoke-test in VS Code
-- [ ] Open `dev/examples/expenses.md` in VS Code.
-- [ ] Verify the Running Balance row appears with correct cumulative values.
-- [ ] Verify Row Total computed column works alongside summary rows.
-- [ ] Toggle settings and verify behavior.
+- [x] Open `dev/examples/expenses.md` in VS Code.
+- [x] Verify the Running Balance row appears with correct cumulative values.
+- [x] Verify Row Total computed column works alongside summary rows.
+- [x] Toggle settings and verify behavior.
 
 ### 8. Update documentation
 - [ ] Document `summary_rows` in the extension README or a usage guide.
