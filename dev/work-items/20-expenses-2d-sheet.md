@@ -88,22 +88,22 @@ tables:
 ## Tasks
 
 ### 1. Design the `summary_rows` frontmatter schema
-- [ ] Define the YAML shape for `summary_rows` in `TableFrontmatter`.
-- [ ] Each summary row has: a key (id), a `label` (required string for the
+- [x] Define the YAML shape for `summary_rows` in `TableFrontmatter`.
+- [x] Each summary row has: a key (id), a `label` (required string for the
   first column), and a `cells` map (column name → expression string).
-- [ ] Validate in `parseFrontmatter()`: `label` is required, `cells` keys must
+- [x] Validate in `parseFrontmatter()`: `label` is required, `cells` keys must
   reference declared columns, expression strings must parse successfully.
-- [ ] Emit clear diagnostics for invalid summary row definitions.
+- [x] Emit clear diagnostics for invalid summary row definitions.
 
 ### 2. Evaluate summary rows
-- [ ] After `ensureComputed()` and aggregate computation, evaluate each summary
+- [x] After `ensureComputed()` and aggregate computation, evaluate each summary
   row definition.
-- [ ] Evaluate cells in **declaration order** (YAML key order, left to right).
-- [ ] Resolve `self.<col>` to the already-evaluated value of that column in
+- [x] Evaluate cells in **declaration order** (YAML key order, left to right).
+- [x] Resolve `self.<col>` to the already-evaluated value of that column in
   the same summary row. Forward references are an error.
-- [ ] Aggregate functions (`sum`, `avg`, etc.) operate over data rows only.
-- [ ] Store results in `TableEvaluation` (new field, e.g., `summaryRows`).
-- [ ] Handle nulls: treat null/empty data cells as 0 for numeric aggregation.
+- [x] Aggregate functions (`sum`, `avg`, etc.) operate over data rows only.
+- [x] Store results in `TableEvaluation` (new field, e.g., `summaryRows`).
+- [x] Handle nulls: treat null/empty data cells as 0 for numeric aggregation.
 
 ### 3. Inject summary rows into rendered markdown
 - [ ] Extend `injectComputedColumns()` (or add a new `injectSummaryRows()`)

@@ -12,6 +12,8 @@ import type {
   FrontmatterDocument,
   ParsedTable,
   Scalar,
+  SummaryRowDefinition,
+  SummaryRowEvaluation,
   TableEvaluation,
   TableFrontmatter,
 } from "./types.js";
@@ -295,6 +297,41 @@ function computeGroupedAggregate(
     result[key] = computeAggregateValues(fn, values);
   }
   return result;
+}
+
+function evaluateSummaryRows(
+  tableName: string,
+  defs: Record<string, SummaryRowDefinition>,
+  rows: Record<string, Scalar>[],
+  ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
+): SummaryRowEvaluation[] {
+  const results: SummaryRowEvaluation[] = [];
+  for (const [rowKey, def] of Object.entries(defs)) {
+    const selfCells: Record<string, Scalar> = {};
+    const cellEntries = Object.entries(def.cells);
+
+    for (const [col, exprStr] of cellEntries) {
+      const ast = parseExpression(lexExpression(exprStr));
+      const aggregateFn = (fn: string, column: string) =>
+        computeAggregate(fn, column, rows, tableName, ensure);
+
+      const value = evalWithContext(
+        ast,
+        {
+          row: { self: selfCells as unknown as Scalar },
+          lookup: () => {
+            throw new Error("E_REF: lookup not supported in summary row expressions");
+          },
+          aggregate: aggregateFn,
+        },
+        { table: tableName, target: `summary_rows.${rowKey}.cells.${col}`, kind: "aggregate" },
+      );
+      selfCells[col] = value;
+    }
+
+    results.push({ key: rowKey, label: def.label, cells: selfCells });
+  }
+  return results;
 }
 
 function formatScalar(value: Scalar): string {
@@ -785,11 +822,16 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   const results: Record<string, TableEvaluation> = {};
   for (const [name, rows] of Object.entries(rowList)) {
     const ensure = ensureByTable[name];
+    const schema = frontmatter.tables[name];
+    const summaryRows = schema.summary_rows
+      ? evaluateSummaryRows(name, schema.summary_rows, rows, ensure)
+      : undefined;
     results[name] = {
       name,
       rows: rows.map((r) => ensure(r)),
       aggregates: aggregateResults[name] ?? {},
       groupedAggregates: groupedAggregateResults[name] ?? {},
+      summaryRows,
     };
   }
 
