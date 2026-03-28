@@ -769,4 +769,31 @@ tables:
     expect(idxRunning).toBeGreaterThan(-1);
     expect(idxTotals).toBeLessThan(idxRunning);
   });
+
+  it("renders summary rows for tables with headers but no data rows", () => {
+    const emptyTableDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, p1, p2]
+    empty_cells: zero
+    types:
+      p1: number
+      p2: number
+    summary_rows:
+      totals:
+        label: Totals
+        cells:
+          p1: sum(p1)
+          p2: sum(p2)
+---
+
+## t
+| id | p1 | p2 |
+|----|----|----|
+`;
+    const result = compileMdxtab(emptyTableDoc, { includeSummaryRows: true });
+    expect(result.rendered).toContain("| Totals | 0 | 0 |");
+  });
 });

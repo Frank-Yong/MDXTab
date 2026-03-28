@@ -492,15 +492,20 @@ function injectSummaryRows(
       return evaluated?.summaryRows && evaluated.summaryRows.length > 0;
     })
     .map((pt) => {
-      // Determine the last data row line in the body
+      // Determine insertion point in the body:
+      // - after last data row when data rows exist
+      // - otherwise after the separator row (header + 1)
       const lastRow = pt.rows[pt.rows.length - 1];
-      const lastDataLine = (lastRow?.line ?? 0) - bodyOffset;
-      return { pt, lastDataLine };
+      const headerLine = (pt.headers[0]?.line ?? 0) - bodyOffset;
+      const insertAfterLine = lastRow
+        ? (lastRow.line ?? 0) - bodyOffset
+        : headerLine + 1;
+      return { pt, insertAfterLine };
     })
-    .sort((a, b) => b.lastDataLine - a.lastDataLine);
+    .sort((a, b) => b.insertAfterLine - a.insertAfterLine);
 
-  for (const { pt, lastDataLine } of tablesWithSummary) {
-    if (lastDataLine < 0 || lastDataLine >= lines.length) continue;
+  for (const { pt, insertAfterLine } of tablesWithSummary) {
+    if (insertAfterLine < 0 || insertAfterLine >= lines.length) continue;
 
     const schema = schemas[pt.name];
     const evaluated = evaluatedTables[pt.name];
@@ -534,8 +539,8 @@ function injectSummaryRows(
       summaryLines.push(`|${cells.join("|")}|`);
     }
 
-    // Insert after the last data row
-    lines.splice(lastDataLine + 1, 0, ...summaryLines);
+    // Insert after last data row (or after separator when table has no data rows)
+    lines.splice(insertAfterLine + 1, 0, ...summaryLines);
   }
 
   return lines.join("\n");
