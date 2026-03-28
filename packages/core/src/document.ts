@@ -25,7 +25,7 @@ const TIME_RE = /^\d+:\d{2}$/;
 type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
 
-type EvalKind = "computed" | "aggregate";
+type EvalKind = "computed" | "aggregate" | "summary-row";
 
 type GroupedAggregate = {
   fn: string;
@@ -56,7 +56,9 @@ function evalWithContext(
         message: contextMessage,
         severity: err.severity,
         table: err.table ?? info.table,
-        column: err.column ?? (info.kind === "computed" ? info.target : undefined),
+        column:
+          err.column ??
+          (info.kind === "computed" || info.kind === "summary-row" ? info.target : undefined),
         aggregate: err.aggregate ?? (info.kind === "aggregate" ? info.target : undefined),
         rowKey: err.rowKey ?? info.rowKey,
         range: err.range,
@@ -66,7 +68,7 @@ function evalWithContext(
       code: errorCodeFromMessage(message),
       message: contextMessage,
       table: info.table,
-      column: info.kind === "computed" ? info.target : undefined,
+      column: info.kind === "computed" || info.kind === "summary-row" ? info.target : undefined,
       aggregate: info.kind === "aggregate" ? info.target : undefined,
       rowKey: info.rowKey,
     });
@@ -324,7 +326,7 @@ function evaluateSummaryRows(
           },
           aggregate: aggregateFn,
         },
-        { table: tableName, target: `summary_rows.${rowKey}.cells.${col}`, kind: "aggregate" },
+        { table: tableName, target: col, kind: "summary-row", keyName: "summary_row", rowKey },
       );
       selfCells[col] = value;
     }

@@ -657,6 +657,9 @@ tables:
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe("E_REF");
     expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].column).toBe("p2");
+    expect(result.diagnostics[0].rowKey).toBe("rb");
+    expect(result.diagnostics[0].aggregate).toBeUndefined();
   });
 
   it("emits diagnostic for invalid summary row definition", () => {
