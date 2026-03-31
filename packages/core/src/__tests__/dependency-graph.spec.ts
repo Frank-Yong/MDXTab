@@ -27,4 +27,13 @@ describe("dependency graph", () => {
   it("errors on bad aggregate arg", () => {
     expect(() => buildDependencyGraph({ agg: ast("sum(a + 1)") })).toThrow(/E_AGG_ARGUMENT/);
   });
+
+  it("rejects dependency chains beyond the configured depth", () => {
+    const nodes: Record<string, ReturnType<typeof ast>> = {};
+    for (let i = 130; i >= 1; i -= 1) {
+      nodes[`c${i}`] = ast(`c${i - 1} + 1`);
+    }
+    nodes.c0 = ast("1");
+    expect(() => buildDependencyGraph(nodes)).toThrow(/E_LIMIT/);
+  });
 });

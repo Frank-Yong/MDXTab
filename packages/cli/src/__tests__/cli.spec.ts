@@ -90,4 +90,20 @@ describe("mdxtab CLI", () => {
     expect(out.errors.length).toBeGreaterThan(0);
     expect(out.diagnostics).toEqual([]);
   });
+
+  it("allows overriding expression limits from the CLI", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-expression-length", "3"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    expect(ctx.err.join(" ")).toMatch(/E_LIMIT/);
+  });
+
+  it("accepts expression limit overrides in equals form", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-expression-length=32"], ctx.io);
+    expect(rc).toBe(0);
+    expect(ctx.code).toBe(0);
+    expect(ctx.out.join("").trim()).toBe("OK");
+  });
 });

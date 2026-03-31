@@ -14,9 +14,7 @@
     "vscode": "^1.88.0"
   },
   "activationEvents": [
-    "onLanguage:markdown",
-    "onCommand:mdxtab.renderPreview",
-    "onCommand:mdxtab.validateDocument"
+    "onLanguage:markdown"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -42,6 +40,30 @@
           "type": "boolean",
           "default": true,
           "description": "Show summary rows in preview tables. When enabled, synthetic rows defined via summary_rows in frontmatter are appended at the bottom of the table."
+        },
+        "mdxtab.limits.maxExpressionLength": {
+          "type": "integer",
+          "default": 4096,
+          "minimum": 1,
+          "description": "Maximum expression length in characters before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
+        },
+        "mdxtab.limits.maxTokens": {
+          "type": "integer",
+          "default": 512,
+          "minimum": 1,
+          "description": "Maximum token count per expression before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
+        },
+        "mdxtab.limits.maxAstDepth": {
+          "type": "integer",
+          "default": 64,
+          "minimum": 1,
+          "description": "Maximum AST depth per expression before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
+        },
+        "mdxtab.limits.maxDependencyDepth": {
+          "type": "integer",
+          "default": 128,
+          "minimum": 1,
+          "description": "Maximum dependency traversal depth before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
         }
       }
     },

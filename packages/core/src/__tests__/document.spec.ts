@@ -221,6 +221,119 @@ tables:
     ]);
   });
 
+  it("returns contextual diagnostics for computed expression limit failures", () => {
+    const deepExpression = "(".repeat(70) + "1" + ")".repeat(70);
+    const limitedDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    computed:
+      limited: ${deepExpression}
+---
+
+## t
+| id | value |
+|----|-------|
+| a  | 1     |
+`;
+    const result = validateMdxtab(limitedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_LIMIT");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].column).toBe("limited");
+    expect(result.diagnostics[0].message).toContain("[computed]");
+  });
+
+  it("returns contextual diagnostics for aggregate expression limit failures", () => {
+    const longAggregate = Array.from({ length: 260 }, () => "value").join(" + ");
+    const limitedDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    aggregates:
+      too_big: ${longAggregate}
+---
+
+## t
+| id | value |
+|----|-------|
+| a  | 1     |
+`;
+    const result = validateMdxtab(limitedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_LIMIT");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].aggregate).toBe("too_big");
+    expect(result.diagnostics[0].message).toContain("[aggregate]");
+  });
+
+  it("returns contextual diagnostics for dependency-depth failures", () => {
+    const computedLines: string[] = [];
+    for (let i = 130; i >= 1; i -= 1) {
+      computedLines.push(`      c${i}: c${i - 1} + 1`);
+    }
+    computedLines.push("      c0: value");
+
+    const limitedDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    computed:
+${computedLines.join("\n")}
+---
+
+## t
+| id | value |
+|----|-------|
+| a  | 1     |
+`;
+    const result = validateMdxtab(limitedDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_LIMIT");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].column).toBeUndefined();
+    expect(result.diagnostics[0].message).toContain("[dependency]");
+  });
+
+  it("allows expression limits to be overridden via compile options", () => {
+    const deepExpression = "(".repeat(70) + "1" + ")".repeat(70);
+    const limitedDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    computed:
+      limited: ${deepExpression}
+---
+
+## t
+| id | value |
+|----|-------|
+| a  | 1     |
+`;
+    const result = validateMdxtab(limitedDoc, {
+      expressionLimits: {
+        maxAstDepth: 128,
+      },
+    });
+    expect(result.diagnostics).toEqual([]);
+  });
+
   it("reports cell ranges with indentation offsets", () => {
     const dataLine = "  | a1 | abc |";
     const indentedDoc = `---

@@ -4,11 +4,13 @@ import { parseExpression, type AstNode } from "./parser.js";
 import { parseFrontmatter } from "./frontmatter.js";
 import { parseMarkdownTables } from "./markdown.js";
 import { lexExpression } from "./tokens.js";
+import { assertExpressionLength, normalizeExpressionLimits } from "./expression-limits.js";
 import { DiagnosticError, errorCodeFromMessage, lineRange, toDiagnostic } from "./diagnostics.js";
 import type {
   CompileOptions,
   CompileResult,
   Diagnostic,
+  ExpressionLimits,
   FrontmatterDocument,
   ParsedTable,
   Scalar,
@@ -45,9 +47,10 @@ function evalWithContext(
     aggregate: (fn: string, col: string) => Scalar;
   },
   info: { table: string; target: string; kind: EvalKind; keyName?: string; rowKey?: string },
+  limits: ExpressionLimits,
 ): Scalar {
   try {
-    const value = evaluateAst(ast, ctx);
+    const value = evaluateAst(ast, ctx, limits);
     if (value !== null && typeof value === "object") throw new Error("E_TYPE: expected scalar");
     return value;
   } catch (err) {
@@ -174,14 +177,58 @@ function errorCodeForCell(message: string): string {
   return errorCodeFromMessage(message);
 }
 
-function parseExpressions(map: Record<string, string> | undefined): Record<string, AstNode> {
-  if (!map) return {};
-  return Object.fromEntries(
-    Object.entries(map).map(([k, expr]) => [k, parseExpression(lexExpression(expr))]),
-  );
+function wrapExpressionDiagnostic(
+  err: unknown,
+  info: { table: string; target: string; kind: EvalKind | "dependency"; aggregate?: boolean; rowKey?: string },
+): DiagnosticError {
+  const message = err instanceof Error ? err.message : String(err);
+  const targetName = info.target || "<expression>";
+  const contextTarget = targetName;
+  const targetColumn = targetName.startsWith("<") ? undefined : targetName;
+  const rowPart = info.rowKey ? ` summary_row=${info.rowKey}` : "";
+  const contextMessage = `[${info.kind}] table ${info.table} ${contextTarget}${rowPart}: ${message}`;
+  if (err instanceof DiagnosticError) {
+    return new DiagnosticError({
+      code: err.code,
+      message: contextMessage,
+      severity: err.severity,
+      table: err.table ?? info.table,
+      column: info.aggregate ? err.column : err.column ?? targetColumn,
+      aggregate: info.aggregate ? err.aggregate ?? targetName : err.aggregate,
+      rowKey: err.rowKey ?? info.rowKey,
+      range: err.range,
+    });
+  }
+  return new DiagnosticError({
+    code: errorCodeFromMessage(message),
+    message: contextMessage,
+    table: info.table,
+    column: info.aggregate ? undefined : targetColumn,
+    aggregate: info.aggregate ? targetName : undefined,
+    rowKey: info.rowKey,
+  });
 }
 
-function parseAggregates(map: Record<string, string> | undefined): {
+function parseComputedExpressions(
+  tableName: string,
+  map: Record<string, string> | undefined,
+  limits: ExpressionLimits,
+): Record<string, AstNode> {
+  if (!map) return {};
+
+  const result: Record<string, AstNode> = {};
+  for (const [column, expr] of Object.entries(map)) {
+    try {
+      result[column] = parseExpression(lexExpression(expr, limits), limits);
+    } catch (err) {
+      throw wrapExpressionDiagnostic(err, { table: tableName, target: column, kind: "computed" });
+    }
+  }
+
+  return result;
+}
+
+function parseAggregates(tableName: string, map: Record<string, string> | undefined, limits: ExpressionLimits): {
   scalar: Record<string, AstNode>;
   grouped: Record<string, GroupedAggregate>;
 } {
@@ -190,12 +237,22 @@ function parseAggregates(map: Record<string, string> | undefined): {
   const grouped: Record<string, GroupedAggregate> = {};
   const groupRe = /^(sum|avg|min|max|count)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s+by\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i;
   for (const [name, expr] of Object.entries(map)) {
-    const match = expr.trim().match(groupRe);
-    if (match) {
-      grouped[name] = { fn: match[1].toLowerCase(), column: match[2], by: match[3] };
-      continue;
+    try {
+      assertExpressionLength(expr, limits);
+      const match = expr.trim().match(groupRe);
+      if (match) {
+        grouped[name] = { fn: match[1].toLowerCase(), column: match[2], by: match[3] };
+        continue;
+      }
+      scalar[name] = parseExpression(lexExpression(expr, limits), limits);
+    } catch (err) {
+      throw wrapExpressionDiagnostic(err, {
+        table: tableName,
+        target: name,
+        kind: "aggregate",
+        aggregate: true,
+      });
     }
-    scalar[name] = parseExpression(lexExpression(expr));
   }
   return { scalar, grouped };
 }
@@ -209,6 +266,7 @@ function ensureComputed(
   computedAsts: Record<string, Record<string, AstNode>>,
   lookupRow: LookupRowFn,
   computedDone: WeakSet<Record<string, Scalar>>,
+  limits: ExpressionLimits,
 ): Record<string, Scalar> {
   if (computedDone.has(row)) return row;
   const cols = order[tableName] ?? [];
@@ -224,6 +282,7 @@ function ensureComputed(
         },
       },
       { table: tableName, target: col, kind: "computed", keyName, rowKey },
+      limits,
     );
   }
   computedDone.add(row);
@@ -310,6 +369,7 @@ function evaluateSummaryRows(
   defs: Record<string, SummaryRowDefinition>,
   rows: Record<string, Scalar>[],
   ensure: (row: Record<string, Scalar>) => Record<string, Scalar>,
+  limits: ExpressionLimits,
 ): SummaryRowEvaluation[] {
   const results: SummaryRowEvaluation[] = [];
   for (const [rowKey, def] of Object.entries(defs)) {
@@ -319,7 +379,7 @@ function evaluateSummaryRows(
     for (const [col, exprStr] of cellEntries) {
       let ast: AstNode;
       try {
-        ast = parseExpression(lexExpression(exprStr));
+        ast = parseExpression(lexExpression(exprStr, limits), limits);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         throw new DiagnosticError({
@@ -343,6 +403,7 @@ function evaluateSummaryRows(
           aggregate: aggregateFn,
         },
         { table: tableName, target: col, kind: "summary-row", keyName: "summary_row", rowKey },
+        limits,
       );
       selfCells[col] = value;
     }
@@ -699,7 +760,13 @@ function interpolateAggregates(
 }
 
 export function compileMdxtab(raw: string, options: CompileOptions = {}): CompileResult {
-  const { includeFrontmatter = true, includeComputedColumns = false, includeSummaryRows = false } = options;
+  const {
+    includeFrontmatter = true,
+    includeComputedColumns = false,
+    includeSummaryRows = false,
+    expressionLimits,
+  } = options;
+  const limits = normalizeExpressionLimits(expressionLimits);
   const frontmatter = parseFrontmatter(raw);
   const tables = parseMarkdownTables(raw);
 
@@ -819,10 +886,18 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     rowList[name] = rows;
     rowMap[name] = map;
 
-    const computed = parseExpressions(schema.computed);
+    const computed = parseComputedExpressions(name, schema.computed, limits);
     computedAsts[name] = computed;
-    computedOrder[name] = buildDependencyGraph(computed).order;
-    const parsedAggregates = parseAggregates(schema.aggregates);
+    try {
+      computedOrder[name] = buildDependencyGraph(computed, limits).order;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const cycleMatch = message.match(/involving\s+([A-Za-z_][A-Za-z0-9_]*)/);
+      const target = cycleMatch?.[1] ?? "<computed>";
+      throw wrapExpressionDiagnostic(err, { table: name, target, kind: "dependency" });
+    }
+
+    const parsedAggregates = parseAggregates(name, schema.aggregates, limits);
     aggregateAsts[name] = parsedAggregates.scalar;
     groupedAggregateDefs[name] = parsedAggregates.grouped;
   }
@@ -848,7 +923,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     }
     const keyName = keyByTable[table];
     const rowKey = String(keyValue);
-    return ensureComputed(table, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone);
+    return ensureComputed(table, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone, limits);
   };
 
   const ensureByTable: Record<string, (row: Record<string, Scalar>) => Record<string, Scalar>> = {};
@@ -856,7 +931,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     ensureByTable[name] = (row) => {
       const keyName = keyByTable[name];
       const rowKey = String(row[keyName] ?? "");
-      return ensureComputed(name, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone);
+      return ensureComputed(name, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone, limits);
     };
   }
 
@@ -882,6 +957,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
           aggregate: aggregateFn,
         },
         { table: name, target: aggName, kind: "aggregate" },
+        limits,
       );
     }
     aggregateResults[name] = aggMap;
@@ -924,7 +1000,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     const ensure = ensureByTable[name];
     const schema = frontmatter.tables[name];
     const summaryRows = schema.summary_rows
-      ? evaluateSummaryRows(name, schema.summary_rows, rows, ensure)
+      ? evaluateSummaryRows(name, schema.summary_rows, rows, ensure, limits)
       : undefined;
     results[name] = {
       name,

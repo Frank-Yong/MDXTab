@@ -132,4 +132,23 @@ describe("evaluator", () => {
     expect(() => run("hours(\"1:5\")")).toThrow(/E_ARG/);
     expect(() => run("hours(\"1:60\")")).toThrow(/E_ARG/);
   });
+
+  it("rejects ASTs that exceed the evaluation depth limit", () => {
+    let astNode = { type: "Number", value: 1 } as import("../parser.js").AstNode;
+    for (let i = 0; i < 70; i += 1) {
+      astNode = {
+        type: "Binary",
+        value: "+",
+        children: [astNode, { type: "Number", value: 1 }],
+      };
+    }
+
+    expect(() =>
+      evaluateAst(astNode, {
+        row: {},
+        lookup: () => ({}) as RowValue,
+        aggregate: () => 0,
+      }),
+    ).toThrow(/E_LIMIT/);
+  });
 });

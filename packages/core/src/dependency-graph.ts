@@ -1,4 +1,6 @@
 import type { AstNode } from "./parser.js";
+import type { ExpressionLimits } from "./types.js";
+import { assertDependencyDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
 
 export interface DependencyEdge {
   from: string;
@@ -10,14 +12,19 @@ export interface DependencyGraph {
   order: string[];
 }
 
-export function buildDependencyGraph(nodes: Record<string, AstNode>): DependencyGraph {
+export function buildDependencyGraph(
+  nodes: Record<string, AstNode>,
+  limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS,
+): DependencyGraph {
   const names = Object.keys(nodes);
   const nameSet = new Set(names);
 
   // Optional aggregate argument validation: aggregates must take a single column identifier.
   const isAggregate = (name: string) => ["sum", "avg", "min", "max", "count"].includes(name);
 
-  const collectDeps = (ast: AstNode, deps: Set<string>): void => {
+  const collectDeps = (ast: AstNode, deps: Set<string>, depth = 1): void => {
+    assertDependencyDepth(depth, limits);
+
     switch (ast.type) {
       case "Identifier": {
         if (typeof ast.value === "string") deps.add(ast.value);
@@ -31,11 +38,11 @@ export function buildDependencyGraph(nodes: Record<string, AstNode>): Dependency
             throw new Error(`E_AGG_ARGUMENT: aggregate ${normalized} requires a single column identifier`);
           }
         }
-        ast.children?.forEach((c) => collectDeps(c, deps));
+        ast.children?.forEach((c) => collectDeps(c, deps, depth + 1));
         break;
       }
       default:
-        ast.children?.forEach((c) => collectDeps(c, deps));
+        ast.children?.forEach((c) => collectDeps(c, deps, depth + 1));
         break;
     }
   };
@@ -55,7 +62,9 @@ export function buildDependencyGraph(nodes: Record<string, AstNode>): Dependency
   const order: string[] = [];
   const state: Record<string, "visiting" | "visited"> = {};
 
-  const visit = (n: string) => {
+  const visit = (n: string, depth = 1) => {
+    assertDependencyDepth(depth, limits);
+
     if (state[n] === "visited") return;
     if (state[n] === "visiting") {
       throw new Error(`E_CYCLE: dependency cycle involving ${n}`);
@@ -63,7 +72,7 @@ export function buildDependencyGraph(nodes: Record<string, AstNode>): Dependency
     state[n] = "visiting";
     for (const dep of depMap[n] ?? []) {
       if (!nameSet.has(dep)) continue; // external dependency; ignore for ordering
-      visit(dep);
+      visit(dep, depth + 1);
     }
     state[n] = "visited";
     order.push(n);

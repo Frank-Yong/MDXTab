@@ -84,6 +84,8 @@ tables:
 
 ## Expression Language (v1)
 - Pure, deterministic, side-effect-free.
+- Implementations must reject pathological expressions using explicit resource
+  limits rather than recursing until runtime failure.
 - Grammar (EBNF):
 ```
 expression  ::= logical
@@ -104,6 +106,19 @@ arguments   ::= expression ( "," expression )*
 - References:
   - `row.col` or `col` within the same row.
   - Cross-table lookup: `table[key].col`; `key` is any expression that must evaluate to the table's key type (`string` or `number`). Missing row or column must fail.
+
+### Expression guardrails
+- Expressions exceeding implementation limits must fail with `E_LIMIT`.
+- The current TypeScript implementation uses these limits:
+  - Maximum expression length: 4096 characters
+  - Maximum token count: 512 tokens
+  - Maximum AST depth: 64
+  - Maximum dependency traversal depth: 128
+- Implementations may allow these limits to be configured, but exceeding the
+  active limits must still fail with `E_LIMIT`.
+- Limits apply to computed columns, aggregate expressions, and dependency
+  traversal during ordering.
+- Limit failures are fatal validation errors.
 
 ### Context rules for functions
 - In per-row computed columns, only row-safe functions are allowed. Using aggregate-only functions in a row expression is an error (`invalid-aggregate-context`).
@@ -146,6 +161,7 @@ arguments   ::= expression ( "," expression )*
 - Type mismatches or invalid coercions.
 - Circular dependencies among computed columns or aggregates.
 - Invalid expressions or unknown identifiers/functions.
+- Expressions exceeding implementation guardrail limits.
 - Failed lookups in cross-table references.
 - Empty cell policy `error` violations.
 
@@ -165,6 +181,8 @@ arguments   ::= expression ( "," expression )*
 
 ### Standard error codes (suggested)
 - `missing-table`, `missing-column`, `duplicate-key`, `column-order-mismatch`, `type-mismatch`, `invalid-coercion`, `cycle-detected`, `invalid-expression`, `unknown-identifier`, `unknown-function`, `lookup-failed`, `empty-cell-error`, `divide-by-zero`, `invalid-round`, `invalid-date`, `invalid-identifier`, `invalid-interpolation`, `invalid-aggregate-context`, `invalid-aggregate-argument`.
+- TypeScript implementation note: `E_LIMIT` is used when expression size or
+  dependency depth exceeds the supported guardrail limits.
 
 ## Versioning and Compatibility
 - Files declare `mdxtab: 1.0`; future minor versions must remain backward compatible.

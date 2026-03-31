@@ -85,10 +85,18 @@ export interface CompileResult {
   rendered: string;
 }
 
+export interface ExpressionLimits {
+  maxLength: number;
+  maxTokens: number;
+  maxAstDepth: number;
+  maxDependencyDepth: number;
+}
+
 export interface CompileOptions {
   includeFrontmatter?: boolean;
   includeComputedColumns?: boolean;
   includeSummaryRows?: boolean;
+  expressionLimits?: Partial<ExpressionLimits>;
 }
 
 export interface DiagnosticPosition {

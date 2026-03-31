@@ -1,4 +1,6 @@
 import type { Token } from "./tokens.js";
+import { assertAstDepth, measureAstDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
+import type { ExpressionLimits } from "./types.js";
 
 export interface AstNode {
   type: string;
@@ -18,9 +20,12 @@ interface Binding {
 class Parser {
   private tokens: Token[];
   private pos = 0;
+  private depth = 0;
+  private limits: ExpressionLimits;
 
-  constructor(tokens: Token[]) {
+  constructor(tokens: Token[], limits: ExpressionLimits) {
     this.tokens = tokens;
+    this.limits = limits;
   }
 
   private current(): Token {
@@ -46,17 +51,24 @@ class Parser {
   }
 
   expression(rbp: number): AstNode {
-    const t = this.advance();
-    const prefix = this.bindingPower(t).nud;
-    if (!prefix) throw new Error(`Unexpected token ${t.type} at ${t.start}`);
-    let left = prefix();
-    while (rbp < this.bindingPower(this.current()).lbp) {
-      const tt = this.advance();
-      const infix = this.bindingPower(tt).led;
-      if (!infix) throw new Error(`Unexpected operator ${tt.value}`);
-      left = infix(left);
+    this.depth += 1;
+    assertAstDepth(this.depth, this.limits);
+
+    try {
+      const t = this.advance();
+      const prefix = this.bindingPower(t).nud;
+      if (!prefix) throw new Error(`Unexpected token ${t.type} at ${t.start}`);
+      let left = prefix();
+      while (rbp < this.bindingPower(this.current()).lbp) {
+        const tt = this.advance();
+        const infix = this.bindingPower(tt).led;
+        if (!infix) throw new Error(`Unexpected operator ${tt.value}`);
+        left = infix(left);
+      }
+      return left;
+    } finally {
+      this.depth -= 1;
     }
-    return left;
   }
 
   private bindingPower(token: Token): Binding {
@@ -185,10 +197,11 @@ class Parser {
   }
 }
 
-export function parseExpression(tokens: Token[]): AstNode {
-  const parser = new Parser(tokens);
+export function parseExpression(tokens: Token[], limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS): AstNode {
+  const parser = new Parser(tokens, limits);
   const ast = parser.expression(0);
   const end = parser.peek();
   if (end.type !== "eof") throw new Error(`Unexpected tokens after expression: ${end.type} ${end.value}`);
+  assertAstDepth(measureAstDepth(ast), limits);
   return ast;
 }

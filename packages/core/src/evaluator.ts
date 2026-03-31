@@ -1,5 +1,7 @@
 import type { AstNode } from "./parser.js";
 import type { Scalar } from "./types.js";
+import type { ExpressionLimits } from "./types.js";
+import { assertAstDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
 
 interface RowValue {
   [key: string]: EvalValue;
@@ -117,7 +119,14 @@ function parseHoursLiteral(raw: string): number {
   return hours + minutes / 60;
 }
 
-export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
+export function evaluateAst(
+  node: AstNode,
+  ctx: EvalContext,
+  limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS,
+  depth = 1,
+): EvalValue {
+  assertAstDepth(depth, limits);
+
   switch (node.type) {
     case "Number":
     case "String":
@@ -131,7 +140,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
     }
     case "Unary": {
       const op = node.value as string;
-      const v = evaluateAst(node.children![0], ctx);
+      const v = evaluateAst(node.children![0], ctx, limits, depth + 1);
       if (op === "+") return toNumber(v);
       if (op === "-") {
         const n = toNumber(v);
@@ -144,17 +153,17 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
       const op = node.value as string;
       // logical short-circuit for null? Spec says null arithmetic -> null; comparisons with null -> false; logical expects booleans
       if (op === "and" || op === "or") {
-        const l = evaluateAst(lNode, ctx);
-        const r = evaluateAst(rNode, ctx);
+        const l = evaluateAst(lNode, ctx, limits, depth + 1);
+        const r = evaluateAst(rNode, ctx, limits, depth + 1);
         return logical(op, l, r);
       }
       if (["==", "!=", "<", "<=", ">", ">="].includes(op)) {
-        const l = evaluateAst(lNode, ctx);
-        const r = evaluateAst(rNode, ctx);
+        const l = evaluateAst(lNode, ctx, limits, depth + 1);
+        const r = evaluateAst(rNode, ctx, limits, depth + 1);
         return compare(op, l, r);
       }
-      const l = evaluateAst(lNode, ctx);
-      const r = evaluateAst(rNode, ctx);
+      const l = evaluateAst(lNode, ctx, limits, depth + 1);
+      const r = evaluateAst(rNode, ctx, limits, depth + 1);
       return binaryNumeric(op, l, r);
     }
     case "Call": {
@@ -168,20 +177,20 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
       }
       if (fn === "round") {
         if (args.length !== 2) throw new Error("E_ARG: round expects 2 args");
-        const x = toNumber(evaluateAst(args[0], ctx));
-        const n = toNumber(evaluateAst(args[1], ctx));
+        const x = toNumber(evaluateAst(args[0], ctx, limits, depth + 1));
+        const n = toNumber(evaluateAst(args[1], ctx, limits, depth + 1));
         if (x === null || n === null) return null;
         return roundHalfToEven(x, n);
       }
       if (fn === "if") {
         if (args.length !== 3) throw new Error("E_ARG: if expects 3 args");
-        const cond = evaluateAst(args[0], ctx);
+        const cond = evaluateAst(args[0], ctx, limits, depth + 1);
         if (typeof cond !== "boolean") throw new Error("E_TYPE: if condition must be boolean");
-        return cond ? evaluateAst(args[1], ctx) : evaluateAst(args[2], ctx);
+        return cond ? evaluateAst(args[1], ctx, limits, depth + 1) : evaluateAst(args[2], ctx, limits, depth + 1);
       }
       if (fn === "hours") {
         if (args.length !== 1) throw new Error("E_ARG: hours expects 1 arg");
-        const value = evaluateAst(args[0], ctx);
+        const value = evaluateAst(args[0], ctx, limits, depth + 1);
         if (value === null) return null;
         if (typeof value === "number") return value;
         if (typeof value === "string") return parseHoursLiteral(value);
@@ -192,7 +201,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
     case "Member": {
       const [target, prop] = node.children ?? [];
       if (!target || !prop) throw new Error("E_REF: invalid member expression");
-      const base = evaluateAst(target, ctx);
+      const base = evaluateAst(target, ctx, limits, depth + 1);
       if (!isRowValue(base)) throw new Error("E_REF: member base is not an object");
       const key = (prop as AstNode).value as string;
       const val = base[key];
@@ -205,7 +214,7 @@ export function evaluateAst(node: AstNode, ctx: EvalContext): EvalValue {
       const tableNameNode = tableNode.type === "Identifier" ? tableNode : undefined;
       const tableName = tableNameNode?.value as string | undefined;
       if (!tableName) throw new Error("E_LOOKUP: table name required");
-      const key = toScalar(evaluateAst(keyNode, ctx));
+      const key = toScalar(evaluateAst(keyNode, ctx, limits, depth + 1));
       // Lookup returns the row object; a following Member node selects the column.
       return ctx.lookup(tableName, key, "");
     }
