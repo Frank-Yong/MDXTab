@@ -134,6 +134,32 @@ Allow multiple tables to reuse a shared schema definition to avoid duplicate YAM
   ---
   ```
 
+## Deterministic numeric rounding and formatting for rendered output
+### Summary
+Avoid floating-point display artifacts in reports (for example `-657.9499999999998`) and support consistent money-style output formatting.
+
+### Proposed solution
+- Add deterministic numeric formatting helpers in expressions/interpolation contexts, for example:
+  - `round(x, 2)` for stable decimal precision
+  - `format(x, { decimals: 2, thousands: true })` or equivalent compact syntax
+- Ensure grouped aggregate outputs can be rounded/formatted at render time without changing source data.
+- Keep calculation semantics deterministic and locale-agnostic; formatting should be explicit and opt-in.
+- Document recommended money patterns:
+  - integer minor-units (ore/cents) for exact arithmetic, and/or
+  - decimal values with explicit rounding for rendered output.
+
+### Alternatives considered
+- Keep current behavior and require users to model all money values as integer minor-units.
+- Apply implicit global rounding (rejected: hidden behavior, less auditable).
+
+### Additional context
+- Motivation from real-world bookkeeping usage where users need clean values in reports and tables.
+- Formatting capability should unlock follow-on presentation patterns:
+  - fixed decimals (always 2)
+  - thousand separators
+  - optional currency-friendly output conventions.
+- Any implementation must preserve deterministic outputs across environments.
+
 ## Built-in Markdown preview rendering (DONE)
 ### Summary
 Implemented via Markdown-It integration in the VS Code extension.
