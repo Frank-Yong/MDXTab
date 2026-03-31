@@ -1,5 +1,12 @@
 # MDXTab Development Plan (VS Code Extension)
 
+## Current Top Priority
+
+- `Synthetic report tables` is the current top product priority.
+- Work item: `dev/work-items/21-synthetic-report-tables.md`
+- Issue: https://github.com/Frank-Yong/MDXTab/issues/30
+- Why now: it unlocks a proper reporting layer for real bookkeeping/reporting workflows, removes the need for hand-written HTML tables, and solves the current inability to compute row-wise report values such as `opening + monthly_delta = current`.
+
 ## Language and Stack
 
 - Primary language: TypeScript
@@ -71,3 +78,4 @@ See [phase-4-cli-ci.md](phase-4-cli-ci.md).
 ## Backlog pointers
 - See dev/docs/backlog.md for feature backlog items.
 - Issue #11 (time calculations): https://github.com/Frank-Yong/MDXTab/issues/11
+- Current top priority: issue #30 synthetic report tables.
