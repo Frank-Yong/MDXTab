@@ -160,7 +160,7 @@ Avoid floating-point display artifacts in reports (for example `-657.94999999999
   - optional currency-friendly output conventions.
 - Any implementation must preserve deterministic outputs across environments.
 
-## Synthetic report tables (TOP PRIORITY)
+## Synthetic report tables (HIGH PRIORITY)
 ### Summary
 Add frontmatter-defined report tables that generate rendered Markdown tables from existing tables, grouped aggregates, and expressions, removing the need for hand-written HTML report tables.
 

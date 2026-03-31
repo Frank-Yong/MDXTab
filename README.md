@@ -189,6 +189,34 @@ computed:
   duration: hours(end) - hours(start) - hours(break)
 ```
 
+## Expression guardrails
+
+MDXTab rejects pathological expressions with a structured `E_LIMIT` diagnostic
+instead of attempting unbounded parse/evaluate work.
+
+Current implementation limits:
+
+| Limit | Value |
+| ----- | ----- |
+| Maximum expression length | 4096 characters |
+| Maximum token count | 512 tokens |
+| Maximum AST depth | 64 |
+| Maximum dependency traversal depth | 128 |
+
+These limits apply to computed columns, aggregates, and dependency ordering.
+When a limit is exceeded, validation/rendering fails with normal table/column or
+aggregate context so the offending expression can be located quickly.
+
+Core API note:
+- `compileMdxtab()` and `validateMdxtab()` accept `expressionLimits` in `CompileOptions`.
+
+CLI note:
+
+```sh
+mdxtab validate report.md --max-expression-length 8192 --max-ast-depth 128
+mdxtab render report.md --max-tokens 1024 --max-dependency-depth 256
+```
+
 ---
 
 # 4️⃣ Evaluation Model (how it works)
@@ -204,6 +232,7 @@ computed:
 * Type checking
 * No circular dependencies
 * Deterministic ordering
+* Expression guardrails for pathological input size and nesting
 
 ### Phase 3: Row evaluation
 

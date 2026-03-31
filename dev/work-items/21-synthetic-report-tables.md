@@ -2,7 +2,7 @@
 
 ## Status
 - State: TODO
-- Priority: TOP
+- Priority: HIGH
 - Branch: `issue-30-synthetic-report-tables`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/30
 
