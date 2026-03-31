@@ -160,6 +160,70 @@ Avoid floating-point display artifacts in reports (for example `-657.94999999999
   - optional currency-friendly output conventions.
 - Any implementation must preserve deterministic outputs across environments.
 
+## Synthetic report tables
+### Summary
+Add frontmatter-defined report tables that generate rendered Markdown tables from existing tables, grouped aggregates, and expressions, removing the need for hand-written HTML report tables.
+
+### Proposed solution
+- Add a `report_tables` section in frontmatter.
+- Each report table declares:
+  - a source row set such as `rows_from: <table>`
+  - output columns in display order
+  - cell expressions evaluated per generated row
+- Allow report-table cell expressions to reference:
+  - source-row fields via `row.<col>`
+  - grouped aggregates such as `transactions.total_by_category[row.id]`
+  - other tables via existing lookup rules
+- Render report tables as normal Markdown tables in preview/output when the document contains a matching heading such as `## category_balances`.
+- Keep source markdown unchanged; report rows are synthetic render output.
+
+### Alternatives considered
+- Extend interpolation to allow arbitrary expressions inside `{{ ... }}` (rejected as too implicit and harder to audit).
+- Add only derived grouped aggregates (smaller feature, but still leaves HTML/manual row definitions in place).
+
+### Additional context
+- This is the selected approach for the bookkeeping/category-balance workflow explored on 2026-03-31.
+- Target example:
+  ```md
+  ---
+  mdxtab: "1.0"
+  tables:
+    categories:
+      key: id
+      columns: [id, label]
+    category_opening:
+      key: category
+      columns: [category, opening_balance]
+      aggregates:
+        opening_by_category: sum(opening_balance) by category
+    transactions:
+      key: id
+      columns: [id, category, amount]
+      aggregates:
+        total_by_category: sum(amount) by category
+  report_tables:
+    category_balances:
+      rows_from: categories
+      key: id
+      columns: [label, opening, monthly_delta, current]
+      cells:
+        label: row.label
+        opening: category_opening.opening_by_category[row.id]
+        monthly_delta: transactions.total_by_category[row.id]
+        current: category_opening.opening_by_category[row.id] + transactions.total_by_category[row.id]
+  ---
+
+  ## category_balances
+  ```
+- Required behavior:
+  - `current` must evaluate correctly from `opening + monthly_delta` per row.
+  - Users should not need HTML tables or manual row duplication for reporting.
+  - Report tables should be deterministic and diagnostics should map back to report definition cells.
+- Likely implementation touchpoints:
+  - `packages/core/src/types.ts`
+  - `packages/core/src/frontmatter.ts`
+  - `packages/core/src/document.ts`
+
 ## Built-in Markdown preview rendering (DONE)
 ### Summary
 Implemented via Markdown-It integration in the VS Code extension.
