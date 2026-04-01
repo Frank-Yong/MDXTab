@@ -35,8 +35,34 @@ describe("parser", () => {
     expect(ast.children?.[0]?.type).toBe("Lookup");
   });
 
-  it("rejects overly deep nested expressions", () => {
-    const expr = "(".repeat(70) + "1" + ")".repeat(70);
+  it("rejects expressions whose measured AST exceeds the configured depth", () => {
+    const expr = "-".repeat(70) + "1";
     expect(() => toAst(expr)).toThrow(/E_LIMIT/);
+  });
+
+  it("does not count parenthesis-only nesting against maxAstDepth", () => {
+    const expr = "(".repeat(8) + "1" + ")".repeat(8);
+    const ast = parseExpression(lexExpression(expr), {
+      maxLength: 4096,
+      maxTokens: 512,
+      maxAstDepth: 1,
+      maxParseDepth: 16,
+      maxDependencyDepth: 128,
+    });
+
+    expect(ast.type).toBe("Number");
+  });
+
+  it("rejects expressions whose parser nesting exceeds the configured depth", () => {
+    const expr = "(".repeat(20) + "1" + ")".repeat(20);
+    expect(() =>
+      parseExpression(lexExpression(expr), {
+        maxLength: 4096,
+        maxTokens: 512,
+        maxAstDepth: 64,
+        maxParseDepth: 10,
+        maxDependencyDepth: 128,
+      }),
+    ).toThrow(/E_LIMIT/);
   });
 });

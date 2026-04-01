@@ -19,7 +19,8 @@ to override the default expression guardrails.
 Defaults:
 - `maxLength`: `4096`
 - `maxTokens`: `512`
-- `maxAstDepth`: `64`
+- `maxAstDepth`: `64` (measured AST depth)
+- `maxParseDepth`: `256` (parser nesting depth)
 - `maxDependencyDepth`: `128`
 
 Work items in `dev/work-items` map to modules:

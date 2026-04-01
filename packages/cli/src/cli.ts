@@ -26,7 +26,7 @@ function usage(): string {
   return [
     "Usage: mdxtab <validate|render> <file> [--json]",
     "       [--max-expression-length N] [--max-tokens N]",
-    "       [--max-ast-depth N] [--max-dependency-depth N]",
+    "       [--max-ast-depth N] [--max-parse-depth N] [--max-dependency-depth N]",
   ].join("\n") + "\n";
 }
 
@@ -44,7 +44,7 @@ export function runCli(argv: string[], io: CliIO = defaultIo): number {
         jsonOutput = true;
         continue;
       }
-      const optionMatch = arg.match(/^--(max-expression-length|max-tokens|max-ast-depth|max-dependency-depth)(?:=(.+))?$/);
+      const optionMatch = arg.match(/^--(max-expression-length|max-tokens|max-ast-depth|max-parse-depth|max-dependency-depth)(?:=(.+))?$/);
       if (optionMatch) {
         const optionName = optionMatch[1];
         const value = optionMatch[2] ?? argv[index + 1];
@@ -65,6 +65,9 @@ export function runCli(argv: string[], io: CliIO = defaultIo): number {
               break;
             case "max-ast-depth":
               expressionLimits.maxAstDepth = parsePositiveIntOption("maxAstDepth", value);
+              break;
+            case "max-parse-depth":
+              expressionLimits.maxParseDepth = parsePositiveIntOption("maxParseDepth", value);
               break;
             case "max-dependency-depth":
               expressionLimits.maxDependencyDepth = parsePositiveIntOption("maxDependencyDepth", value);

@@ -45,6 +45,7 @@ describe("dependency graph", () => {
         maxLength: 4096,
         maxTokens: 512,
         maxAstDepth: 64,
+        maxParseDepth: 256,
         maxDependencyDepth: 2,
       },
     );

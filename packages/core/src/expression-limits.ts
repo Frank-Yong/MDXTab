@@ -5,6 +5,7 @@ export const DEFAULT_EXPRESSION_LIMITS: ExpressionLimits = {
   maxLength: 4096,
   maxTokens: 512,
   maxAstDepth: 64,
+  maxParseDepth: 256,
   maxDependencyDepth: 128,
 };
 
@@ -19,12 +20,14 @@ export function normalizeExpressionLimits(overrides: Partial<ExpressionLimits> =
     maxLength: overrides.maxLength ?? DEFAULT_EXPRESSION_LIMITS.maxLength,
     maxTokens: overrides.maxTokens ?? DEFAULT_EXPRESSION_LIMITS.maxTokens,
     maxAstDepth: overrides.maxAstDepth ?? DEFAULT_EXPRESSION_LIMITS.maxAstDepth,
+    maxParseDepth: overrides.maxParseDepth ?? DEFAULT_EXPRESSION_LIMITS.maxParseDepth,
     maxDependencyDepth: overrides.maxDependencyDepth ?? DEFAULT_EXPRESSION_LIMITS.maxDependencyDepth,
   };
 
   assertPositiveInteger("maxLength", limits.maxLength);
   assertPositiveInteger("maxTokens", limits.maxTokens);
   assertPositiveInteger("maxAstDepth", limits.maxAstDepth);
+  assertPositiveInteger("maxParseDepth", limits.maxParseDepth);
   assertPositiveInteger("maxDependencyDepth", limits.maxDependencyDepth);
 
   return limits;
@@ -50,6 +53,14 @@ export function assertAstDepth(depth: number, limits: ExpressionLimits = DEFAULT
   if (depth > limits.maxAstDepth) {
     throw new Error(
       `E_LIMIT: expression exceeds maximum AST depth of ${limits.maxAstDepth}`,
+    );
+  }
+}
+
+export function assertParseDepth(depth: number, limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS): void {
+  if (depth > limits.maxParseDepth) {
+    throw new Error(
+      `E_LIMIT: expression exceeds maximum parse depth of ${limits.maxParseDepth}`,
     );
   }
 }

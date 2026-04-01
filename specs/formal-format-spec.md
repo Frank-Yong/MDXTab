@@ -112,7 +112,8 @@ arguments   ::= expression ( "," expression )*
 - The current TypeScript implementation uses these limits:
   - Maximum expression length: 4096 characters
   - Maximum token count: 512 tokens
-  - Maximum AST depth: 64
+  - Maximum measured AST depth: 64
+  - Maximum parse depth: 256
   - Maximum dependency traversal depth: 128
 - Implementations may allow these limits to be configured, but exceeding the
   active limits must still fail with `E_LIMIT`.

@@ -57,7 +57,13 @@
           "type": "integer",
           "default": 64,
           "minimum": 1,
-          "description": "Maximum AST depth per expression before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
+          "description": "Maximum measured AST depth per expression before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
+        },
+        "mdxtab.limits.maxParseDepth": {
+          "type": "integer",
+          "default": 256,
+          "minimum": 1,
+          "description": "Maximum parser nesting depth per expression before MDXTab reports E_LIMIT. Applies to validation and preview rendering."
         },
         "mdxtab.limits.maxDependencyDepth": {
           "type": "integer",

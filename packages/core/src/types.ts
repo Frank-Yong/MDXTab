@@ -89,6 +89,7 @@ export interface ExpressionLimits {
   maxLength: number;
   maxTokens: number;
   maxAstDepth: number;
+  maxParseDepth: number;
   maxDependencyDepth: number;
 }
 

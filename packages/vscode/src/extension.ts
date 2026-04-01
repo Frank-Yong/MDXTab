@@ -52,6 +52,7 @@ function getCompileOptionsFromConfig(): CompileOptions {
   const maxExpressionLength = config.get<number>("limits.maxExpressionLength", 4096);
   const maxTokens = config.get<number>("limits.maxTokens", 512);
   const maxAstDepth = config.get<number>("limits.maxAstDepth", 64);
+  const maxParseDepth = config.get<number>("limits.maxParseDepth", 256);
   const maxDependencyDepth = config.get<number>("limits.maxDependencyDepth", 128);
 
   return {
@@ -62,6 +63,7 @@ function getCompileOptionsFromConfig(): CompileOptions {
       maxLength: maxExpressionLength,
       maxTokens,
       maxAstDepth,
+      maxParseDepth,
       maxDependencyDepth,
     },
   };

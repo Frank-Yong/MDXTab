@@ -1,5 +1,5 @@
 import type { Token } from "./tokens.js";
-import { assertAstDepth, measureAstDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
+import { assertAstDepth, assertParseDepth, measureAstDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
 import type { ExpressionLimits } from "./types.js";
 
 export interface AstNode {
@@ -20,7 +20,7 @@ interface Binding {
 class Parser {
   private tokens: Token[];
   private pos = 0;
-  private depth = 0;
+  private parseDepth = 0;
   private limits: ExpressionLimits;
 
   constructor(tokens: Token[], limits: ExpressionLimits) {
@@ -51,8 +51,8 @@ class Parser {
   }
 
   expression(rbp: number): AstNode {
-    this.depth += 1;
-    assertAstDepth(this.depth, this.limits);
+    this.parseDepth += 1;
+    assertParseDepth(this.parseDepth, this.limits);
 
     try {
       const t = this.advance();
@@ -67,7 +67,7 @@ class Parser {
       }
       return left;
     } finally {
-      this.depth -= 1;
+      this.parseDepth -= 1;
     }
   }
 

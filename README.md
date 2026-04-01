@@ -200,7 +200,8 @@ Current implementation limits:
 | ----- | ----- |
 | Maximum expression length | 4096 characters |
 | Maximum token count | 512 tokens |
-| Maximum AST depth | 64 |
+| Maximum measured AST depth | 64 |
+| Maximum parse depth | 256 |
 | Maximum dependency traversal depth | 128 |
 
 These limits apply to computed columns, aggregates, and dependency ordering.
@@ -213,7 +214,7 @@ Core API note:
 CLI note:
 
 ```sh
-mdxtab validate report.md --max-expression-length 8192 --max-ast-depth 128
+mdxtab validate report.md --max-expression-length 8192 --max-ast-depth 128 --max-parse-depth 512
 mdxtab render report.md --max-tokens 1024 --max-dependency-depth 256
 ```
 

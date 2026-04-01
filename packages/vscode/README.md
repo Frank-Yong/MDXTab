@@ -21,7 +21,8 @@
 | `mdxtab.preview.showSummaryRows` | `true` | Show synthetic summary rows from `summary_rows` in preview tables. Disable to hide summary rows while keeping authored rows unchanged. |
 | `mdxtab.limits.maxExpressionLength` | `4096` | Maximum expression length in characters before `E_LIMIT` is reported. |
 | `mdxtab.limits.maxTokens` | `512` | Maximum token count before `E_LIMIT` is reported. |
-| `mdxtab.limits.maxAstDepth` | `64` | Maximum AST depth before `E_LIMIT` is reported. |
+| `mdxtab.limits.maxAstDepth` | `64` | Maximum measured AST depth before `E_LIMIT` is reported. |
+| `mdxtab.limits.maxParseDepth` | `256` | Maximum parser nesting depth before `E_LIMIT` is reported. |
 | `mdxtab.limits.maxDependencyDepth` | `128` | Maximum dependency traversal depth before `E_LIMIT` is reported. |
 
 ## Summary Rows (`summary_rows`)
@@ -56,7 +57,8 @@ The current compiler applies explicit limits to expressions:
 |---------|---------|
 | Maximum expression length | 4096 characters |
 | Maximum token count | 512 tokens |
-| Maximum AST depth | 64 |
+| Maximum measured AST depth | 64 |
+| Maximum parse depth | 256 |
 | Maximum dependency traversal depth | 128 |
 
 If one of these limits is exceeded, the extension surfaces an `E_LIMIT`

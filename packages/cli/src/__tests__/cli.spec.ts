@@ -107,6 +107,14 @@ describe("mdxtab CLI", () => {
     expect(ctx.out.join("").trim()).toBe("OK");
   });
 
+  it("accepts parse-depth overrides", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-parse-depth=32"], ctx.io);
+    expect(rc).toBe(0);
+    expect(ctx.code).toBe(0);
+    expect(ctx.out.join("").trim()).toBe("OK");
+  });
+
   it("reports invalid expression limit values without throwing", () => {
     const ctx = makeIo();
     const rc = runCli(["validate", fixture("sample.md"), "--max-tokens", "foo"], ctx.io);

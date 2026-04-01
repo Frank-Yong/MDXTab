@@ -222,7 +222,7 @@ tables:
   });
 
   it("returns contextual diagnostics for computed expression limit failures", () => {
-    const deepExpression = "(".repeat(70) + "1" + ")".repeat(70);
+    const deepExpression = "-".repeat(300) + "1";
     const limitedDoc = `---
 mdxtab: "1.0"
 tables:
@@ -307,8 +307,8 @@ ${computedLines.join("\n")}
     expect(result.diagnostics[0].message).toContain("[dependency]");
   });
 
-  it("allows expression limits to be overridden via compile options", () => {
-    const deepExpression = "(".repeat(70) + "1" + ")".repeat(70);
+  it("allows parse-depth limits to be overridden via compile options", () => {
+    const deepExpression = "(".repeat(300) + "1" + ")".repeat(300);
     const limitedDoc = `---
 mdxtab: "1.0"
 tables:
@@ -328,7 +328,8 @@ tables:
 `;
     const result = validateMdxtab(limitedDoc, {
       expressionLimits: {
-        maxAstDepth: 128,
+        maxTokens: 1024,
+        maxParseDepth: 512,
       },
     });
     expect(result.diagnostics).toEqual([]);
