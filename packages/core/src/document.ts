@@ -892,8 +892,8 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
       computedOrder[name] = buildDependencyGraph(computed, limits).order;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      const cycleMatch = message.match(/involving\s+([A-Za-z_][A-Za-z0-9_]*)/);
-      const target = cycleMatch?.[1] ?? "<computed>";
+      const targetMatch = message.match(/(?:involving|visiting)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+      const target = targetMatch?.[1] ?? "<computed>";
       throw wrapExpressionDiagnostic(err, { table: name, target, kind: "dependency" });
     }
 

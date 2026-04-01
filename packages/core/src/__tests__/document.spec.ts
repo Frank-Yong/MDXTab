@@ -303,7 +303,7 @@ ${computedLines.join("\n")}
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe("E_LIMIT");
     expect(result.diagnostics[0].table).toBe("t");
-    expect(result.diagnostics[0].column).toBeUndefined();
+    expect(result.diagnostics[0].column).toBe("c2");
     expect(result.diagnostics[0].message).toContain("[dependency]");
   });
 

@@ -88,7 +88,12 @@ export function buildDependencyGraph(
   const state: Record<string, "visiting" | "visited"> = {};
 
   const visit = (n: string, depth = 1) => {
-    assertDependencyDepth(depth, limits);
+    try {
+      assertDependencyDepth(depth, limits);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`${message} while visiting ${n}`);
+    }
 
     if (state[n] === "visited") return;
     if (state[n] === "visiting") {
