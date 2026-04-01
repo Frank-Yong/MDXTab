@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { DiagnosticError, lineRange } from "./diagnostics.js";
-import type { FrontmatterDocument, SummaryRowDefinition, TableFrontmatter } from "./types.js";
+import type { FrontmatterDocument, ReportTableDefinition, SummaryRowDefinition, TableFrontmatter } from "./types.js";
 
 function expectObject(value: unknown, context: string): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -60,6 +60,58 @@ function parseSummaryRows(
     }
 
     result[rowKey] = { label, cells };
+  }
+
+  return result;
+}
+
+function parseReportTables(
+  value: unknown,
+  tables: Record<string, TableFrontmatter>,
+): Record<string, ReportTableDefinition> {
+  const obj = expectObject(value, "report_tables");
+  const result: Record<string, ReportTableDefinition> = {};
+
+  for (const [name, reportValue] of Object.entries(obj)) {
+    if (name in tables) {
+      throw new Error(`report_tables.${name} conflicts with table ${name}`);
+    }
+
+    const reportObj = expectObject(reportValue, `report_table ${name}`);
+    const rowsFrom = expectString(reportObj.rows_from, `rows_from for report_table ${name}`);
+    const sourceTable = tables[rowsFrom];
+    if (!sourceTable) {
+      throw new Error(`report_table ${name} references unknown rows_from table ${rowsFrom}`);
+    }
+
+    const columns = expectStringArray(reportObj.columns, `columns for report_table ${name}`);
+    const key = reportObj.key === undefined
+      ? sourceTable.key ?? "id"
+      : expectString(reportObj.key, `key for report_table ${name}`);
+    if (!sourceTable.columns.includes(key)) {
+      throw new Error(`report_table ${name} key ${key} is not a column in source table ${rowsFrom}`);
+    }
+
+    if (reportObj.cells === undefined) {
+      throw new Error(`report_table ${name}: cells is required`);
+    }
+    const cellsObj = expectObject(reportObj.cells, `cells for report_table ${name}`);
+    const cells: Record<string, string> = {};
+
+    for (const [column, expr] of Object.entries(cellsObj)) {
+      if (!columns.includes(column)) {
+        throw new Error(`report_table ${name}.cells references unknown column ${column}`);
+      }
+      cells[column] = expectString(expr, `report_table ${name}.cells.${column}`);
+    }
+
+    for (const column of columns) {
+      if (!(column in cells)) {
+        throw new Error(`report_table ${name}.cells is missing expression for column ${column}`);
+      }
+    }
+
+    result[name] = { rows_from: rowsFrom, key, columns, cells };
   }
 
   return result;
@@ -148,7 +200,11 @@ export function parseFrontmatter(raw: string): FrontmatterDocument {
       tables[name] = validateTable(name, value);
     }
 
-    return { mdxtab, tables };
+    const report_tables = obj.report_tables
+      ? parseReportTables(obj.report_tables, tables)
+      : undefined;
+
+    return { mdxtab, tables, report_tables };
   } catch (err) {
     if (err instanceof DiagnosticError) throw err;
     const message = err instanceof Error ? err.message : String(err);

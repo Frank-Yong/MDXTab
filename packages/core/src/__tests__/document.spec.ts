@@ -141,6 +141,128 @@ Summary: {{ time_entries.hours_by_project[Alpha] }} / {{ time_entries.hours_by_p
     expect(result.rendered).toContain("Summary: 15 / 7");
   });
 
+  it("renders synthetic report tables from source rows and grouped aggregates", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+  category_opening:
+    key: category
+    columns: [category, opening_balance]
+    types:
+      opening_balance: number
+    aggregates:
+      opening_by_category: sum(opening_balance) by category
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    types:
+      amount: number
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    key: id
+    columns: [label, opening, monthly_delta, current]
+    cells:
+      label: row.label
+      opening: category_opening.opening_by_category[row.id]
+      monthly_delta: transactions.total_by_category[row.id]
+      current: category_opening.opening_by_category[row.id] + transactions.total_by_category[row.id]
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+| Electricity | Electricity |
+
+## category_opening
+| category | opening_balance |
+|----------|-----------------|
+| Utilities | 1234.38 |
+| Electricity | 740.63 |
+
+## transactions
+| id | category | amount |
+|----|----------|--------|
+| t1 | Utilities | 71.5 |
+| t2 | Electricity | -139.37 |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables.category_balances.rows).toEqual([
+      { label: "Utilities", opening: 1234.38, monthly_delta: 71.5, current: 1305.88 },
+      { label: "Electricity", opening: 740.63, monthly_delta: -139.37, current: 601.26 },
+    ]);
+    expect(result.rendered).toContain("| label | opening | monthly_delta | current |");
+    expect(result.rendered).toContain("| Utilities | 1234.38 | 71.5 | 1305.88 |");
+    expect(result.rendered).toContain("| Electricity | 740.63 | -139.37 | 601.26 |");
+  });
+
+  it("returns diagnostics for invalid report-table row references", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.missing
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_REF");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("label");
+    expect(result.diagnostics[0].message).toContain("[report-table]");
+  });
+
+  it("does not inject report tables when the matching heading is absent", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+`;
+
+    const result = compileMdxtab(reportDoc);
+    expect(result.reportTables.category_balances.rows).toEqual([{ label: "Utilities" }]);
+    expect(result.rendered).not.toContain("## category_balances\n| label |");
+  });
+
   it("reports diagnostics for invalid grouped aggregates", () => {
     const badGroupedDoc = `---
 mdxtab: "1.0"

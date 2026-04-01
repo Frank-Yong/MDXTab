@@ -211,12 +211,21 @@ export function evaluateAst(
     case "Lookup": {
       const [tableNode, keyNode] = node.children ?? [];
       if (!tableNode || !keyNode) throw new Error("E_LOOKUP: invalid lookup");
-      const tableNameNode = tableNode.type === "Identifier" ? tableNode : undefined;
-      const tableName = tableNameNode?.value as string | undefined;
-      if (!tableName) throw new Error("E_LOOKUP: table name required");
       const key = toScalar(evaluateAst(keyNode, ctx, limits, depth + 1));
-      // Lookup returns the row object; a following Member node selects the column.
-      return ctx.lookup(tableName, key, "");
+
+      if (tableNode.type === "Identifier") {
+        const tableName = tableNode.value as string | undefined;
+        if (!tableName) throw new Error("E_LOOKUP: table name required");
+        // Lookup returns the row object; a following Member node selects the column.
+        return ctx.lookup(tableName, key, "");
+      }
+
+      const base = evaluateAst(tableNode, ctx, limits, depth + 1);
+      if (!isRowValue(base)) throw new Error("E_LOOKUP: lookup base is not an object");
+      const lookupKey = String(key);
+      const value = base[lookupKey];
+      if (value === undefined) throw new Error(`E_LOOKUP: missing key ${lookupKey}`);
+      return value;
     }
     default:
       throw new Error(`E_AST: unknown node type ${node.type}`);

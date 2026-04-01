@@ -20,6 +20,13 @@ export interface SummaryRowDefinition {
   cells: Record<string, string>;
 }
 
+export interface ReportTableDefinition {
+  rows_from: string;
+  key?: string;
+  columns: string[];
+  cells: Record<string, string>;
+}
+
 export interface TableFrontmatter {
   key?: string;
   columns: string[];
@@ -33,6 +40,7 @@ export interface TableFrontmatter {
 export interface FrontmatterDocument {
   mdxtab: string;
   tables: Record<string, TableFrontmatter>;
+  report_tables?: Record<string, ReportTableDefinition>;
 }
 
 export interface HeaderCell {
@@ -79,9 +87,17 @@ export interface TableEvaluation {
   summaryRows?: SummaryRowEvaluation[];
 }
 
+export interface ReportTableEvaluation {
+  name: string;
+  rowsFrom: string;
+  columns: string[];
+  rows: Record<string, Scalar>[];
+}
+
 export interface CompileResult {
   frontmatter: FrontmatterDocument;
   tables: Record<string, TableEvaluation>;
+  reportTables: Record<string, ReportTableEvaluation>;
   rendered: string;
 }
 

@@ -13,6 +13,8 @@ import type {
   ExpressionLimits,
   FrontmatterDocument,
   ParsedTable,
+  ReportTableDefinition,
+  ReportTableEvaluation,
   Scalar,
   SummaryRowDefinition,
   SummaryRowEvaluation,
@@ -31,12 +33,19 @@ interface EvalRowContext {
   [key: string]: Scalar | EvalRowContext;
 }
 
-type EvalKind = "computed" | "aggregate" | "summary-row";
+type EvalKind = "computed" | "aggregate" | "summary-row" | "report-table";
 
 type GroupedAggregate = {
   fn: string;
   column: string;
   by: string;
+};
+
+type ParsedReportTable = {
+  rowsFrom: string;
+  key: string;
+  columns: string[];
+  cells: Record<string, AstNode>;
 };
 
 function evalWithContext(
@@ -65,7 +74,9 @@ function evalWithContext(
         table: err.table ?? info.table,
         column:
           err.column ??
-          (info.kind === "computed" || info.kind === "summary-row" ? info.target : undefined),
+            (info.kind === "computed" || info.kind === "summary-row" || info.kind === "report-table"
+              ? info.target
+              : undefined),
         aggregate: err.aggregate ?? (info.kind === "aggregate" ? info.target : undefined),
         rowKey: err.rowKey ?? info.rowKey,
         range: err.range,
@@ -75,7 +86,9 @@ function evalWithContext(
       code: errorCodeFromMessage(message),
       message: contextMessage,
       table: info.table,
-      column: info.kind === "computed" || info.kind === "summary-row" ? info.target : undefined,
+      column: info.kind === "computed" || info.kind === "summary-row" || info.kind === "report-table"
+        ? info.target
+        : undefined,
       aggregate: info.kind === "aggregate" ? info.target : undefined,
       rowKey: info.rowKey,
     });
@@ -255,6 +268,33 @@ function parseAggregates(tableName: string, map: Record<string, string> | undefi
     }
   }
   return { scalar, grouped };
+}
+
+function parseReportTableExpressions(
+  reportTables: Record<string, ReportTableDefinition> | undefined,
+  limits: ExpressionLimits,
+): Record<string, ParsedReportTable> {
+  if (!reportTables) return {};
+
+  const result: Record<string, ParsedReportTable> = {};
+  for (const [name, report] of Object.entries(reportTables)) {
+    const cells: Record<string, AstNode> = {};
+    for (const [column, expr] of Object.entries(report.cells)) {
+      try {
+        cells[column] = parseExpression(lexExpression(expr, limits), limits);
+      } catch (err) {
+        throw wrapExpressionDiagnostic(err, { table: name, target: column, kind: "report-table" });
+      }
+    }
+    result[name] = {
+      rowsFrom: report.rows_from,
+      key: report.key ?? "id",
+      columns: report.columns,
+      cells,
+    };
+  }
+
+  return result;
 }
 
 function ensureComputed(
@@ -629,6 +669,124 @@ function injectSummaryRows(
   return lines.join("\n");
 }
 
+function renderMarkdownTable(columns: string[], rows: Record<string, Scalar>[]): string[] {
+  const header = `| ${columns.join(" | ")} |`;
+  const separator = `|${columns.map((column) => "-".repeat(Math.max(column.length + 2, 3))).join("|")}|`;
+  const dataLines = rows.map((row) => `| ${columns.map((column) => formatScalar(row[column])).join(" | ")} |`);
+  return [header, separator, ...dataLines];
+}
+
+function isMarkdownTableStart(lines: string[], startIndex: number): boolean {
+  if (startIndex + 1 >= lines.length) return false;
+  const header = lines[startIndex];
+  const separator = lines[startIndex + 1];
+  if (!header.includes("|")) return false;
+  return /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(separator);
+}
+
+function injectReportTables(
+  body: string,
+  reportTables: Record<string, ReportTableEvaluation>,
+): string {
+  const lines = body.split("\n");
+  const fencedLines = getFencedLines(lines);
+  const headings = lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line, index }) => !fencedLines.has(index))
+    .map(({ line, index }) => ({
+      index,
+      match: line.match(/^\s*#{1,6}\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/),
+    }))
+    .filter((entry): entry is { index: number; match: RegExpMatchArray } => Boolean(entry.match))
+    .filter(({ match }) => Boolean(reportTables[match[1]]))
+    .sort((a, b) => b.index - a.index);
+
+  for (const { index, match } of headings) {
+    const report = reportTables[match[1]];
+    const tableLines = renderMarkdownTable(report.columns, report.rows);
+    let replaceStart = index + 1;
+    while (replaceStart < lines.length && lines[replaceStart].trim() === "") {
+      replaceStart += 1;
+    }
+    let replaceEnd = replaceStart;
+    if (isMarkdownTableStart(lines, replaceStart)) {
+      replaceEnd = replaceStart + 2;
+      while (replaceEnd < lines.length && lines[replaceEnd].includes("|")) {
+        replaceEnd += 1;
+      }
+    }
+    lines.splice(replaceStart, replaceEnd - replaceStart, ...tableLines);
+  }
+
+  return lines.join("\n");
+}
+
+function evaluateReportTables(
+  reportTables: Record<string, ParsedReportTable>,
+  rowList: Record<string, Record<string, Scalar>[]>,
+  ensureByTable: Record<string, (row: Record<string, Scalar>) => Record<string, Scalar>>,
+  lookupRow: LookupRowFn,
+  aggregateResults: Record<string, Record<string, Scalar>>,
+  groupedAggregateResults: Record<string, Record<string, Record<string, Scalar>>>,
+  limits: ExpressionLimits,
+): Record<string, ReportTableEvaluation> {
+  const results: Record<string, ReportTableEvaluation> = {};
+  const reportScope: EvalRowContext = {};
+
+  const tableNames = new Set<string>([
+    ...Object.keys(aggregateResults),
+    ...Object.keys(groupedAggregateResults),
+  ]);
+  for (const tableName of tableNames) {
+    reportScope[tableName] = {
+      ...(aggregateResults[tableName] ?? {}),
+      ...(groupedAggregateResults[tableName] ?? {}),
+    };
+  }
+
+  for (const [name, report] of Object.entries(reportTables)) {
+    const sourceRows = rowList[report.rowsFrom] ?? [];
+    const ensure = ensureByTable[report.rowsFrom];
+    const evaluatedRows: Record<string, Scalar>[] = [];
+
+    for (const sourceRow of sourceRows) {
+      const ensuredRow = ensure(sourceRow);
+      const rowKey = String(ensuredRow[report.key] ?? "");
+      const scopedRow: EvalRowContext = {
+        ...reportScope,
+        ...ensuredRow,
+      };
+      const evaluated: Record<string, Scalar> = {};
+
+      for (const column of report.columns) {
+        evaluated[column] = evalWithContext(
+          report.cells[column],
+          {
+            row: scopedRow,
+            lookup: (table, key, _column) => lookupRow(table, key),
+            aggregate: () => {
+              throw new Error("E_AGG_IN_REPORT: aggregates not allowed in report table cell evaluation");
+            },
+          },
+          { table: name, target: column, kind: "report-table", keyName: report.key, rowKey },
+          limits,
+        );
+      }
+
+      evaluatedRows.push(evaluated);
+    }
+
+    results[name] = {
+      name,
+      rowsFrom: report.rowsFrom,
+      columns: report.columns,
+      rows: evaluatedRows,
+    };
+  }
+
+  return results;
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
@@ -995,6 +1153,17 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     groupedAggregateResults[name] = groupMap;
   }
 
+  const parsedReportTables = parseReportTableExpressions(frontmatter.report_tables, limits);
+  const reportTableResults = evaluateReportTables(
+    parsedReportTables,
+    rowList,
+    ensureByTable,
+    lookupRow,
+    aggregateResults,
+    groupedAggregateResults,
+    limits,
+  );
+
   const results: Record<string, TableEvaluation> = {};
   for (const [name, rows] of Object.entries(rowList)) {
     const ensure = ensureByTable[name];
@@ -1029,13 +1198,19 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
       includeComputedColumns,
     );
   }
+  renderedBody = injectReportTables(renderedBody, reportTableResults);
   renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
   }
   const rendered = includeFrontmatter ? `${fmText}${renderedBody}` : renderedBody;
 
-  return { frontmatter: frontmatter as FrontmatterDocument, tables: results, rendered };
+  return {
+    frontmatter: frontmatter as FrontmatterDocument,
+    tables: results,
+    reportTables: reportTableResults,
+    rendered,
+  };
 }
 
 export function validateMdxtab(raw: string, options: CompileOptions = {}): { diagnostics: Diagnostic[] } {
