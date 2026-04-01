@@ -134,7 +134,7 @@ export function evaluateAst(
       return node.value as Scalar;
     case "Identifier": {
       const name = node.value as string;
-      if (name === "row") return ctx.row;
+      if (name === "row") return ("row" in ctx.row ? ctx.row.row : ctx.row);
       if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
       return ctx.row[name];
     }

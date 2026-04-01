@@ -237,6 +237,50 @@ report_tables:
     expect(result.diagnostics[0].message).toContain("[report-table]");
   });
 
+  it("keeps report-scope identifiers available when source rows use the same column names", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label, transactions]
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    types:
+      amount: number
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, transaction_label, monthly_delta]
+    cells:
+      label: row.label
+      transaction_label: row.transactions
+      monthly_delta: transactions.total_by_category[row.id]
+---
+
+## categories
+| id | label | transactions |
+|----|-------|--------------|
+| Utilities | Utilities | row value |
+
+## transactions
+| id | category | amount |
+|----|----------|--------|
+| t1 | Utilities | 71.5 |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables.category_balances.rows).toEqual([
+      { label: "Utilities", transaction_label: "row value", monthly_delta: 71.5 },
+    ]);
+  });
+
   it("returns diagnostics for invalid report-table rows_from tables", () => {
     const badReportDoc = `---
 mdxtab: "1.0"

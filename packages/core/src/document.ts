@@ -758,8 +758,9 @@ function evaluateReportTables(
       const ensuredRow = ensure(sourceRow);
       const rowKey = String(ensuredRow[report.key] ?? "");
       const scopedRow: EvalRowContext = {
-        ...reportScope,
         ...ensuredRow,
+        ...reportScope,
+        row: ensuredRow,
       };
       const evaluated: Record<string, Scalar> = {};
 
