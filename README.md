@@ -319,7 +319,7 @@ Rendered usage:
 
 ---
 
-### Phase 5: Rendering
+### Phase 6: Rendering
 
 Output options:
 
