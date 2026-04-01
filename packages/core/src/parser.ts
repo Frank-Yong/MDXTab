@@ -52,9 +52,9 @@ class Parser {
 
   expression(rbp: number): AstNode {
     this.parseDepth += 1;
-    assertParseDepth(this.parseDepth, this.limits);
 
     try {
+      assertParseDepth(this.parseDepth, this.limits);
       const t = this.advance();
       const prefix = this.bindingPower(t).nud;
       if (!prefix) throw new Error(`Unexpected token ${t.type} at ${t.start}`);
