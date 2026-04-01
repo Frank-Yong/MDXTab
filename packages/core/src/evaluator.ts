@@ -135,8 +135,8 @@ export function evaluateAst(
     case "Identifier": {
       const name = node.value as string;
       if (name === "row") {
-        const nestedRow = "row" in ctx.row ? ctx.row.row : undefined;
-        return isRowValue(nestedRow) ? nestedRow : ctx.row;
+        if ("row" in ctx.row && isRowValue(ctx.row.row)) return ctx.row.row;
+        return ctx.row;
       }
       if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
       return ctx.row[name];
