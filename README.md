@@ -60,7 +60,7 @@ Excel-style “formula in every cell” is actively bad for versioned finance.
 
 ```md
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   <tableName>:
     key: <columnName>        # optional, default: id
@@ -111,7 +111,7 @@ report_tables:
 
 ```md
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   expenses:
     key: id
@@ -278,7 +278,7 @@ cells after row and aggregate evaluation.
 
 ```md
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   categories:
     key: id

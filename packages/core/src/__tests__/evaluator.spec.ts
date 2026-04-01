@@ -111,6 +111,13 @@ describe("evaluator", () => {
     expect(val).toBe("Ellen");
   });
 
+  it("keeps row reserved even when the row object has a scalar row column", () => {
+    const val = run("row.name", {
+      row: { id: "u1", name: "Ada", row: "scalar value" },
+    });
+    expect(val).toBe("Ada");
+  });
+
   it("errors on unknown functions", () => {
     expect(() => run("foo(1)")).toThrow(/E_FUNC/);
   });
