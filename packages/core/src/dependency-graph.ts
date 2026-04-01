@@ -1,6 +1,6 @@
 import type { AstNode } from "./parser.js";
 import type { ExpressionLimits } from "./types.js";
-import { assertDependencyDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
+import { assertAstDepth, assertDependencyDepth, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
 
 export interface DependencyEdge {
   from: string;
@@ -23,7 +23,7 @@ export function buildDependencyGraph(
   const isAggregate = (name: string) => ["sum", "avg", "min", "max", "count"].includes(name);
 
   const collectDeps = (ast: AstNode, deps: Set<string>, depth = 1): void => {
-    assertDependencyDepth(depth, limits);
+    assertAstDepth(depth, limits);
 
     switch (ast.type) {
       case "Identifier": {

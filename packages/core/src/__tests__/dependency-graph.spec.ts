@@ -36,4 +36,20 @@ describe("dependency graph", () => {
     nodes.c0 = ast("1");
     expect(() => buildDependencyGraph(nodes)).toThrow(/E_LIMIT/);
   });
+
+  it("does not use dependency-depth limit for a single deep expression AST", () => {
+    const deepAst = ast("(".repeat(20) + "a" + ")".repeat(20));
+    const graph = buildDependencyGraph(
+      { only: deepAst },
+      {
+        maxLength: 4096,
+        maxTokens: 512,
+        maxAstDepth: 64,
+        maxDependencyDepth: 2,
+      },
+    );
+
+    expect(graph.edges).toEqual([{ from: "only", to: "a" }]);
+    expect(graph.order).toEqual(["only"]);
+  });
 });
