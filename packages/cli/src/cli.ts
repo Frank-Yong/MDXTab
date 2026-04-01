@@ -55,19 +55,26 @@ export function runCli(argv: string[], io: CliIO = defaultIo): number {
         }
         if (!optionMatch[2]) index += 1;
 
-        switch (optionName) {
-          case "max-expression-length":
-            expressionLimits.maxLength = parsePositiveIntOption("maxLength", value);
-            break;
-          case "max-tokens":
-            expressionLimits.maxTokens = parsePositiveIntOption("maxTokens", value);
-            break;
-          case "max-ast-depth":
-            expressionLimits.maxAstDepth = parsePositiveIntOption("maxAstDepth", value);
-            break;
-          case "max-dependency-depth":
-            expressionLimits.maxDependencyDepth = parsePositiveIntOption("maxDependencyDepth", value);
-            break;
+        try {
+          switch (optionName) {
+            case "max-expression-length":
+              expressionLimits.maxLength = parsePositiveIntOption("maxLength", value);
+              break;
+            case "max-tokens":
+              expressionLimits.maxTokens = parsePositiveIntOption("maxTokens", value);
+              break;
+            case "max-ast-depth":
+              expressionLimits.maxAstDepth = parsePositiveIntOption("maxAstDepth", value);
+              break;
+            case "max-dependency-depth":
+              expressionLimits.maxDependencyDepth = parsePositiveIntOption("maxDependencyDepth", value);
+              break;
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          io.stderr(message + "\n");
+          io.exit?.(1);
+          return 1;
         }
         continue;
       }
