@@ -44,11 +44,8 @@ function makePreviewUri(docUri: Uri): Uri {
   return Uri.from({ scheme: SCHEME, path: docUri.path, query: encodeURIComponent(docUri.toString()) });
 }
 
-function getCompileOptionsFromConfig(): CompileOptions {
+function getExpressionLimitOptionsFromConfig(): CompileOptions["expressionLimits"] {
   const config = workspace.getConfiguration("mdxtab");
-  const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
-  const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
-  const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
   const maxExpressionLength = config.get<number>("limits.maxExpressionLength", 4096);
   const maxTokens = config.get<number>("limits.maxTokens", 512);
   const maxAstDepth = config.get<number>("limits.maxAstDepth", 64);
@@ -56,16 +53,31 @@ function getCompileOptionsFromConfig(): CompileOptions {
   const maxDependencyDepth = config.get<number>("limits.maxDependencyDepth", 128);
 
   return {
+    maxLength: maxExpressionLength,
+    maxTokens,
+    maxAstDepth,
+    maxParseDepth,
+    maxDependencyDepth,
+  };
+}
+
+function getCompileOptionsFromConfig(): CompileOptions {
+  const config = workspace.getConfiguration("mdxtab");
+  const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+  const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
+  const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
+
+  return {
     includeFrontmatter: showFrontmatter,
     includeComputedColumns: showComputedColumns,
     includeSummaryRows: showSummaryRows,
-    expressionLimits: {
-      maxLength: maxExpressionLength,
-      maxTokens,
-      maxAstDepth,
-      maxParseDepth,
-      maxDependencyDepth,
-    },
+    expressionLimits: getExpressionLimitOptionsFromConfig(),
+  };
+}
+
+function getValidationCompileOptionsFromConfig(): CompileOptions {
+  return {
+    expressionLimits: getExpressionLimitOptionsFromConfig(),
   };
 }
 
@@ -556,7 +568,7 @@ function updateDiagnostics(
     collection.delete(doc.uri);
     return;
   }
-  const diagnostics = validateMdxtab(text, getCompileOptionsFromConfig()).diagnostics;
+  const diagnostics = validateMdxtab(text, getValidationCompileOptionsFromConfig()).diagnostics;
   if (diagnostics.length === 0) {
     collection.delete(doc.uri);
     return;
@@ -1118,7 +1130,7 @@ export function activate(context: ExtensionContext) {
       return;
     }
     updateDiagnostics(editor.document, diagnostics);
-    const { diagnostics: diags } = validateMdxtab(editor.document.getText(), getCompileOptionsFromConfig());
+    const { diagnostics: diags } = validateMdxtab(editor.document.getText(), getValidationCompileOptionsFromConfig());
     if (diags.length === 0) {
       window.showInformationMessage("MDXTab: no diagnostics");
     } else {
