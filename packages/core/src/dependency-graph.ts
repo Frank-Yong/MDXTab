@@ -30,6 +30,31 @@ export function buildDependencyGraph(
         if (typeof ast.value === "string") deps.add(ast.value);
         break;
       }
+      case "Member": {
+        const [base, prop] = ast.children ?? [];
+        if (!base) break;
+        if (
+          base.type === "Identifier" &&
+          base.value === "row" &&
+          prop?.type === "Identifier" &&
+          typeof prop.value === "string"
+        ) {
+          deps.add(prop.value);
+          break;
+        }
+        collectDeps(base, deps, depth + 1);
+        break;
+      }
+      case "Lookup": {
+        const [tableNode, keyNode] = ast.children ?? [];
+        if (tableNode && tableNode.type !== "Identifier") {
+          collectDeps(tableNode, deps, depth + 1);
+        }
+        if (keyNode) {
+          collectDeps(keyNode, deps, depth + 1);
+        }
+        break;
+      }
       case "Call": {
         const fn = typeof ast.value === "string" ? ast.value : "";
         const normalized = fn.toLowerCase();

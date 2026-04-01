@@ -53,4 +53,14 @@ describe("dependency graph", () => {
     expect(graph.edges).toEqual([{ from: "only", to: "a" }]);
     expect(graph.order).toEqual(["only"]);
   });
+
+  it("does not treat lookup table or member property names as computed dependencies", () => {
+    const graph = buildDependencyGraph({
+      title: ast("roles[role_id].title"),
+      role_id: ast("1"),
+    });
+
+    expect(graph.edges).toEqual([{ from: "title", to: "role_id" }]);
+    expect(graph.order).toEqual(["role_id", "title"]);
+  });
 });
