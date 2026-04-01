@@ -7,6 +7,7 @@
 - Preview scheme: `mdxtab-preview:` opens a virtual document with the rendered output (frontmatter + interpolated aggregates).
 - **Computed column preview**: columns defined in frontmatter `computed` are rendered in the Markdown preview with their evaluated per-row values. Columns already authored as headers have their empty cells filled in; columns not in the source table are appended automatically.
 - **Summary row preview**: rows defined in frontmatter `summary_rows` are rendered as synthetic rows appended at the bottom of the table preview.
+- **Synthetic report table preview**: frontmatter `report_tables` render as derived Markdown tables at matching headings such as `## category_balances`.
 - **Expression guardrails**: validation rejects pathological computed/aggregate
   expressions with `E_LIMIT` diagnostics before they can trigger stack overflow
   or excessive work.
@@ -48,6 +49,25 @@ tables:
 ```
 
 In preview, the synthetic row is appended after the last data row.
+
+## Report Tables (`report_tables`)
+
+MDXTab supports synthetic report tables defined in frontmatter. A report table
+uses `rows_from` to choose the driving source table, then evaluates one cell
+expression per output column for each generated row.
+
+```yaml
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, monthly_delta]
+    cells:
+      label: row.label
+      monthly_delta: transactions.total_by_category[row.id]
+```
+
+When the Markdown body contains a matching heading such as `## category_balances`,
+the extension renders a normal Markdown table at that location in preview/output.
 
 ## Expression Limits
 

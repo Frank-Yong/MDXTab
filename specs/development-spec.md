@@ -9,7 +9,8 @@
 - Parse: YAML frontmatter + Markdown tables.
 - Validate: schema, types, dependency graph, empty cell policy, cross-table lookups.
 - Evaluate: computed columns (per row), aggregates (per table), and optional `summary_rows` cell expressions.
-- Render: preview injection for computed columns and `summary_rows`, plus aggregate interpolation in Markdown; exports (CSV/XLSX) are optional v1 deliverables but should be planned.
+- Evaluate: optional `report_tables` after row and aggregate evaluation.
+- Render: preview injection for computed columns, `summary_rows`, and `report_tables`, plus aggregate interpolation in Markdown; exports (CSV/XLSX) are optional v1 deliverables but should be planned.
 - Tooling: core library, VS Code extension, optional CLI for validate/render.
 
 ## Non-Goals
@@ -24,6 +25,7 @@
 - Parse and run expressions the same way every time; detect and block any dependency loops.
 - Compute row formulas first, then the aggregates.
 - If `summary_rows` is present, evaluate summary row cells left-to-right after row and aggregate evaluation.
+- If `report_tables` is present, generate rendered rows from `rows_from` after aggregate evaluation.
 - Report errors with table/column and line info when possible.
 - Allow interpolation only for aggregates (`{{ table.aggregate }}`).
 

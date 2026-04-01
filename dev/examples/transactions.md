@@ -48,6 +48,16 @@ tables:
     aggregates:
       closing_total: sum(closing_balance)
       closing_by_category: sum(closing_balance) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    key: id
+    columns: [category, opening, monthly_delta, closing]
+    cells:
+      category: row.label
+      opening: category_opening.opening_by_category[row.id]
+      monthly_delta: transactions.total_by_category[row.id]
+      closing: category_closing.closing_by_category[row.id]
 ---
 
 # Transactions (Non-Excel Pattern)
@@ -125,27 +135,7 @@ Keep raw events in the table. Put all totals and analysis in separate sections b
 
 - 2026-03: {{ transactions.total_by_period["2026-03"] }}
 
-## Category balances (opening + monthly delta -> closing)
-
-<table>
-  <thead>
-    <tr>
-      <th>category</th>
-      <th>opening</th>
-      <th>monthly_delta</th>
-      <th>closing</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>Income</td><td>{{ category_opening.opening_by_category[Income] }}</td><td>{{ transactions.total_by_category[Income] }}</td><td>{{ category_closing.closing_by_category[Income] }}</td></tr>
-    <tr><td>Housing</td><td>{{ category_opening.opening_by_category[Housing] }}</td><td>{{ transactions.total_by_category[Housing] }}</td><td>{{ category_closing.closing_by_category[Housing] }}</td></tr>
-    <tr><td>Food</td><td>{{ category_opening.opening_by_category[Food] }}</td><td>{{ transactions.total_by_category[Food] }}</td><td>{{ category_closing.closing_by_category[Food] }}</td></tr>
-    <tr><td>Transport</td><td>{{ category_opening.opening_by_category[Transport] }}</td><td>{{ transactions.total_by_category[Transport] }}</td><td>{{ category_closing.closing_by_category[Transport] }}</td></tr>
-    <tr><td>Utilities</td><td>{{ category_opening.opening_by_category[Utilities] }}</td><td>{{ transactions.total_by_category[Utilities] }}</td><td>{{ category_closing.closing_by_category[Utilities] }}</td></tr>
-    <tr><td>Entertainment</td><td>{{ category_opening.opening_by_category[Entertainment] }}</td><td>{{ transactions.total_by_category[Entertainment] }}</td><td>{{ category_closing.closing_by_category[Entertainment] }}</td></tr>
-    <tr><td>Savings</td><td>{{ category_opening.opening_by_category[Savings] }}</td><td>{{ transactions.total_by_category[Savings] }}</td><td>{{ category_closing.closing_by_category[Savings] }}</td></tr>
-  </tbody>
-</table>
+## category_balances
 
 ### Reconciliation checks
 
@@ -156,6 +146,6 @@ Keep raw events in the table. Put all totals and analysis in separate sections b
 ## Notes
 
 - This style keeps the table as raw input and avoids synthetic summary rows in table data.
-- Add new report sections by reusing aggregates, instead of changing table structure.
+- Add new report sections by reusing aggregates and `report_tables`, instead of changing table structure or writing HTML.
 - Category typo guards in `transactions`, `category_opening`, and `category_closing` raise `E_LOOKUP` if a category is not declared in `categories`.
 - For monthly rollover, copy `closing_balance` into next month's `category_opening`.

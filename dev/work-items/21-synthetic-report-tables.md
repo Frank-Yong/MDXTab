@@ -120,25 +120,28 @@ Rendered output should become a normal Markdown table:
 - [x] Preserve deterministic column order and row order from `rows_from`.
 
 ### 5. Add example documents
-- [ ] Add or update an example document showing category balances without HTML.
-- [ ] Demonstrate `opening`, `monthly_delta`, and `current`.
-- [ ] Verify the example renders as a standard Markdown table.
+- [x] Add or update an example document showing category balances without HTML.
+- [x] Demonstrate `opening`, `monthly_delta`, and `current`.
+- [x] Verify the example renders as a standard Markdown table.
 
 ### 6. Write tests
 - [x] Test successful report-table rendering from a dictionary/source table.
-- [ ] Test grouped aggregate composition per generated row.
+- [x] Test grouped aggregate composition per generated row.
 - [x] Test `current = opening + monthly_delta` for a bookkeeping example.
-- [ ] Test invalid `rows_from` table.
+- [x] Test invalid `rows_from` table.
 - [x] Test invalid `row.<col>` reference.
-- [ ] Test invalid grouped aggregate reference/key.
+- [x] Test invalid grouped aggregate reference/key.
 - [x] Test behavior when a matching report heading is absent.
 - [x] Test that authored tables continue to work unchanged.
 
 ### 7. Documentation
-- [ ] Document `report_tables` in the README/spec docs.
-- [ ] Explain when to use report tables vs summary rows vs grouped aggregates.
-- [ ] Include a migration note for users currently relying on HTML report
+- [x] Document `report_tables` in the README/spec docs.
+- [x] Explain when to use report tables vs summary rows vs grouped aggregates.
+- [x] Include a migration note for users currently relying on HTML report
   tables.
+
+## Progress notes
+- 2026-04-01: Reworked `dev/examples/transactions.md` to replace the hand-written HTML category-balance table with `report_tables` plus a matching Markdown heading.
 
 ## Acceptance criteria
 - [x] `report_tables` can be declared in frontmatter and validated.

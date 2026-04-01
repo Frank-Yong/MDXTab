@@ -25,6 +25,13 @@ tables:
         label: <string>
         cells:
           <columnName>: <expression>
+report_tables:                       # optional
+  <reportName>:
+    rows_from: <tableName>
+    key: <columnName>                # optional, default: source table key
+    columns: [<columnName>, ...]
+    cells:
+      <columnName>: <expression>
 ---
 
 # Markdown body (data + presentation)
@@ -42,12 +49,17 @@ tables:
 - `aggregates` defines table-level scalars evaluated after row computation.
 - `summary_rows` defines synthetic rows appended in rendered preview/output; each row requires `label` and `cells`.
 - `summary_rows.<row>.cells` maps table columns to expressions; expressions evaluate left-to-right and may reference prior summary cells via `self.<column>`.
+- `report_tables` defines synthetic rendered tables whose rows are driven by another table via `rows_from`.
+- `report_tables.<name>.columns` defines rendered column order.
+- `report_tables.<name>.cells` must define one expression per rendered column.
+- `report_tables.<name>.key` is optional and defaults to the key of the `rows_from` source table.
 
 ## Markdown Body Rules
 - Contains only literal values; no inline formulas or expressions.
 - Row order is preserved as written; column order must match `columns`.
 - Empty cells adopt `empty_cells` policy.
 - Tables are keyed by the `key` column; key values must be unique per table.
+- A heading whose text matches a `report_tables` name is a render target for that synthetic report table.
 
 ## Data Types
 - Primitive types: `number` (IEEE-754), `string` (UTF-8 text), `bool` (`true`/`false`), `date` (ISO-8601 `YYYY-MM-DD`).
@@ -124,6 +136,7 @@ arguments   ::= expression ( "," expression )*
 ### Context rules for functions
 - In per-row computed columns, only row-safe functions are allowed. Using aggregate-only functions in a row expression is an error (`invalid-aggregate-context`).
 - In aggregates, both row-safe and aggregate-only functions are allowed, but aggregate-only functions operate over the current table after row evaluation.
+- In `report_tables` cells, expressions may reference `row.<column>` from the `rows_from` source row, grouped aggregate maps such as `transactions.total_by_category[row.id]`, and existing table lookups.
 
 ### Comparison chaining
 - Comparisons allow only a single operator (e.g., `a < b`). Chained comparisons such as `1 < 2 < 3` are invalid and must raise `invalid-expression`.
@@ -143,7 +156,8 @@ arguments   ::= expression ( "," expression )*
 3) Evaluate computed columns per row in dependency order.
 4) Evaluate aggregates over final column values.
 5) Evaluate `summary_rows` cell expressions in declaration order.
-6) Render outputs (computed columns/summary rows/interpolation, exports).
+6) Evaluate `report_tables` rows from their `rows_from` source tables.
+7) Render outputs (computed columns/summary rows/report tables/interpolation, exports).
 
 ### Aggregate Null Handling
 - Aggregates skip null inputs.

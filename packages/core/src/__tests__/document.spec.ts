@@ -237,6 +237,78 @@ report_tables:
     expect(result.diagnostics[0].message).toContain("[report-table]");
   });
 
+  it("returns diagnostics for invalid report-table rows_from tables", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: missing_table
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("rows_from table missing_table");
+  });
+
+  it("returns diagnostics for missing grouped aggregate keys in report tables", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    types:
+      amount: number
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, monthly_delta]
+    cells:
+      label: row.label
+      monthly_delta: transactions.total_by_category[row.id]
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+| Missing | Missing |
+
+## transactions
+| id | category | amount |
+|----|----------|--------|
+| t1 | Utilities | 71.5 |
+
+## category_balances
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_LOOKUP");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("monthly_delta");
+    expect(result.diagnostics[0].message).toContain("[report-table]");
+  });
+
   it("does not inject report tables when the matching heading is absent", () => {
     const reportDoc = `---
 mdxtab: "1.0"
