@@ -2,6 +2,13 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-01 - 0.5.0
+- Add expression guardrails that fail pathological expressions with `E_LIMIT` instead of unbounded parse/evaluate work.
+- Add configurable expression limits in the core API for expression length, token count, measured AST depth, parser depth, and dependency traversal depth.
+- Add CLI flags for expression guardrail overrides.
+- Add VS Code settings for expression guardrail overrides and keep validation paths lightweight while honoring those limits.
+- Improve dependency and expression diagnostics so `E_LIMIT` failures carry table/column or aggregate context.
+
 ## 2026-03-28 - 0.4.1
 - Fix VS Code marketplace releases to include the current preview rendering behavior.
 - Ensure extension packaging/publishing rebuilds before shipping via `vscode:prepublish`.
