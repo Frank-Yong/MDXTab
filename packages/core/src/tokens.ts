@@ -33,8 +33,11 @@ export function lexExpression(input: string, limits: ExpressionLimits = DEFAULT_
   const isIdentifierStart = (ch: string) => /[A-Za-z_]/.test(ch);
   const isIdentifierPart = (ch: string) => /[A-Za-z0-9_]/.test(ch);
 
-  const push = (type: TokenType, value: string, start: number, end: number) => {
+  const push = (type: TokenType, value: string, start: number, end: number, enforceLimit = true) => {
     tokens.push({ type, value, start, end });
+    if (enforceLimit) {
+      assertTokenCount(tokens.length, limits);
+    }
   };
 
   while (i < len) {
@@ -162,6 +165,6 @@ export function lexExpression(input: string, limits: ExpressionLimits = DEFAULT_
   }
 
   assertTokenCount(tokens.length, limits);
-  push("eof", "", len, len);
+  push("eof", "", len, len, false);
   return tokens;
 }
