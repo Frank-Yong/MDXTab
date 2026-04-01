@@ -335,6 +335,39 @@ report_tables:
     expect(result.rendered).not.toContain("## category_balances\n| label |");
   });
 
+  it("does not remove prose after an existing report table when the prose contains pipes", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+| stale |
+|-------|
+| old |
+
+Use A | B notation in prose after the table.
+`;
+
+    const result = compileMdxtab(reportDoc);
+    expect(result.rendered).toContain("## category_balances\n| label |\n|-------|\n| Utilities |");
+    expect(result.rendered).toContain("Use A | B notation in prose after the table.");
+  });
+
   it("reports diagnostics for invalid grouped aggregates", () => {
     const badGroupedDoc = `---
 mdxtab: "1.0"

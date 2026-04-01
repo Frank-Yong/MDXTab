@@ -684,6 +684,11 @@ function isMarkdownTableStart(lines: string[], startIndex: number): boolean {
   return /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(separator);
 }
 
+function isPipeDelimitedRow(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.endsWith("|");
+}
+
 function injectReportTables(
   body: string,
   reportTables: Record<string, ReportTableEvaluation>,
@@ -711,7 +716,7 @@ function injectReportTables(
     let replaceEnd = replaceStart;
     if (isMarkdownTableStart(lines, replaceStart)) {
       replaceEnd = replaceStart + 2;
-      while (replaceEnd < lines.length && lines[replaceEnd].includes("|")) {
+      while (replaceEnd < lines.length && isPipeDelimitedRow(lines[replaceEnd])) {
         replaceEnd += 1;
       }
     }
@@ -929,9 +934,13 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   const tables = parseMarkdownTables(raw);
 
   const schemaNames = new Set(Object.keys(frontmatter.tables));
+  const reportTableNames = new Set(Object.keys(frontmatter.report_tables ?? {}));
   const tableByName: Record<string, ParsedTable> = {};
   for (const t of tables) {
     if (!schemaNames.has(t.name)) {
+      if (reportTableNames.has(t.name)) {
+        continue;
+      }
       throw new DiagnosticError({
         code: "E_TABLE",
         message: `Markdown table ${t.name} not declared in frontmatter`,
