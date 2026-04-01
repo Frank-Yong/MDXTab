@@ -700,14 +700,14 @@ function injectReportTables(
     .filter(({ line, index }) => !fencedLines.has(index))
     .map(({ line, index }) => ({
       index,
-      match: line.match(/^\s*#{1,6}\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/),
+      heading: line.match(/^\s*#{1,6}\s+(.*)$/)?.[1].trim(),
     }))
-    .filter((entry): entry is { index: number; match: RegExpMatchArray } => Boolean(entry.match))
-    .filter(({ match }) => Boolean(reportTables[match[1]]))
+    .filter((entry): entry is { index: number; heading: string } => Boolean(entry.heading))
+    .filter(({ heading }) => Boolean(reportTables[heading]))
     .sort((a, b) => b.index - a.index);
 
-  for (const { index, match } of headings) {
-    const report = reportTables[match[1]];
+  for (const { index, heading } of headings) {
+    const report = reportTables[heading];
     const tableLines = renderMarkdownTable(report.columns, report.rows);
     let replaceStart = index + 1;
     while (replaceStart < lines.length && lines[replaceStart].trim() === "") {

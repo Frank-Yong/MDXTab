@@ -368,6 +368,34 @@ Use A | B notation in prose after the table.
     expect(result.rendered).toContain("Use A | B notation in prose after the table.");
   });
 
+  it("renders report tables whose names include non-identifier heading text", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category-balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category-balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+    expect(result.reportTables["category-balances"].rows).toEqual([{ label: "Utilities" }]);
+    expect(result.rendered).toContain("## category-balances\n\n| label |\n|-------|\n| Utilities |");
+  });
+
   it("reports diagnostics for invalid grouped aggregates", () => {
     const badGroupedDoc = `---
 mdxtab: "1.0"
