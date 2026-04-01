@@ -1,3 +1,6 @@
+import { assertExpressionLength, assertTokenCount, DEFAULT_EXPRESSION_LIMITS } from "./expression-limits.js";
+import type { ExpressionLimits } from "./types.js";
+
 export type TokenType =
   | "number"
   | "string"
@@ -19,7 +22,9 @@ export interface Token {
   end: number;
 }
 
-export function lexExpression(input: string): Token[] {
+export function lexExpression(input: string, limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS): Token[] {
+  assertExpressionLength(input, limits);
+
   const tokens: Token[] = [];
   const src = input;
   const len = src.length;
@@ -28,8 +33,11 @@ export function lexExpression(input: string): Token[] {
   const isIdentifierStart = (ch: string) => /[A-Za-z_]/.test(ch);
   const isIdentifierPart = (ch: string) => /[A-Za-z0-9_]/.test(ch);
 
-  const push = (type: TokenType, value: string, start: number, end: number) => {
+  const push = (type: TokenType, value: string, start: number, end: number, enforceLimit = true) => {
     tokens.push({ type, value, start, end });
+    if (enforceLimit) {
+      assertTokenCount(tokens.length, limits);
+    }
   };
 
   while (i < len) {
@@ -156,6 +164,7 @@ export function lexExpression(input: string): Token[] {
     throw new Error(`Unexpected character '${ch}' at position ${i}`);
   }
 
-  push("eof", "", len, len);
+  assertTokenCount(tokens.length, limits);
+  push("eof", "", len, len, false);
   return tokens;
 }

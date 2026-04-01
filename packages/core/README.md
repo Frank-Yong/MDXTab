@@ -11,6 +11,18 @@ Implemented (WIP). Core compilation, evaluation, and tests are in place; semanti
 - Build: `npm run -w @mdxtab/core build`
 - Tests: `npm run -w @mdxtab/core test`
 
+## Guardrail configuration
+
+`compileMdxtab()` and `validateMdxtab()` accept `CompileOptions.expressionLimits`
+to override the default expression guardrails.
+
+Defaults:
+- `maxLength`: `4096`
+- `maxTokens`: `512`
+- `maxAstDepth`: `64` (measured AST depth)
+- `maxParseDepth`: `256` (parser nesting depth)
+- `maxDependencyDepth`: `128`
+
 Work items in `dev/work-items` map to modules:
 - 02: frontmatter + Markdown parsing
 - 04: expression lexer and parser

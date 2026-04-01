@@ -32,6 +32,18 @@
 - Fast enough for typical docs (hundreds of rows); note any limits for bigger files.
 - Make errors easy to see in CI and in the editor.
 - Allow adding safe built-in functions without breaking determinism.
+- Reject pathological expressions with explicit limits instead of allowing stack
+  overflow or unbounded work.
+
+### Current guardrail limits
+- Maximum expression length: 4096 characters
+- Maximum token count: 512 tokens
+- Maximum measured AST depth: 64
+- Maximum parse depth: 256
+- Maximum dependency traversal depth: 128
+- Limit failures must surface as `E_LIMIT` diagnostics with table/column or aggregate context when available.
+- Implementations may expose these limits as configuration, but defaults must
+  remain explicit and deterministic.
 
 ## Cross-language Compatibility
 - Follow the format spec rules for numbers: only finite values, division by zero errors, `round` uses half-to-even, and no NaN/Infinity.

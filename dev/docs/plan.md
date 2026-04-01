@@ -1,8 +1,8 @@
 # MDXTab Development Plan (VS Code Extension)
 
-## Current Top Priority
+## Current High-Priority Feature Work
 
-- `Synthetic report tables` is the current top product priority.
+- `Synthetic report tables` is currently high-priority feature work.
 - Work item: `dev/work-items/21-synthetic-report-tables.md`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/30
 - Why now: it unlocks a proper reporting layer for real bookkeeping/reporting workflows, removes the need for hand-written HTML tables, and solves the current inability to compute row-wise report values such as `opening + monthly_delta = current`.
@@ -78,4 +78,4 @@ See [phase-4-cli-ci.md](phase-4-cli-ci.md).
 ## Backlog pointers
 - See dev/docs/backlog.md for feature backlog items.
 - Issue #11 (time calculations): https://github.com/Frank-Yong/MDXTab/issues/11
-- Current top priority: issue #30 synthetic report tables.
+- Current high-priority feature work: issue #30 synthetic report tables.

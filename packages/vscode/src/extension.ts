@@ -34,6 +34,7 @@ import {
   parseMarkdownTables,
   toDiagnostic,
   validateMdxtab,
+  type CompileOptions,
   type Diagnostic as CoreDiagnostic,
 } from "./core/index.js";
 
@@ -41,6 +42,43 @@ const SCHEME = "mdxtab-preview";
 
 function makePreviewUri(docUri: Uri): Uri {
   return Uri.from({ scheme: SCHEME, path: docUri.path, query: encodeURIComponent(docUri.toString()) });
+}
+
+function getExpressionLimitOptionsFromConfig(): CompileOptions["expressionLimits"] {
+  const config = workspace.getConfiguration("mdxtab");
+  const maxExpressionLength = config.get<number>("limits.maxExpressionLength", 4096);
+  const maxTokens = config.get<number>("limits.maxTokens", 512);
+  const maxAstDepth = config.get<number>("limits.maxAstDepth", 64);
+  const maxParseDepth = config.get<number>("limits.maxParseDepth", 256);
+  const maxDependencyDepth = config.get<number>("limits.maxDependencyDepth", 128);
+
+  return {
+    maxLength: maxExpressionLength,
+    maxTokens,
+    maxAstDepth,
+    maxParseDepth,
+    maxDependencyDepth,
+  };
+}
+
+function getCompileOptionsFromConfig(): CompileOptions {
+  const config = workspace.getConfiguration("mdxtab");
+  const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
+  const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
+  const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
+
+  return {
+    includeFrontmatter: showFrontmatter,
+    includeComputedColumns: showComputedColumns,
+    includeSummaryRows: showSummaryRows,
+    expressionLimits: getExpressionLimitOptionsFromConfig(),
+  };
+}
+
+function getValidationCompileOptionsFromConfig(): CompileOptions {
+  return {
+    expressionLimits: getExpressionLimitOptionsFromConfig(),
+  };
 }
 
 class PreviewProvider implements TextDocumentContentProvider {
@@ -57,11 +95,7 @@ class PreviewProvider implements TextDocumentContentProvider {
     const doc = target ? await workspace.openTextDocument(target) : undefined;
     if (!doc) return "No document to render";
     try {
-      const config = workspace.getConfiguration("mdxtab");
-      const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
-      const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
-      const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
-      const result = compileMdxtab(doc.getText(), { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns, includeSummaryRows: showSummaryRows });
+      const result = compileMdxtab(doc.getText(), getCompileOptionsFromConfig());
       return result.rendered;
     } catch (err) {
       const diag = toDiagnostic(err);
@@ -534,7 +568,7 @@ function updateDiagnostics(
     collection.delete(doc.uri);
     return;
   }
-  const diagnostics = validateMdxtab(text).diagnostics;
+  const diagnostics = validateMdxtab(text, getValidationCompileOptionsFromConfig()).diagnostics;
   if (diagnostics.length === 0) {
     collection.delete(doc.uri);
     return;
@@ -1096,7 +1130,7 @@ export function activate(context: ExtensionContext) {
       return;
     }
     updateDiagnostics(editor.document, diagnostics);
-    const { diagnostics: diags } = validateMdxtab(editor.document.getText());
+    const { diagnostics: diags } = validateMdxtab(editor.document.getText(), getValidationCompileOptionsFromConfig());
     if (diags.length === 0) {
       window.showInformationMessage("MDXTab: no diagnostics");
     } else {
@@ -1118,11 +1152,8 @@ function extendMarkdownIt(md: { core: { ruler: { after: (name: string, rule: str
     const config = workspace.getConfiguration("mdxtab");
     const enabled = config.get<boolean>("preview.markdownIt.enabled", true);
     if (!enabled) return;
-    const showFrontmatter = config.get<boolean>("preview.showFrontmatter", false);
-    const showComputedColumns = config.get<boolean>("preview.showComputedColumns", true);
-    const showSummaryRows = config.get<boolean>("preview.showSummaryRows", true);
     try {
-      const result = compileMdxtab(text, { includeFrontmatter: showFrontmatter, includeComputedColumns: showComputedColumns, includeSummaryRows: showSummaryRows });
+      const result = compileMdxtab(text, getCompileOptionsFromConfig());
       state.src = result.rendered;
     } catch (err) {
       const diag = toDiagnostic(err);

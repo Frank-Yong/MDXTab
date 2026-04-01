@@ -90,4 +90,44 @@ describe("mdxtab CLI", () => {
     expect(out.errors.length).toBeGreaterThan(0);
     expect(out.diagnostics).toEqual([]);
   });
+
+  it("allows overriding expression limits from the CLI", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-expression-length", "3"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    expect(ctx.err.join(" ")).toMatch(/E_LIMIT/);
+  });
+
+  it("accepts expression limit overrides in equals form", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-expression-length=32"], ctx.io);
+    expect(rc).toBe(0);
+    expect(ctx.code).toBe(0);
+    expect(ctx.out.join("").trim()).toBe("OK");
+  });
+
+  it("accepts parse-depth overrides", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-parse-depth=32"], ctx.io);
+    expect(rc).toBe(0);
+    expect(ctx.code).toBe(0);
+    expect(ctx.out.join("").trim()).toBe("OK");
+  });
+
+  it("reports invalid expression limit values without throwing", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-tokens", "foo"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    expect(ctx.err.join("")).toContain("Invalid value for maxTokens: expected a positive integer");
+  });
+
+  it("reports invalid equals-form expression limit values without throwing", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("sample.md"), "--max-ast-depth=-1"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    expect(ctx.err.join("")).toContain("Invalid value for maxAstDepth: expected a positive integer");
+  });
 });
