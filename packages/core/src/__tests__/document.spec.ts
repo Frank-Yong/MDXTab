@@ -141,6 +141,40 @@ Summary: {{ time_entries.hours_by_project[Alpha] }} / {{ time_entries.hours_by_p
     expect(result.rendered).toContain("Summary: 15 / 7");
   });
 
+  it("preserves aggregate names that would otherwise mutate object prototypes", () => {
+    const groupedDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, project, start, end, break, duration]
+    types:
+      start: time
+      end: time
+      break: time
+      duration: number
+    computed:
+      duration: hours(end) - hours(start) - hours(break)
+    aggregates:
+      __proto__: sum(duration)
+      constructor: sum(duration) by project
+---
+
+## time_entries
+| id | project | start | end  | break | duration |
+|----|---------|-------|------|-------|----------|
+| e1 | Alpha   | 09:00 | 17:30| 00:30 |          |
+| e2 | Beta    | 10:00 | 18:00| 01:00 |          |
+| e3 | Alpha   | 08:30 | 16:00| 00:30 |          |
+`;
+
+    const result = compileMdxtab(groupedDoc);
+
+    expect(result.tables.time_entries.aggregates["__proto__"]).toBe(22);
+    expect(result.tables.time_entries.groupedAggregates?.["constructor"]?.Alpha).toBe(15);
+    expect(result.tables.time_entries.groupedAggregates?.["constructor"]?.Beta).toBe(7);
+  });
+
   it("renders synthetic report tables from source rows and grouped aggregates", () => {
     const reportDoc = `---
 mdxtab: "1.0"

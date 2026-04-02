@@ -245,9 +245,14 @@ function parseAggregates(tableName: string, map: Record<string, string> | undefi
   scalar: Record<string, AstNode>;
   grouped: Record<string, GroupedAggregate>;
 } {
-  if (!map) return { scalar: {}, grouped: {} };
-  const scalar: Record<string, AstNode> = {};
-  const grouped: Record<string, GroupedAggregate> = {};
+  if (!map) {
+    return {
+      scalar: Object.create(null) as Record<string, AstNode>,
+      grouped: Object.create(null) as Record<string, GroupedAggregate>,
+    };
+  }
+  const scalar = Object.create(null) as Record<string, AstNode>;
+  const grouped = Object.create(null) as Record<string, GroupedAggregate>;
   const groupRe = /^(sum|avg|min|max|count)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)\s+by\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i;
   for (const [name, expr] of Object.entries(map)) {
     try {
@@ -746,10 +751,11 @@ function evaluateReportTables(
     ...Object.keys(groupedAggregateResults),
   ]);
   for (const tableName of tableNames) {
-    reportScope[tableName] = {
-      ...(aggregateResults[tableName] ?? {}),
-      ...(groupedAggregateResults[tableName] ?? {}),
-    };
+    reportScope[tableName] = Object.assign(
+      Object.create(null),
+      aggregateResults[tableName] ?? {},
+      groupedAggregateResults[tableName] ?? {},
+    ) as EvalRowContext;
   }
 
   for (const [name, report] of Object.entries(reportTables)) {
@@ -973,8 +979,8 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const computedAsts: Record<string, Record<string, AstNode>> = {};
-  const aggregateAsts: Record<string, Record<string, AstNode>> = {};
-  const groupedAggregateDefs: Record<string, Record<string, GroupedAggregate>> = {};
+  const aggregateAsts = Object.create(null) as Record<string, Record<string, AstNode>>;
+  const groupedAggregateDefs = Object.create(null) as Record<string, Record<string, GroupedAggregate>>;
   const computedOrder: Record<string, string[]> = {};
   const keyByTable: Record<string, string> = {};
 
@@ -1112,12 +1118,12 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     rows.forEach((r) => ensure(r));
   }
 
-  const aggregateResults: Record<string, Record<string, Scalar>> = {};
-  const groupedAggregateResults: Record<string, Record<string, Record<string, Scalar>>> = {};
+  const aggregateResults = Object.create(null) as Record<string, Record<string, Scalar>>;
+  const groupedAggregateResults = Object.create(null) as Record<string, Record<string, Record<string, Scalar>>>;
   for (const [name, asts] of Object.entries(aggregateAsts)) {
     const rows = rowList[name];
     const ensure = ensureByTable[name];
-    const aggMap: Record<string, Scalar> = {};
+    const aggMap = Object.create(null) as Record<string, Scalar>;
     const aggregateFn = (fn: string, column: string) => computeAggregate(fn, column, rows, name, ensure);
     for (const [aggName, ast] of Object.entries(asts)) {
       aggMap[aggName] = evalWithContext(
@@ -1137,7 +1143,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   for (const [name, defs] of Object.entries(groupedAggregateDefs)) {
     const rows = rowList[name];
     const ensure = ensureByTable[name];
-    const groupMap: Record<string, Record<string, Scalar>> = {};
+    const groupMap = Object.create(null) as Record<string, Record<string, Scalar>>;
     for (const [aggName, def] of Object.entries(defs)) {
       try {
         groupMap[aggName] = computeGroupedAggregate(def.fn, def.column, def.by, rows, name, ensure);
