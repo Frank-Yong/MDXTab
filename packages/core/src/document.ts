@@ -738,7 +738,7 @@ function evaluateReportTables(
   limits: ExpressionLimits,
 ): Record<string, ReportTableEvaluation> {
   const results = Object.create(null) as Record<string, ReportTableEvaluation>;
-  const reportScope: EvalRowContext = {};
+  const reportScope = Object.create(null) as EvalRowContext;
 
   const tableNames = new Set<string>([
     ...Object.keys(aggregateResults),
