@@ -663,6 +663,38 @@ This prose should remain.
     expect(result.rendered).toContain("This prose should remain.");
   });
 
+  it("does not treat a separator-like line without outer pipes as an existing markdown table", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+| stale |
+ ------ |
+This prose should remain.
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## category_balances\n| label |\n|-------|\n| Utilities |\n| stale |\n ------ |");
+    expect(result.rendered).toContain("This prose should remain.");
+  });
+
   it("renders report tables whose names include non-identifier heading text", () => {
     const reportDoc = `---
 mdxtab: "1.0"
