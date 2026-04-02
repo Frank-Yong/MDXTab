@@ -472,6 +472,36 @@ report_tables:
     expect(result.rendered).toContain("## toString\n\n| label |");
   });
 
+  it("preserves report-table names that would otherwise mutate object prototypes", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  __proto__:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## __proto__
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables["__proto__"].rows).toEqual([{ label: "Utilities" }]);
+    expect(result.frontmatter.report_tables?.["__proto__"]?.rows_from).toBe("categories");
+    expect(result.rendered).toContain("## __proto__\n\n| label |");
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"

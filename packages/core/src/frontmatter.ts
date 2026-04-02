@@ -70,7 +70,7 @@ function parseReportTables(
   tables: Record<string, TableFrontmatter>,
 ): Record<string, ReportTableDefinition> {
   const obj = expectObject(value, "report_tables");
-  const result: Record<string, ReportTableDefinition> = {};
+  const result = Object.create(null) as Record<string, ReportTableDefinition>;
   const hasOwnTable = (name: string): name is keyof typeof tables =>
     Object.prototype.hasOwnProperty.call(tables, name);
   const reportTableError = (name: string, message: string, column?: string): DiagnosticError =>

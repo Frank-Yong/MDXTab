@@ -274,9 +274,9 @@ function parseReportTableExpressions(
   reportTables: Record<string, ReportTableDefinition> | undefined,
   limits: ExpressionLimits,
 ): Record<string, ParsedReportTable> {
-  if (!reportTables) return {};
+  if (!reportTables) return Object.create(null) as Record<string, ParsedReportTable>;
 
-  const result: Record<string, ParsedReportTable> = {};
+  const result = Object.create(null) as Record<string, ParsedReportTable>;
   for (const [name, report] of Object.entries(reportTables)) {
     const cells: Record<string, AstNode> = {};
     for (const [column, expr] of Object.entries(report.cells)) {
@@ -737,7 +737,7 @@ function evaluateReportTables(
   groupedAggregateResults: Record<string, Record<string, Record<string, Scalar>>>,
   limits: ExpressionLimits,
 ): Record<string, ReportTableEvaluation> {
-  const results: Record<string, ReportTableEvaluation> = {};
+  const results = Object.create(null) as Record<string, ReportTableEvaluation>;
   const reportScope: EvalRowContext = {};
 
   const tableNames = new Set<string>([
