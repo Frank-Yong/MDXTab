@@ -670,8 +670,9 @@ function injectSummaryRows(
 }
 
 function renderMarkdownTable(columns: string[], rows: Record<string, Scalar>[]): string[] {
-  const header = `| ${columns.join(" | ")} |`;
-  const separator = `|${columns.map((column) => "-".repeat(Math.max(column.length + 2, 3))).join("|")}|`;
+  const headerCells = columns.map((column) => formatScalar(column));
+  const header = `| ${headerCells.join(" | ")} |`;
+  const separator = `|${headerCells.map((column) => "-".repeat(Math.max(column.length + 2, 3))).join("|")}|`;
   const dataLines = rows.map((row) => `| ${columns.map((column) => formatScalar(row[column])).join(" | ")} |`);
   return [header, separator, ...dataLines];
 }

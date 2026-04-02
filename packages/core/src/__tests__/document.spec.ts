@@ -206,6 +206,35 @@ report_tables:
     expect(result.rendered).toContain("| Electricity | 740.63 | -139.37 | 601.26 |");
   });
 
+  it("escapes report-table header cells that contain markdown table characters", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: ["label|name"]
+    cells:
+      "label|name": row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("| label\\|name |");
+    expect(result.rendered).toContain("| Utilities |");
+  });
+
   it("returns diagnostics for invalid report-table row references", () => {
     const badReportDoc = `---
 mdxtab: "1.0"
