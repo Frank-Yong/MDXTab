@@ -410,6 +410,35 @@ report_tables:
     expect(result.rendered).toContain("## category_balances\n\n| label |");
   });
 
+  it("allows report-table names that match object prototype properties", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  toString:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## toString
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables.toString.rows).toEqual([{ label: "Utilities" }]);
+    expect(result.rendered).toContain("## toString\n\n| label |");
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"

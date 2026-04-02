@@ -71,18 +71,20 @@ function parseReportTables(
 ): Record<string, ReportTableDefinition> {
   const obj = expectObject(value, "report_tables");
   const result: Record<string, ReportTableDefinition> = {};
+  const hasOwnTable = (name: string): name is keyof typeof tables =>
+    Object.prototype.hasOwnProperty.call(tables, name);
 
   for (const [name, reportValue] of Object.entries(obj)) {
-    if (name in tables) {
+    if (hasOwnTable(name)) {
       throw new Error(`report_tables.${name} conflicts with table ${name}`);
     }
 
     const reportObj = expectObject(reportValue, `report_table ${name}`);
     const rowsFrom = expectString(reportObj.rows_from, `rows_from for report_table ${name}`);
-    const sourceTable = tables[rowsFrom];
-    if (!sourceTable) {
+    if (!hasOwnTable(rowsFrom)) {
       throw new Error(`report_table ${name} references unknown rows_from table ${rowsFrom}`);
     }
+    const sourceTable = tables[rowsFrom];
 
     const columns = expectStringArray(reportObj.columns, `columns for report_table ${name}`);
     const key = reportObj.key === undefined
