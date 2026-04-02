@@ -771,7 +771,7 @@ function evaluateReportTables(
         ...reportScope,
         row: ensuredRow,
       };
-      const evaluated: Record<string, Scalar> = {};
+      const evaluated = Object.create(null) as Record<string, Scalar>;
 
       for (const column of report.columns) {
         evaluated[column] = evalWithContext(

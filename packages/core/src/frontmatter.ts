@@ -129,7 +129,7 @@ function parseReportTables(
       throw reportTableError(name, `report_table ${name}: cells is required`, "cells");
     }
     const cellsObj = expectReportObject(name, reportObj.cells, `cells for report_table ${name}`, "cells");
-    const cells: Record<string, string> = {};
+    const cells = Object.create(null) as Record<string, string>;
 
     for (const [column, expr] of Object.entries(cellsObj)) {
       if (!columns.includes(column)) {

@@ -404,6 +404,38 @@ report_tables:
     expect(result.diagnostics[0].message).toContain("missing expression for column toString");
   });
 
+  it("preserves prototype-named report-table columns in frontmatter cells", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, __proto__]
+    cells:
+      label: row.label
+      __proto__: row.id
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.frontmatter.report_tables?.category_balances.cells["__proto__"]).toBe("row.id");
+    expect(result.reportTables.category_balances.rows).toEqual([
+      { label: "Utilities", ["__proto__"]: "Utilities" },
+    ]);
+  });
+
   it("returns diagnostics for missing grouped aggregate keys in report tables", () => {
     const badReportDoc = `---
 mdxtab: "1.0"
