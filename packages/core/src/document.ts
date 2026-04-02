@@ -283,7 +283,7 @@ function parseReportTableExpressions(
 
   const result = Object.create(null) as Record<string, ParsedReportTable>;
   for (const [name, report] of Object.entries(reportTables)) {
-    const cells: Record<string, AstNode> = {};
+    const cells = Object.create(null) as Record<string, AstNode>;
     for (const [column, expr] of Object.entries(report.cells)) {
       try {
         cells[column] = parseExpression(lexExpression(expr, limits), limits);
