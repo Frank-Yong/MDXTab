@@ -308,6 +308,35 @@ report_tables:
     expect(result.diagnostics[0].message).toContain("rows_from table missing_table");
   });
 
+  it("returns diagnostics when report-table cells omit prototype-named columns", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, toString]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("missing expression for column toString");
+  });
+
   it("returns diagnostics for missing grouped aggregate keys in report tables", () => {
     const badReportDoc = `---
 mdxtab: "1.0"

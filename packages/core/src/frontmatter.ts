@@ -108,7 +108,7 @@ function parseReportTables(
     }
 
     for (const column of columns) {
-      if (!(column in cells)) {
+      if (!Object.prototype.hasOwnProperty.call(cells, column)) {
         throw new Error(`report_table ${name}.cells is missing expression for column ${column}`);
       }
     }
