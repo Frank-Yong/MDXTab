@@ -211,8 +211,8 @@ export function evaluateAst(
       const base = evaluateAst(target, ctx, limits, depth + 1);
       if (!isRowValue(base)) throw new Error("E_REF: member base is not an object");
       const key = (prop as AstNode).value as string;
+      if (!hasOwnRowField(base, key)) throw new Error(`E_REF: unknown member ${key}`);
       const val = base[key];
-      if (val === undefined) throw new Error(`E_REF: unknown member ${key}`);
       return val;
     }
     case "Lookup": {

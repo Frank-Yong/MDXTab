@@ -111,6 +111,14 @@ describe("evaluator", () => {
     expect(val).toBe("Ellen");
   });
 
+  it("treats inherited prototype members as unknown members", () => {
+    expect(() =>
+      run("row.totals.toString", {
+        row: { totals: {} },
+      })
+    ).toThrow(/E_REF: unknown member toString/);
+  });
+
   it("rejects inherited prototype keys in dynamic lookups", () => {
     expect(() =>
       run("row.totals[key_name]", {
