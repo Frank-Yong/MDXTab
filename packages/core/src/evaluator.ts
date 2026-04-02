@@ -22,6 +22,10 @@ function isRowValue(v: EvalValue): v is RowValue {
   return typeof v === "object" && v !== null;
 }
 
+function hasOwnRowField(row: RowValue, name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(row, name);
+}
+
 function toScalar(v: EvalValue): Scalar {
   if (isRowValue(v)) throw new Error("E_TYPE: expected scalar");
   return v;
@@ -135,10 +139,10 @@ export function evaluateAst(
     case "Identifier": {
       const name = node.value as string;
       if (name === "row") {
-        if ("row" in ctx.row && isRowValue(ctx.row.row)) return ctx.row.row;
+        if (hasOwnRowField(ctx.row, "row") && isRowValue(ctx.row.row)) return ctx.row.row;
         return ctx.row;
       }
-      if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
+      if (!hasOwnRowField(ctx.row, name)) throw new Error(`E_REF: unknown identifier ${name}`);
       return ctx.row[name];
     }
     case "Unary": {

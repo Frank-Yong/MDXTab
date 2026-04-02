@@ -118,6 +118,10 @@ describe("evaluator", () => {
     expect(val).toBe("Ada");
   });
 
+  it("treats prototype property names as unknown identifiers", () => {
+    expect(() => run("toString", { row: {} })).toThrow(/E_REF/);
+  });
+
   it("errors on unknown functions", () => {
     expect(() => run("foo(1)")).toThrow(/E_FUNC/);
   });
