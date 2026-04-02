@@ -269,6 +269,18 @@ Grouped aggregates:
 sum(amount) by category
 ```
 
+Example:
+
+```text
+sum(duration) by project
+```
+
+Rendered usage:
+
+```md
+{{ time_entries.hours_by_project[Alpha] }}
+```
+
 These keyed results can then feed synthetic report tables.
 
 ### Phase 5: Synthetic report tables
@@ -306,16 +318,6 @@ single aggregate value (`aggregates`) or a synthetic footer row (`summary_rows`)
 
 Migration note:
 - If you currently maintain hand-written HTML report tables only to combine grouped aggregates and lookup-driven row labels, move that section into `report_tables` and leave just the matching Markdown heading in the body.
-
-```text
-sum(duration) by project
-```
-
-Rendered usage:
-
-```md
-{{ time_entries.hours_by_project[Alpha] }}
-```
 
 ---
 
