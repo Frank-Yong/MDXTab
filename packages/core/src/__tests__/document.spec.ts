@@ -305,6 +305,8 @@ report_tables:
     const result = validateMdxtab(badReportDoc);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("rows_from");
     expect(result.diagnostics[0].message).toContain("rows_from table missing_table");
   });
 
@@ -334,6 +336,8 @@ report_tables:
     const result = validateMdxtab(badReportDoc);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("toString");
     expect(result.diagnostics[0].message).toContain("missing expression for column toString");
   });
 
