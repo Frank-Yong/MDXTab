@@ -564,6 +564,39 @@ Use A | B notation in prose after the table.
     expect(result.rendered).toContain("Use A | B notation in prose after the table.");
   });
 
+  it("does not treat prose plus a separator line as an existing markdown table", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+Alpha | Beta
+|------|------|
+This prose should remain.
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## category_balances\n| label |\n|-------|\n| Utilities |\nAlpha | Beta");
+    expect(result.rendered).toContain("|------|------|");
+    expect(result.rendered).toContain("This prose should remain.");
+  });
+
   it("renders report tables whose names include non-identifier heading text", () => {
     const reportDoc = `---
 mdxtab: "1.0"

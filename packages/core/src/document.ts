@@ -681,7 +681,7 @@ function isMarkdownTableStart(lines: string[], startIndex: number): boolean {
   if (startIndex + 1 >= lines.length) return false;
   const header = lines[startIndex];
   const separator = lines[startIndex + 1];
-  if (!header.includes("|")) return false;
+  if (!isPipeDelimitedRow(header)) return false;
   return /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(separator);
 }
 
