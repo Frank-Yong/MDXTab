@@ -230,8 +230,10 @@ export function evaluateAst(
       const base = evaluateAst(tableNode, ctx, limits, depth + 1);
       if (!isRowValue(base)) throw new Error("E_LOOKUP: lookup base is not an object");
       const lookupKey = String(key);
+      if (!Object.prototype.hasOwnProperty.call(base, lookupKey)) {
+        throw new Error(`E_LOOKUP: missing key ${lookupKey}`);
+      }
       const value = base[lookupKey];
-      if (value === undefined) throw new Error(`E_LOOKUP: missing key ${lookupKey}`);
       return value;
     }
     default:

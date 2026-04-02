@@ -5,7 +5,7 @@ import { evaluateAst } from "../evaluator.js";
 import type { Scalar } from "../types.js";
 
 type EvalOptions = {
-  row?: Record<string, Scalar>;
+  row?: RowValue;
   aggregateReturn?: Record<string, Scalar>;
   lookupReturn?: LookupReturn;
 };
@@ -109,6 +109,14 @@ describe("evaluator", () => {
       lookupReturn: { roles: { se: { manager: { name: "Ellen" } } } },
     });
     expect(val).toBe("Ellen");
+  });
+
+  it("rejects inherited prototype keys in dynamic lookups", () => {
+    expect(() =>
+      run("row.totals[key_name]", {
+        row: { key_name: "toString", totals: {} },
+      })
+    ).toThrow(/E_LOOKUP: missing key toString/);
   });
 
   it("keeps row reserved even when the row object has a scalar row column", () => {
