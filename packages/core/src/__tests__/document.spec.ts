@@ -435,7 +435,7 @@ report_tables:
 
     const result = compileMdxtab(reportDoc);
 
-    expect(result.reportTables.toString.rows).toEqual([{ label: "Utilities" }]);
+    expect(result.reportTables["toString"].rows).toEqual([{ label: "Utilities" }]);
     expect(result.rendered).toContain("## toString\n\n| label |");
   });
 
