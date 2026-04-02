@@ -693,6 +693,8 @@ function injectReportTables(
   body: string,
   reportTables: Record<string, ReportTableEvaluation>,
 ): string {
+  const hasOwnReportTable = (heading: string): heading is keyof typeof reportTables =>
+    Object.prototype.hasOwnProperty.call(reportTables, heading);
   const lines = body.split("\n");
   const fencedLines = getFencedLines(lines);
   const headings = lines
@@ -703,7 +705,7 @@ function injectReportTables(
       heading: line.match(/^\s*#{1,6}\s+(.*)$/)?.[1].trim(),
     }))
     .filter((entry): entry is { index: number; heading: string } => Boolean(entry.heading))
-    .filter(({ heading }) => Boolean(reportTables[heading]))
+    .filter(({ heading }) => hasOwnReportTable(heading))
     .sort((a, b) => b.index - a.index);
 
   for (const { index, heading } of headings) {

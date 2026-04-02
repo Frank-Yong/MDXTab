@@ -379,6 +379,37 @@ report_tables:
     expect(result.rendered).not.toContain("## category_balances\n| label |");
   });
 
+  it("ignores inherited object property names when matching report-table headings", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## toString
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## toString\n\n## category_balances");
+    expect(result.rendered).toContain("## category_balances\n\n| label |");
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"
