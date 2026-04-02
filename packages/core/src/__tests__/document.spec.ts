@@ -46,6 +46,36 @@ describe("document integration", () => {
     expect(result.rendered).toContain("Summary: 300 / 40");
   });
 
+  it("supports tables whose names would otherwise mutate object prototypes", () => {
+    const protoDoc = `---
+mdxtab: "1.0"
+tables:
+  __proto__:
+    key: id
+    columns: [id, net]
+    types:
+      net: number
+    aggregates:
+      total_net: sum(net)
+---
+
+## __proto__
+| id | net |
+|----|-----|
+| h1 | 100 |
+| h2 | 200 |
+
+Summary: {{ __proto__.total_net }}
+`;
+
+    const result = compileMdxtab(protoDoc);
+
+    expect(result.frontmatter.tables["__proto__"].columns).toEqual(["id", "net"]);
+    expect(result.tables["__proto__"].rows).toHaveLength(2);
+    expect(result.tables["__proto__"].aggregates.total_net).toBe(300);
+    expect(result.rendered).toContain("Summary: 300");
+  });
+
   it("fails when markdown headers do not match schema", () => {
     const badDoc = doc.replace("category", "cat");
     expect(() => compileMdxtab(badDoc)).toThrow();
@@ -139,6 +169,588 @@ Summary: {{ time_entries.hours_by_project[Alpha] }} / {{ time_entries.hours_by_p
     expect(groups?.Alpha).toBe(15);
     expect(groups?.Beta).toBe(7);
     expect(result.rendered).toContain("Summary: 15 / 7");
+  });
+
+  it("preserves aggregate names that would otherwise mutate object prototypes", () => {
+    const groupedDoc = `---
+mdxtab: "1.0"
+tables:
+  time_entries:
+    key: id
+    columns: [id, project, start, end, break, duration]
+    types:
+      start: time
+      end: time
+      break: time
+      duration: number
+    computed:
+      duration: hours(end) - hours(start) - hours(break)
+    aggregates:
+      __proto__: sum(duration)
+      constructor: sum(duration) by project
+---
+
+## time_entries
+| id | project | start | end  | break | duration |
+|----|---------|-------|------|-------|----------|
+| e1 | Alpha   | 09:00 | 17:30| 00:30 |          |
+| e2 | Beta    | 10:00 | 18:00| 01:00 |          |
+| e3 | Alpha   | 08:30 | 16:00| 00:30 |          |
+`;
+
+    const result = compileMdxtab(groupedDoc);
+
+    expect(result.tables.time_entries.aggregates["__proto__"]).toBe(22);
+    expect(result.tables.time_entries.groupedAggregates?.["constructor"]?.Alpha).toBe(15);
+    expect(result.tables.time_entries.groupedAggregates?.["constructor"]?.Beta).toBe(7);
+  });
+
+  it("renders synthetic report tables from source rows and grouped aggregates", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+  category_opening:
+    key: category
+    columns: [category, opening_balance]
+    types:
+      opening_balance: number
+    aggregates:
+      opening_by_category: sum(opening_balance) by category
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    types:
+      amount: number
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    key: id
+    columns: [label, opening, monthly_delta, current]
+    cells:
+      label: row.label
+      opening: category_opening.opening_by_category[row.id]
+      monthly_delta: transactions.total_by_category[row.id]
+      current: category_opening.opening_by_category[row.id] + transactions.total_by_category[row.id]
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+| Electricity | Electricity |
+
+## category_opening
+| category | opening_balance |
+|----------|-----------------|
+| Utilities | 1234.38 |
+| Electricity | 740.63 |
+
+## transactions
+| id | category | amount |
+|----|----------|--------|
+| t1 | Utilities | 71.5 |
+| t2 | Electricity | -139.37 |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables.category_balances.rows).toEqual([
+      { label: "Utilities", opening: 1234.38, monthly_delta: 71.5, current: 1305.88 },
+      { label: "Electricity", opening: 740.63, monthly_delta: -139.37, current: 601.26 },
+    ]);
+    expect(result.rendered).toContain("| label | opening | monthly_delta | current |");
+    expect(result.rendered).toContain("| Utilities | 1234.38 | 71.5 | 1305.88 |");
+    expect(result.rendered).toContain("| Electricity | 740.63 | -139.37 | 601.26 |");
+  });
+
+  it("escapes report-table header cells that contain markdown table characters", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: ["label|name"]
+    cells:
+      "label|name": row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("| label\\|name |");
+    expect(result.rendered).toContain("| Utilities |");
+  });
+
+  it("returns diagnostics for invalid report-table row references", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.missing
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_REF");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("label");
+    expect(result.diagnostics[0].message).toContain("[report-table]");
+  });
+
+  it("keeps report-scope identifiers available when source rows use the same column names", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label, transactions]
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    types:
+      amount: number
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, transaction_label, monthly_delta]
+    cells:
+      label: row.label
+      transaction_label: row.transactions
+      monthly_delta: transactions.total_by_category[row.id]
+---
+
+## categories
+| id | label | transactions |
+|----|-------|--------------|
+| Utilities | Utilities | row value |
+
+## transactions
+| id | category | amount |
+|----|----------|--------|
+| t1 | Utilities | 71.5 |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables.category_balances.rows).toEqual([
+      { label: "Utilities", transaction_label: "row value", monthly_delta: 71.5 },
+    ]);
+  });
+
+  it("returns diagnostics for invalid report-table rows_from tables", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: missing_table
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("rows_from");
+    expect(result.diagnostics[0].message).toContain("rows_from table missing_table");
+  });
+
+  it("returns diagnostics when report-table cells omit prototype-named columns", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, toString]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("toString");
+    expect(result.diagnostics[0].message).toContain("missing expression for column toString");
+  });
+
+  it("preserves prototype-named report-table columns in frontmatter cells", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, __proto__]
+    cells:
+      label: row.label
+      __proto__: row.id
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.frontmatter.report_tables?.category_balances.cells["__proto__"]).toBe("row.id");
+    expect(result.reportTables.category_balances.rows).toEqual([
+      { label: "Utilities", ["__proto__"]: "Utilities" },
+    ]);
+  });
+
+  it("returns diagnostics for missing grouped aggregate keys in report tables", () => {
+    const badReportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    types:
+      amount: number
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, monthly_delta]
+    cells:
+      label: row.label
+      monthly_delta: transactions.total_by_category[row.id]
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+| Missing | Missing |
+
+## transactions
+| id | category | amount |
+|----|----------|--------|
+| t1 | Utilities | 71.5 |
+
+## category_balances
+`;
+
+    const result = validateMdxtab(badReportDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_LOOKUP");
+    expect(result.diagnostics[0].table).toBe("category_balances");
+    expect(result.diagnostics[0].column).toBe("monthly_delta");
+    expect(result.diagnostics[0].message).toContain("[report-table]");
+  });
+
+  it("does not inject report tables when the matching heading is absent", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+`;
+
+    const result = compileMdxtab(reportDoc);
+    expect(result.reportTables.category_balances.rows).toEqual([{ label: "Utilities" }]);
+    expect(result.rendered).not.toContain("## category_balances\n| label |");
+  });
+
+  it("ignores inherited object property names when matching report-table headings", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## toString
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## toString\n\n## category_balances");
+    expect(result.rendered).toContain("## category_balances\n\n| label |");
+  });
+
+  it("allows report-table names that match object prototype properties", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  toString:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## toString
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables["toString"].rows).toEqual([{ label: "Utilities" }]);
+    expect(result.rendered).toContain("## toString\n\n| label |");
+  });
+
+  it("preserves report-table names that would otherwise mutate object prototypes", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  __proto__:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## __proto__
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.reportTables["__proto__"].rows).toEqual([{ label: "Utilities" }]);
+    expect(result.frontmatter.report_tables?.["__proto__"]?.rows_from).toBe("categories");
+    expect(result.rendered).toContain("## __proto__\n\n| label |");
+  });
+
+  it("does not remove prose after an existing report table when the prose contains pipes", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+| stale |
+|-------|
+| old |
+
+Use A | B notation in prose after the table.
+`;
+
+    const result = compileMdxtab(reportDoc);
+    expect(result.rendered).toContain("## category_balances\n| label |\n|-------|\n| Utilities |");
+    expect(result.rendered).toContain("Use A | B notation in prose after the table.");
+  });
+
+  it("does not treat prose plus a separator line as an existing markdown table", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+Alpha | Beta
+|------|------|
+This prose should remain.
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## category_balances\n| label |\n|-------|\n| Utilities |\nAlpha | Beta");
+    expect(result.rendered).toContain("|------|------|");
+    expect(result.rendered).toContain("This prose should remain.");
+  });
+
+  it("does not treat a separator-like line without outer pipes as an existing markdown table", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category_balances
+| stale |
+ ------ |
+This prose should remain.
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## category_balances\n| label |\n|-------|\n| Utilities |\n| stale |\n ------ |");
+    expect(result.rendered).toContain("This prose should remain.");
+  });
+
+  it("renders report tables whose names include non-identifier heading text", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category-balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+## category-balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+    expect(result.reportTables["category-balances"].rows).toEqual([{ label: "Utilities" }]);
+    expect(result.rendered).toContain("## category-balances\n\n| label |\n|-------|\n| Utilities |");
   });
 
   it("reports diagnostics for invalid grouped aggregates", () => {

@@ -60,7 +60,7 @@ Excel-style “formula in every cell” is actively bad for versioned finance.
 
 ```md
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   <tableName>:
     key: <columnName>        # optional, default: id
@@ -73,6 +73,12 @@ tables:
       <columnName>: <expression>
     aggregates:
       <name>: <expression>
+report_tables:
+  <reportName>:
+    rows_from: <tableName>
+    columns: [<columnName>, ...]
+    cells:
+      <columnName>: <expression>
 ---
 
 # Human-readable Markdown
@@ -105,7 +111,7 @@ tables:
 
 ```md
 ---
-mdxtab: 1.0
+mdxtab: "1.0"
 tables:
   expenses:
     key: id
@@ -260,6 +266,12 @@ sum(gross)
 Grouped aggregates:
 
 ```text
+sum(amount) by category
+```
+
+Example:
+
+```text
 sum(duration) by project
 ```
 
@@ -269,9 +281,47 @@ Rendered usage:
 {{ time_entries.hours_by_project[Alpha] }}
 ```
 
+These keyed results can then feed synthetic report tables.
+
+### Phase 5: Synthetic report tables
+
+Report tables generate rendered Markdown tables from source rows and expression
+cells after row and aggregate evaluation.
+
+```md
+---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+  transactions:
+    key: id
+    columns: [id, category, amount]
+    aggregates:
+      total_by_category: sum(amount) by category
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label, monthly_delta]
+    cells:
+      label: row.label
+      monthly_delta: transactions.total_by_category[row.id]
 ---
 
-### Phase 5: Rendering
+## category_balances
+```
+
+When a matching heading is present, preview/output renders a normal Markdown
+table at that heading. Use report tables when you need a derived table, not a
+single aggregate value (`aggregates`) or a synthetic footer row (`summary_rows`).
+
+Migration note:
+- If you currently maintain hand-written HTML report tables only to combine grouped aggregates and lookup-driven row labels, move that section into `report_tables` and leave just the matching Markdown heading in the body.
+
+---
+
+### Phase 6: Rendering
 
 Output options:
 

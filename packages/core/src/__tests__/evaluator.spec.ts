@@ -5,7 +5,7 @@ import { evaluateAst } from "../evaluator.js";
 import type { Scalar } from "../types.js";
 
 type EvalOptions = {
-  row?: Record<string, Scalar>;
+  row?: RowValue;
   aggregateReturn?: Record<string, Scalar>;
   lookupReturn?: LookupReturn;
 };
@@ -109,6 +109,33 @@ describe("evaluator", () => {
       lookupReturn: { roles: { se: { manager: { name: "Ellen" } } } },
     });
     expect(val).toBe("Ellen");
+  });
+
+  it("treats inherited prototype members as unknown members", () => {
+    expect(() =>
+      run("row.totals.toString", {
+        row: { totals: {} },
+      })
+    ).toThrow(/E_REF: unknown member toString/);
+  });
+
+  it("rejects inherited prototype keys in dynamic lookups", () => {
+    expect(() =>
+      run("row.totals[key_name]", {
+        row: { key_name: "toString", totals: {} },
+      })
+    ).toThrow(/E_LOOKUP: missing key toString/);
+  });
+
+  it("keeps row reserved even when the row object has a scalar row column", () => {
+    const val = run("row.name", {
+      row: { id: "u1", name: "Ada", row: "scalar value" },
+    });
+    expect(val).toBe("Ada");
+  });
+
+  it("treats prototype property names as unknown identifiers", () => {
+    expect(() => run("toString", { row: {} })).toThrow(/E_REF/);
   });
 
   it("errors on unknown functions", () => {

@@ -22,6 +22,10 @@ function isRowValue(v: EvalValue): v is RowValue {
   return typeof v === "object" && v !== null;
 }
 
+function hasOwnRowField(row: RowValue, name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(row, name);
+}
+
 function toScalar(v: EvalValue): Scalar {
   if (isRowValue(v)) throw new Error("E_TYPE: expected scalar");
   return v;
@@ -134,8 +138,11 @@ export function evaluateAst(
       return node.value as Scalar;
     case "Identifier": {
       const name = node.value as string;
-      if (name === "row") return ctx.row;
-      if (!(name in ctx.row)) throw new Error(`E_REF: unknown identifier ${name}`);
+      if (name === "row") {
+        if (hasOwnRowField(ctx.row, "row") && isRowValue(ctx.row.row)) return ctx.row.row;
+        return ctx.row;
+      }
+      if (!hasOwnRowField(ctx.row, name)) throw new Error(`E_REF: unknown identifier ${name}`);
       return ctx.row[name];
     }
     case "Unary": {
@@ -204,19 +211,30 @@ export function evaluateAst(
       const base = evaluateAst(target, ctx, limits, depth + 1);
       if (!isRowValue(base)) throw new Error("E_REF: member base is not an object");
       const key = (prop as AstNode).value as string;
+      if (!hasOwnRowField(base, key)) throw new Error(`E_REF: unknown member ${key}`);
       const val = base[key];
-      if (val === undefined) throw new Error(`E_REF: unknown member ${key}`);
       return val;
     }
     case "Lookup": {
       const [tableNode, keyNode] = node.children ?? [];
       if (!tableNode || !keyNode) throw new Error("E_LOOKUP: invalid lookup");
-      const tableNameNode = tableNode.type === "Identifier" ? tableNode : undefined;
-      const tableName = tableNameNode?.value as string | undefined;
-      if (!tableName) throw new Error("E_LOOKUP: table name required");
       const key = toScalar(evaluateAst(keyNode, ctx, limits, depth + 1));
-      // Lookup returns the row object; a following Member node selects the column.
-      return ctx.lookup(tableName, key, "");
+
+      if (tableNode.type === "Identifier") {
+        const tableName = tableNode.value as string | undefined;
+        if (!tableName) throw new Error("E_LOOKUP: table name required");
+        // Lookup returns the row object; a following Member node selects the column.
+        return ctx.lookup(tableName, key, "");
+      }
+
+      const base = evaluateAst(tableNode, ctx, limits, depth + 1);
+      if (!isRowValue(base)) throw new Error("E_LOOKUP: lookup base is not an object");
+      const lookupKey = String(key);
+      if (!Object.prototype.hasOwnProperty.call(base, lookupKey)) {
+        throw new Error(`E_LOOKUP: missing key ${lookupKey}`);
+      }
+      const value = base[lookupKey];
+      return value;
     }
     default:
       throw new Error(`E_AST: unknown node type ${node.type}`);

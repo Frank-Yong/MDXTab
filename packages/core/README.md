@@ -2,6 +2,9 @@
 
 Core parsing and evaluation library for MDXTab. This package includes frontmatter parsing, Markdown table extraction, expression lexing/parsing, dependency ordering, and row/aggregate evaluation.
 
+It also supports synthetic `report_tables` that render derived Markdown tables
+from source rows, grouped aggregates, and standard expressions.
+
 ## Status
 Implemented (WIP). Core compilation, evaluation, and tests are in place; semantics follow the Phase 0 formal and technical specs. Remaining gaps are tracked in `dev/work-items`, including:
 - Markdown-aware interpolation edge cases (code spans/blocks and other Markdown constructs)
