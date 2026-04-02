@@ -946,7 +946,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
   const schemaNames = new Set(Object.keys(frontmatter.tables));
   const reportTableNames = new Set(Object.keys(frontmatter.report_tables ?? {}));
-  const tableByName: Record<string, ParsedTable> = {};
+  const tableByName = Object.create(null) as Record<string, ParsedTable>;
   for (const t of tables) {
     if (!schemaNames.has(t.name)) {
       if (reportTableNames.has(t.name)) {
@@ -979,14 +979,14 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     }
   }
 
-  const computedAsts: Record<string, Record<string, AstNode>> = {};
+  const computedAsts = Object.create(null) as Record<string, Record<string, AstNode>>;
   const aggregateAsts = Object.create(null) as Record<string, Record<string, AstNode>>;
   const groupedAggregateDefs = Object.create(null) as Record<string, Record<string, GroupedAggregate>>;
-  const computedOrder: Record<string, string[]> = {};
-  const keyByTable: Record<string, string> = {};
+  const computedOrder = Object.create(null) as Record<string, string[]>;
+  const keyByTable = Object.create(null) as Record<string, string>;
 
-  const rowList: Record<string, Record<string, Scalar>[]> = {};
-  const rowMap: Record<string, Map<string, Record<string, Scalar>>> = {};
+  const rowList = Object.create(null) as Record<string, Record<string, Scalar>[]>;
+  const rowMap = Object.create(null) as Record<string, Map<string, Record<string, Scalar>>>;
 
   for (const [name, schema] of Object.entries(frontmatter.tables)) {
     const table = tableByName[name];
@@ -1104,7 +1104,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     return ensureComputed(table, row, keyName, rowKey, computedOrder, computedAsts, lookupRow, computedDone, limits);
   };
 
-  const ensureByTable: Record<string, (row: Record<string, Scalar>) => Record<string, Scalar>> = {};
+  const ensureByTable = Object.create(null) as Record<string, (row: Record<string, Scalar>) => Record<string, Scalar>>;
   for (const name of Object.keys(rowList)) {
     ensureByTable[name] = (row) => {
       const keyName = keyByTable[name];
@@ -1184,7 +1184,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     limits,
   );
 
-  const results: Record<string, TableEvaluation> = {};
+  const results = Object.create(null) as Record<string, TableEvaluation>;
   for (const [name, rows] of Object.entries(rowList)) {
     const ensure = ensureByTable[name];
     const schema = frontmatter.tables[name];

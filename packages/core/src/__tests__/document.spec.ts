@@ -46,6 +46,36 @@ describe("document integration", () => {
     expect(result.rendered).toContain("Summary: 300 / 40");
   });
 
+  it("supports tables whose names would otherwise mutate object prototypes", () => {
+    const protoDoc = `---
+mdxtab: "1.0"
+tables:
+  __proto__:
+    key: id
+    columns: [id, net]
+    types:
+      net: number
+    aggregates:
+      total_net: sum(net)
+---
+
+## __proto__
+| id | net |
+|----|-----|
+| h1 | 100 |
+| h2 | 200 |
+
+Summary: {{ __proto__.total_net }}
+`;
+
+    const result = compileMdxtab(protoDoc);
+
+    expect(result.frontmatter.tables["__proto__"].columns).toEqual(["id", "net"]);
+    expect(result.tables["__proto__"].rows).toHaveLength(2);
+    expect(result.tables["__proto__"].aggregates.total_net).toBe(300);
+    expect(result.rendered).toContain("Summary: 300");
+  });
+
   it("fails when markdown headers do not match schema", () => {
     const badDoc = doc.replace("category", "cat");
     expect(() => compileMdxtab(badDoc)).toThrow();

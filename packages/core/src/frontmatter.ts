@@ -228,7 +228,7 @@ export function parseFrontmatter(raw: string): FrontmatterDocument {
     if (mdxtab !== "1.0") throw new Error(`Unsupported mdxtab version: ${mdxtab}`);
 
     const tablesObj = expectObject(obj.tables, "tables");
-    const tables: Record<string, TableFrontmatter> = {};
+    const tables = Object.create(null) as Record<string, TableFrontmatter>;
     for (const [name, value] of Object.entries(tablesObj)) {
       tables[name] = validateTable(name, value);
     }
