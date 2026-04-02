@@ -2,6 +2,12 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-02 - 0.6.0
+- Add `report_tables` for synthetic derived markdown tables rendered from source rows plus aggregate/grouped-aggregate results.
+- Support grouped-aggregate map access and safer report-table evaluation/markdown replacement behavior.
+- Expand docs and examples for synthetic report tables, including migration away from hand-written HTML report sections.
+- Harden frontmatter, evaluator, aggregate, and report-table map handling against prototype-key edge cases and improve report-table frontmatter diagnostics metadata.
+
 ## 2026-04-01 - 0.5.0
 - Add expression guardrails that fail pathological expressions with `E_LIMIT` instead of unbounded parse/evaluate work.
 - Add configurable expression limits in the core API for expression length, token count, measured AST depth, parser depth, and dependency traversal depth.

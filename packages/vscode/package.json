@@ -1,7 +1,7 @@
 {
   "name": "mdxtab",
   "displayName": "MDXTab",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "type": "module",
   "private": true,
@@ -111,6 +111,6 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@mdxtab/core": "0.5.0"
+    "@mdxtab/core": "0.6.0"
   }
 }
