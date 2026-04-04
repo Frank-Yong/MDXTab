@@ -28,13 +28,29 @@ function hasOwnRowField(row: RowValue, name: string): boolean {
 
 function toScalar(v: EvalValue): Scalar {
   if (isRowValue(v)) throw new Error("E_TYPE: expected scalar");
+  if (typeof v === "number" && !Number.isFinite(v)) {
+    throw new Error("E_NUMBER: numeric value must be finite");
+  }
   return v;
 }
 
 function toNumber(v: EvalValue): number | null {
-  if (v === null) return null;
-  if (typeof v === "number") return v;
+  const scalar = toScalar(v);
+  if (scalar === null) return null;
+  if (typeof scalar === "number") return scalar;
   throw new Error("E_TYPE: expected number");
+}
+
+function normalizeEvalValue(v: EvalValue): EvalValue {
+  if (isRowValue(v)) return v;
+  return toScalar(v);
+}
+
+function assertFiniteNumberResult(value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new Error("E_NUMBER: arithmetic result must be finite");
+  }
+  return value;
 }
 
 function binaryNumeric(op: string, left: EvalValue, right: EvalValue): Scalar {
@@ -44,13 +60,13 @@ function binaryNumeric(op: string, left: EvalValue, right: EvalValue): Scalar {
   if (op === "/" && r === 0) throw new Error("E_DIV_ZERO: divide by zero");
   switch (op) {
     case "+":
-      return l + r;
+      return assertFiniteNumberResult(l + r);
     case "-":
-      return l - r;
+      return assertFiniteNumberResult(l - r);
     case "*":
-      return l * r;
+      return assertFiniteNumberResult(l * r);
     case "/":
-      return l / r;
+      return assertFiniteNumberResult(l / r);
     default:
       throw new Error(`E_OP: unsupported operator ${op}`);
   }
@@ -132,7 +148,13 @@ export function evaluateAst(
   assertAstDepth(depth, limits);
 
   switch (node.type) {
-    case "Number":
+    case "Number": {
+      const value = node.value as number;
+      if (!Number.isFinite(value)) {
+        throw new Error("E_NUMBER: numeric literal must be finite");
+      }
+      return value;
+    }
     case "String":
     case "Boolean":
       return node.value as Scalar;
@@ -143,7 +165,7 @@ export function evaluateAst(
         return ctx.row;
       }
       if (!hasOwnRowField(ctx.row, name)) throw new Error(`E_REF: unknown identifier ${name}`);
-      return ctx.row[name];
+      return normalizeEvalValue(ctx.row[name]);
     }
     case "Unary": {
       const op = node.value as string;
@@ -180,7 +202,7 @@ export function evaluateAst(
         if (args.length !== 1 || args[0].type !== "Identifier") {
           throw new Error(`E_AGG_ARGUMENT: aggregate ${fn} requires a single column identifier`);
         }
-        return ctx.aggregate(fn, args[0].value as string);
+        return toScalar(ctx.aggregate(fn, args[0].value as string));
       }
       if (fn === "round") {
         if (args.length !== 2) throw new Error("E_ARG: round expects 2 args");
@@ -199,7 +221,7 @@ export function evaluateAst(
         if (args.length !== 1) throw new Error("E_ARG: hours expects 1 arg");
         const value = evaluateAst(args[0], ctx, limits, depth + 1);
         if (value === null) return null;
-        if (typeof value === "number") return value;
+        if (typeof value === "number") return toNumber(value);
         if (typeof value === "string") return parseHoursLiteral(value);
         throw new Error("E_TYPE: hours expects string or number");
       }
@@ -213,7 +235,7 @@ export function evaluateAst(
       const key = (prop as AstNode).value as string;
       if (!hasOwnRowField(base, key)) throw new Error(`E_REF: unknown member ${key}`);
       const val = base[key];
-      return val;
+      return normalizeEvalValue(val);
     }
     case "Lookup": {
       const [tableNode, keyNode] = node.children ?? [];
@@ -234,7 +256,7 @@ export function evaluateAst(
         throw new Error(`E_LOOKUP: missing key ${lookupKey}`);
       }
       const value = base[lookupKey];
-      return value;
+      return normalizeEvalValue(value);
     }
     default:
       throw new Error(`E_AST: unknown node type ${node.type}`);

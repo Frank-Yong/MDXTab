@@ -40,6 +40,10 @@ describe("parser", () => {
     expect(() => toAst(expr)).toThrow(/E_LIMIT/);
   });
 
+  it("rejects non-finite numeric literals", () => {
+    expect(() => toAst("9".repeat(400))).toThrow(/E_NUMBER/);
+  });
+
   it("does not count parenthesis-only nesting against maxAstDepth", () => {
     const expr = "(".repeat(8) + "1" + ")".repeat(8);
     const ast = parseExpression(lexExpression(expr), {

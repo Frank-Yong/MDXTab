@@ -26,6 +26,12 @@ Defaults:
 - `maxParseDepth`: `256` (parser nesting depth)
 - `maxDependencyDepth`: `128`
 
+## Numeric semantics
+
+Arithmetic evaluation follows the v1 number rules: results must remain finite.
+If an operation would produce `NaN` or `Infinity`, the compiler reports
+`E_NUMBER` through the normal diagnostic surfaces.
+
 Work items in `dev/work-items` map to modules:
 - 02: frontmatter + Markdown parsing
 - 04: expression lexer and parser

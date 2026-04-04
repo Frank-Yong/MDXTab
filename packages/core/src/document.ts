@@ -111,7 +111,13 @@ function coerceValue(text: string, type: ColumnType): Scalar {
     if (!type || type === "bool") return text === "true";
   }
   if (NUMERIC_RE.test(text)) {
-    if (!type || type === "number") return Number(text);
+    if (!type || type === "number") {
+      const value = Number(text);
+      if (!Number.isFinite(value)) {
+        throw new Error("E_NUMBER: numeric literal must be finite");
+      }
+      return value;
+    }
   }
   if (DATE_RE.test(text)) {
     if (!type || type === "date") return text;
@@ -336,28 +342,48 @@ function ensureComputed(
 
 function computeAggregateValues(fn: string, values: Scalar[]): Scalar {
   const nonNull = values.filter((v) => v !== null) as Scalar[];
+  const numericValues = (name: string): number[] => {
+    if (nonNull.some((v) => typeof v !== "number")) throw new Error(`E_TYPE: ${name} expects numbers`);
+    const nums = nonNull as number[];
+    if (nums.some((value) => !Number.isFinite(value))) {
+      throw new Error(`E_NUMBER: ${name} inputs must be finite`);
+    }
+    return nums;
+  };
+  const finiteResult = (name: string, value: number): number => {
+    if (!Number.isFinite(value)) {
+      throw new Error(`E_NUMBER: ${name} result must be finite`);
+    }
+    return value;
+  };
   switch (fn) {
     case "sum": {
-      if (nonNull.some((v) => typeof v !== "number")) throw new Error("E_TYPE: sum expects numbers");
+      const nums = numericValues("sum");
       if (nonNull.length === 0) return 0;
-      return (nonNull as number[]).reduce((a, b) => a + b, 0);
+      return finiteResult("sum", nums.reduce((a, b) => a + b, 0));
     }
     case "avg": {
-      if (nonNull.some((v) => typeof v !== "number")) throw new Error("E_TYPE: avg expects numbers");
+      const nums = numericValues("avg");
       if (nonNull.length === 0) return null;
-      return (nonNull as number[]).reduce((a, b) => a + b, 0) / nonNull.length;
+      return finiteResult("avg", nums.reduce((a, b) => a + b, 0) / nonNull.length);
     }
     case "min": {
-      const nums = nonNull.filter((v) => typeof v === "number") as number[];
+      const nums = numericValues("min");
       if (nums.length === 0) return null;
-      if (nums.length !== nonNull.length) throw new Error("E_TYPE: min expects numbers");
-      return Math.min(...nums);
+      let min = nums[0];
+      for (let i = 1; i < nums.length; i += 1) {
+        if (nums[i] < min) min = nums[i];
+      }
+      return finiteResult("min", min);
     }
     case "max": {
-      const nums = nonNull.filter((v) => typeof v === "number") as number[];
+      const nums = numericValues("max");
       if (nums.length === 0) return null;
-      if (nums.length !== nonNull.length) throw new Error("E_TYPE: max expects numbers");
-      return Math.max(...nums);
+      let max = nums[0];
+      for (let i = 1; i < nums.length; i += 1) {
+        if (nums[i] > max) max = nums[i];
+      }
+      return finiteResult("max", max);
     }
     case "count":
       return nonNull.length;

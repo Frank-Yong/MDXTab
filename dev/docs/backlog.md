@@ -1,5 +1,12 @@
 # Backlog
 
+## Current priority work
+
+- Release-readiness ordering lives in `dev/docs/v1-priority-order.md`.
+- Issue #24 `Add parser/evaluator input guardrails for pathological expressions` is complete.
+- Current high-priority feature work is issue #30 `Synthetic report tables`.
+- Use this file for broader backlog items and feature proposals; use `dev/docs/v1-priority-order.md` for the short operational v1 release order.
+
 ## Inline cell formulas (rejected for v1)
 ### Summary
 Rejected because inline formulas conflict with the deterministic, frontmatter-only logic model.

@@ -887,6 +887,34 @@ tables:
     expect(result.diagnostics[0].message).toContain("[aggregate]");
   });
 
+  it("returns contextual diagnostics for non-finite aggregate failures", () => {
+    const huge = `1${"0".repeat(308)}`;
+    const overflowDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    aggregates:
+      total: sum(value)
+---
+
+## t
+| id | value |
+|----|-------|
+| a  | ${huge} |
+| b  | ${huge} |
+`;
+    const result = validateMdxtab(overflowDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_NUMBER");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].aggregate).toBe("total");
+    expect(result.diagnostics[0].message).toContain("[aggregate]");
+  });
+
   it("returns contextual diagnostics for dependency-depth failures", () => {
     const computedLines: string[] = [];
     for (let i = 130; i >= 1; i -= 1) {
@@ -917,6 +945,57 @@ ${computedLines.join("\n")}
     expect(result.diagnostics[0].table).toBe("t");
     expect(result.diagnostics[0].column).toBe("c2");
     expect(result.diagnostics[0].message).toContain("[dependency]");
+  });
+
+  it("returns contextual diagnostics for non-finite arithmetic failures", () => {
+    const huge = `1${"0".repeat(160)}`;
+    const overflowDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id]
+    computed:
+      total: >
+        ${huge} *
+        ${huge}
+---
+
+## t
+| id |
+|----|
+| x  |
+`;
+    const result = validateMdxtab(overflowDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_NUMBER");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].column).toBe("total");
+    expect(result.diagnostics[0].message).toContain("[computed]");
+  });
+
+  it("returns E_NUMBER diagnostics for non-finite numeric cell values", () => {
+    const huge = "9".repeat(400);
+    const overflowDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, amount]
+    types:
+      amount: number
+---
+
+## t
+| id | amount |
+|----|--------|
+| x  | ${huge} |
+`;
+    const result = validateMdxtab(overflowDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_NUMBER");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].column).toBe("amount");
   });
 
   it("allows parse-depth limits to be overridden via compile options", () => {
