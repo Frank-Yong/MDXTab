@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCli } from "../cli.js";
@@ -104,6 +105,48 @@ describe("mdxtab CLI", () => {
     expect(out.diagnostics[0].code).toBe("E_NUMBER");
     expect(out.diagnostics[0].table).toBe("t");
     expect(out.diagnostics[0].column).toBe("total");
+  });
+
+  it("emits E_NUMBER diagnostics for non-finite aggregate results on validate", () => {
+    const huge = `1${"0".repeat(308)}`;
+    const tempFile = fixture("tmp-non-finite-aggregate.md");
+    fs.writeFileSync(tempFile, `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    aggregates:
+      total: sum(value)
+---
+
+## t
+| id | value |
+|----|-------|
+| a  | ${huge} |
+| b  | ${huge} |
+`);
+
+    const ctx = makeIo();
+    try {
+      const rc = runCli(["validate", tempFile, "--json"], ctx.io);
+      expect(rc).toBe(1);
+      expect(ctx.code).toBe(1);
+      const out = JSON.parse(ctx.out.join(""));
+      expect(out.ok).toBe(false);
+      expect(out.exitCode).toBe(1);
+      expect(out.errors).toEqual([]);
+      expect(out.diagnostics).toHaveLength(1);
+      expect(out.diagnostics[0].code).toBe("E_NUMBER");
+      expect(out.diagnostics[0].table).toBe("t");
+      expect(out.diagnostics[0].aggregate).toBe("total");
+    } finally {
+      if (fs.existsSync(tempFile)) {
+        fs.rmSync(tempFile);
+      }
+    }
   });
 
   it("allows overriding expression limits from the CLI", () => {
