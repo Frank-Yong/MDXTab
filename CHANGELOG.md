@@ -2,6 +2,12 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-04 - 0.6.1
+- Enforce finite-number semantics across parsing, coercion, evaluation, and aggregate paths so non-finite values fail with `E_NUMBER`.
+- Harden aggregate `min`/`max` against large row sets by replacing spread-based calls with iterative scans.
+- Improve diagnostics and examples for non-finite-number failures, including compact `E_NUMBER` messages and updated error docs.
+- Expand regression coverage in core and CLI for non-finite literals, sourced values, arithmetic overflow, and aggregate overflow paths.
+
 ## 2026-04-02 - 0.6.0
 - Add `report_tables` for synthetic derived markdown tables rendered from source rows plus aggregate/grouped-aggregate results.
 - Support grouped-aggregate map access and safer report-table evaluation/markdown replacement behavior.
