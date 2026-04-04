@@ -83,7 +83,7 @@ function evalWithContext(
       });
     }
     throw new DiagnosticError({
-      code: errorCodeForExpression(message),
+      code: errorCodeFromMessage(message),
       message: contextMessage,
       table: info.table,
       column: info.kind === "computed" || info.kind === "summary-row" || info.kind === "report-table"
@@ -196,11 +196,6 @@ function errorCodeForCell(message: string): string {
   return errorCodeFromMessage(message);
 }
 
-function errorCodeForExpression(message: string): string {
-  if (message.startsWith("E_NUMBER:")) return "E_NUMBER";
-  return errorCodeFromMessage(message);
-}
-
 function wrapExpressionDiagnostic(
   err: unknown,
   info: { table: string; target: string; kind: EvalKind | "dependency"; aggregate?: boolean; rowKey?: string },
@@ -224,7 +219,7 @@ function wrapExpressionDiagnostic(
     });
   }
   return new DiagnosticError({
-    code: errorCodeForExpression(message),
+    code: errorCodeFromMessage(message),
     message: contextMessage,
     table: info.table,
     column: info.aggregate ? undefined : targetColumn,
