@@ -45,9 +45,9 @@ before the 1.0 release.
 - [x] Preserve the existing divide-by-zero error behavior.
 
 ### 2. Diagnostics
-- [ ] Return a structured numeric error instead of leaking raw JavaScript
+- [x] Return a structured numeric error instead of leaking raw JavaScript
   `Infinity` or `NaN` behavior.
-- [ ] Ensure failures surface through normal validation and compile diagnostics
+- [x] Ensure failures surface through normal validation and compile diagnostics
   with table and column or aggregate context.
 
 ### 3. Tests

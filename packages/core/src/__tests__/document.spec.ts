@@ -919,6 +919,34 @@ ${computedLines.join("\n")}
     expect(result.diagnostics[0].message).toContain("[dependency]");
   });
 
+  it("returns contextual diagnostics for non-finite arithmetic failures", () => {
+    const huge = "9".repeat(400);
+    const overflowDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, a, b]
+    types:
+      a: number
+      b: number
+    computed:
+      total: a + b
+---
+
+## t
+| id | a | b |
+|----|---|---|
+| x  | ${huge} | ${huge} |
+`;
+    const result = validateMdxtab(overflowDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_NUMBER");
+    expect(result.diagnostics[0].table).toBe("t");
+    expect(result.diagnostics[0].column).toBe("total");
+    expect(result.diagnostics[0].message).toContain("[computed]");
+  });
+
   it("allows parse-depth limits to be overridden via compile options", () => {
     const deepExpression = "(".repeat(300) + "1" + ")".repeat(300);
     const limitedDoc = `---
