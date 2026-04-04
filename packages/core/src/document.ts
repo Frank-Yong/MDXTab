@@ -370,12 +370,20 @@ function computeAggregateValues(fn: string, values: Scalar[]): Scalar {
     case "min": {
       const nums = numericValues("min");
       if (nums.length === 0) return null;
-      return finiteResult("min", Math.min(...nums));
+      let min = nums[0];
+      for (let i = 1; i < nums.length; i += 1) {
+        if (nums[i] < min) min = nums[i];
+      }
+      return finiteResult("min", min);
     }
     case "max": {
       const nums = numericValues("max");
       if (nums.length === 0) return null;
-      return finiteResult("max", Math.max(...nums));
+      let max = nums[0];
+      for (let i = 1; i < nums.length; i += 1) {
+        if (nums[i] > max) max = nums[i];
+      }
+      return finiteResult("max", max);
     }
     case "count":
       return nonNull.length;
