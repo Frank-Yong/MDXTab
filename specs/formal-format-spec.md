@@ -198,8 +198,9 @@ arguments   ::= expression ( "," expression )*
 - `missing-table`, `missing-column`, `duplicate-key`, `column-order-mismatch`, `type-mismatch`, `invalid-coercion`, `cycle-detected`, `invalid-expression`, `unknown-identifier`, `unknown-function`, `lookup-failed`, `empty-cell-error`, `divide-by-zero`, `non-finite-number`, `invalid-round`, `invalid-date`, `invalid-identifier`, `invalid-interpolation`, `invalid-aggregate-context`, `invalid-aggregate-argument`.
 - TypeScript implementation note: `E_LIMIT` is used when expression size or
   dependency depth exceeds the supported guardrail limits.
-- TypeScript implementation note: `E_NUMBER` is used when arithmetic would
-  produce a non-finite numeric result such as `NaN` or `Infinity`.
+- TypeScript implementation note: `E_NUMBER` is used when parsing, coercion,
+  or evaluation encounters a non-finite numeric literal or value, including
+  arithmetic results such as `NaN` or `Infinity`.
 
 ## Versioning and Compatibility
 - Files declare `mdxtab: 1.0`; future minor versions must remain backward compatible.
