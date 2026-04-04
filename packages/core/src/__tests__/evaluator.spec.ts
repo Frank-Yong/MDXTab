@@ -56,6 +56,10 @@ describe("evaluator", () => {
     expect(run("round(1.35, 1)")).toBe(1.4);
   });
 
+  it("rejects non-finite inputs to round()", () => {
+    expect(() => run("round(a, 1)", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_ARG/);
+  });
+
   it("treats comparisons with null as false", () => {
     expect(run("a == 1", { row: { a: null } })).toBe(false);
     expect(run("a > 1", { row: { a: null } })).toBe(false);

@@ -91,6 +91,21 @@ describe("mdxtab CLI", () => {
     expect(out.diagnostics).toEqual([]);
   });
 
+  it("emits E_NUMBER diagnostics for non-finite arithmetic on validate", () => {
+    const ctx = makeIo();
+    const rc = runCli(["validate", fixture("non-finite.md"), "--json"], ctx.io);
+    expect(rc).toBe(1);
+    expect(ctx.code).toBe(1);
+    const out = JSON.parse(ctx.out.join(""));
+    expect(out.ok).toBe(false);
+    expect(out.exitCode).toBe(1);
+    expect(out.errors).toEqual([]);
+    expect(out.diagnostics).toHaveLength(1);
+    expect(out.diagnostics[0].code).toBe("E_NUMBER");
+    expect(out.diagnostics[0].table).toBe("t");
+    expect(out.diagnostics[0].column).toBe("total");
+  });
+
   it("allows overriding expression limits from the CLI", () => {
     const ctx = makeIo();
     const rc = runCli(["validate", fixture("sample.md"), "--max-expression-length", "3"], ctx.io);

@@ -1,7 +1,7 @@
 # Work Item: Finite-number semantics
 
 ## Status
-- State: TODO
+- State: IN PROGRESS
 - Priority: HIGH
 - Branch: `issue-25-finite-number-semantics`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/25
@@ -51,11 +51,11 @@ before the 1.0 release.
   with table and column or aggregate context.
 
 ### 3. Tests
-- [ ] Add evaluator tests for overflow or other non-finite arithmetic results.
-- [ ] Add regression coverage for any affected round-path behavior.
-- [ ] Add document-level tests proving non-finite arithmetic fails through the
+- [x] Add evaluator tests for overflow or other non-finite arithmetic results.
+- [x] Add regression coverage for any affected round-path behavior.
+- [x] Add document-level tests proving non-finite arithmetic fails through the
   normal diagnostic surface.
-- [ ] Run the core and CLI test suites successfully.
+- [x] Run the core and CLI test suites successfully.
 
 ### 4. Documentation
 - [ ] Confirm the implementation matches the v1 number rules in the formal spec.
