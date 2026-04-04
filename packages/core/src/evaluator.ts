@@ -37,6 +37,13 @@ function toNumber(v: EvalValue): number | null {
   throw new Error("E_TYPE: expected number");
 }
 
+function assertFiniteNumberResult(value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new Error("E_NUMBER: arithmetic result must be finite");
+  }
+  return value;
+}
+
 function binaryNumeric(op: string, left: EvalValue, right: EvalValue): Scalar {
   const l = toNumber(left);
   const r = toNumber(right);
@@ -44,13 +51,13 @@ function binaryNumeric(op: string, left: EvalValue, right: EvalValue): Scalar {
   if (op === "/" && r === 0) throw new Error("E_DIV_ZERO: divide by zero");
   switch (op) {
     case "+":
-      return l + r;
+      return assertFiniteNumberResult(l + r);
     case "-":
-      return l - r;
+      return assertFiniteNumberResult(l - r);
     case "*":
-      return l * r;
+      return assertFiniteNumberResult(l * r);
     case "/":
-      return l / r;
+      return assertFiniteNumberResult(l / r);
     default:
       throw new Error(`E_OP: unsupported operator ${op}`);
   }

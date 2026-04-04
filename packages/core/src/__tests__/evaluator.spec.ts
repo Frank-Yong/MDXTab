@@ -46,6 +46,11 @@ describe("evaluator", () => {
     expect(() => run("1 / 0")).toThrow(/E_DIV_ZERO/);
   });
 
+  it("rejects non-finite arithmetic results", () => {
+    expect(() => run("a + b", { row: { a: Number.MAX_VALUE, b: Number.MAX_VALUE } })).toThrow(/E_NUMBER/);
+    expect(() => run("a * b", { row: { a: Number.MAX_VALUE, b: 2 } })).toThrow(/E_NUMBER/);
+  });
+
   it("uses half-to-even rounding", () => {
     expect(run("round(1.25, 1)")).toBe(1.2);
     expect(run("round(1.35, 1)")).toBe(1.4);

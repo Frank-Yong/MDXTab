@@ -39,10 +39,10 @@ before the 1.0 release.
 ## Tasks
 
 ### 1. Core finite-number enforcement
-- [ ] Add a shared helper that rejects non-finite numeric results.
-- [ ] Apply the helper to arithmetic results for `+`, `-`, `*`, and `/`.
-- [ ] Preserve existing null propagation semantics.
-- [ ] Preserve the existing divide-by-zero error behavior.
+- [x] Add a shared helper that rejects non-finite numeric results.
+- [x] Apply the helper to arithmetic results for `+`, `-`, `*`, and `/`.
+- [x] Preserve existing null propagation semantics.
+- [x] Preserve the existing divide-by-zero error behavior.
 
 ### 2. Diagnostics
 - [ ] Return a structured numeric error instead of leaking raw JavaScript
