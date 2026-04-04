@@ -1,7 +1,7 @@
 # Work Item: Marketplace publish
 
 ## Status
-- State: TODO
+- State: DONE
 
 ## Description
 Prepare the VS Code extension for Marketplace publication with branding and listing metadata.
@@ -18,3 +18,8 @@ Prepare the VS Code extension for Marketplace publication with branding and list
 - Access token: create a PAT with Marketplace > Publish scope (Azure DevOps), and confirm `vsce login <publisher>` works.
 - Extension identifiers: `publisher` in package.json matches your publisher ID.
 - Listing basics: ensure icon, README, license, repository URL, and categories are set.
+
+## Completion notes
+- GitHub Release v0.6.1 was published.
+- Publish workflow completed successfully.
+- Marketplace confirmed successful extension publish by email.

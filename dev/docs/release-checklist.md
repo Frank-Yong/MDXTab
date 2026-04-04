@@ -39,4 +39,4 @@
 1) Bump versions (root, core, cli, vscode) and update dependencies to match.
 2) Create a GitHub Release with a matching tag (e.g., v0.1.1).
 3) The "Publish VS Code Extension" workflow runs on release and publishes using `VSCE_PAT`.
-4) Latest publish: v0.4.0 (2026-03-28).
+4) Latest publish: v0.6.1 (2026-04-04).
