@@ -41,6 +41,11 @@ function toNumber(v: EvalValue): number | null {
   throw new Error("E_TYPE: expected number");
 }
 
+function normalizeEvalValue(v: EvalValue): EvalValue {
+  if (isRowValue(v)) return v;
+  return toScalar(v);
+}
+
 function assertFiniteNumberResult(value: number): number {
   if (!Number.isFinite(value)) {
     throw new Error("E_NUMBER: arithmetic result must be finite");
@@ -160,7 +165,7 @@ export function evaluateAst(
         return ctx.row;
       }
       if (!hasOwnRowField(ctx.row, name)) throw new Error(`E_REF: unknown identifier ${name}`);
-      return ctx.row[name];
+      return normalizeEvalValue(ctx.row[name]);
     }
     case "Unary": {
       const op = node.value as string;
@@ -197,7 +202,7 @@ export function evaluateAst(
         if (args.length !== 1 || args[0].type !== "Identifier") {
           throw new Error(`E_AGG_ARGUMENT: aggregate ${fn} requires a single column identifier`);
         }
-        return ctx.aggregate(fn, args[0].value as string);
+        return toScalar(ctx.aggregate(fn, args[0].value as string));
       }
       if (fn === "round") {
         if (args.length !== 2) throw new Error("E_ARG: round expects 2 args");
@@ -230,7 +235,7 @@ export function evaluateAst(
       const key = (prop as AstNode).value as string;
       if (!hasOwnRowField(base, key)) throw new Error(`E_REF: unknown member ${key}`);
       const val = base[key];
-      return val;
+      return normalizeEvalValue(val);
     }
     case "Lookup": {
       const [tableNode, keyNode] = node.children ?? [];
@@ -251,7 +256,7 @@ export function evaluateAst(
         throw new Error(`E_LOOKUP: missing key ${lookupKey}`);
       }
       const value = base[lookupKey];
-      return value;
+      return normalizeEvalValue(value);
     }
     default:
       throw new Error(`E_AST: unknown node type ${node.type}`);

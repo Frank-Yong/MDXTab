@@ -52,9 +52,19 @@ describe("evaluator", () => {
   });
 
   it("rejects non-finite numeric inputs during evaluation", () => {
+    expect(() => run("a", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
     expect(() => run("+a", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
     expect(() => run("a == a", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
     expect(() => run("hours(a)", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
+  });
+
+  it("rejects non-finite values sourced from members and aggregates", () => {
+    expect(() =>
+      run("row.totals.current", {
+        row: { totals: { current: Number.POSITIVE_INFINITY } },
+      })
+    ).toThrow(/E_NUMBER/);
+    expect(() => run("sum(net)", { aggregateReturn: { "sum:net": Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
   });
 
   it("uses half-to-even rounding", () => {
