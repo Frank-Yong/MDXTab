@@ -78,7 +78,16 @@ class Parser {
       case "comma":
         return { lbp: 0 };
       case "number":
-        return { lbp: 0, nud: () => ({ type: "Number", value: Number(token.value) }) };
+        return {
+          lbp: 0,
+          nud: () => {
+            const value = Number(token.value);
+            if (!Number.isFinite(value)) {
+              throw new Error("E_NUMBER: numeric literal must be finite");
+            }
+            return { type: "Number", value };
+          },
+        };
       case "string":
         return { lbp: 0, nud: () => ({ type: "String", value: token.value }) };
       case "boolean":

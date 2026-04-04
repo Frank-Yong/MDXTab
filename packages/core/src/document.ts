@@ -111,7 +111,13 @@ function coerceValue(text: string, type: ColumnType): Scalar {
     if (!type || type === "bool") return text === "true";
   }
   if (NUMERIC_RE.test(text)) {
-    if (!type || type === "number") return Number(text);
+    if (!type || type === "number") {
+      const value = Number(text);
+      if (!Number.isFinite(value)) {
+        throw new Error(`E_NUMBER: numeric literal must be finite for value '${text}'`);
+      }
+      return value;
+    }
   }
   if (DATE_RE.test(text)) {
     if (!type || type === "date") return text;

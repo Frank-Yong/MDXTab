@@ -51,13 +51,19 @@ describe("evaluator", () => {
     expect(() => run("a * b", { row: { a: Number.MAX_VALUE, b: 2 } })).toThrow(/E_NUMBER/);
   });
 
+  it("rejects non-finite numeric inputs during evaluation", () => {
+    expect(() => run("+a", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
+    expect(() => run("a == a", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
+    expect(() => run("hours(a)", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
+  });
+
   it("uses half-to-even rounding", () => {
     expect(run("round(1.25, 1)")).toBe(1.2);
     expect(run("round(1.35, 1)")).toBe(1.4);
   });
 
   it("rejects non-finite inputs to round()", () => {
-    expect(() => run("round(a, 1)", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_ARG/);
+    expect(() => run("round(a, 1)", { row: { a: Number.POSITIVE_INFINITY } })).toThrow(/E_NUMBER/);
   });
 
   it("treats comparisons with null as false", () => {

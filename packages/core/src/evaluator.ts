@@ -28,12 +28,16 @@ function hasOwnRowField(row: RowValue, name: string): boolean {
 
 function toScalar(v: EvalValue): Scalar {
   if (isRowValue(v)) throw new Error("E_TYPE: expected scalar");
+  if (typeof v === "number" && !Number.isFinite(v)) {
+    throw new Error("E_NUMBER: numeric value must be finite");
+  }
   return v;
 }
 
 function toNumber(v: EvalValue): number | null {
-  if (v === null) return null;
-  if (typeof v === "number") return v;
+  const scalar = toScalar(v);
+  if (scalar === null) return null;
+  if (typeof scalar === "number") return scalar;
   throw new Error("E_TYPE: expected number");
 }
 
@@ -139,7 +143,13 @@ export function evaluateAst(
   assertAstDepth(depth, limits);
 
   switch (node.type) {
-    case "Number":
+    case "Number": {
+      const value = node.value as number;
+      if (!Number.isFinite(value)) {
+        throw new Error("E_NUMBER: numeric literal must be finite");
+      }
+      return value;
+    }
     case "String":
     case "Boolean":
       return node.value as Scalar;
@@ -206,7 +216,7 @@ export function evaluateAst(
         if (args.length !== 1) throw new Error("E_ARG: hours expects 1 arg");
         const value = evaluateAst(args[0], ctx, limits, depth + 1);
         if (value === null) return null;
-        if (typeof value === "number") return value;
+        if (typeof value === "number") return toNumber(value);
         if (typeof value === "string") return parseHoursLiteral(value);
         throw new Error("E_TYPE: hours expects string or number");
       }
