@@ -11,6 +11,8 @@
 - **Expression guardrails**: validation rejects pathological computed/aggregate
   expressions with `E_LIMIT` diagnostics before they can trigger stack overflow
   or excessive work.
+- **Finite-number semantics**: validation rejects arithmetic that would produce
+  `NaN` or `Infinity` with `E_NUMBER` diagnostics.
 
 ## Settings
 

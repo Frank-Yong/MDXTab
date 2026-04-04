@@ -1,7 +1,7 @@
 # Work Item: Finite-number semantics
 
 ## Status
-- State: IN PROGRESS
+- State: DONE
 - Priority: HIGH
 - Branch: `issue-25-finite-number-semantics`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/25
@@ -58,13 +58,13 @@ before the 1.0 release.
 - [x] Run the core and CLI test suites successfully.
 
 ### 4. Documentation
-- [ ] Confirm the implementation matches the v1 number rules in the formal spec.
-- [ ] Update any user-facing docs if new error wording or examples need to be
+- [x] Confirm the implementation matches the v1 number rules in the formal spec.
+- [x] Update any user-facing docs if new error wording or examples need to be
   clarified.
 
 ## Acceptance criteria
-- [ ] Arithmetic evaluation never returns `NaN` or `Infinity`.
-- [ ] Operations that would produce non-finite numbers fail deterministically.
-- [ ] Division by zero continues to fail explicitly.
-- [ ] Failures are reported through normal validation and compile diagnostics.
-- [ ] Regression tests cover the finite-number paths.
+- [x] Arithmetic evaluation never returns `NaN` or `Infinity`.
+- [x] Operations that would produce non-finite numbers fail deterministically.
+- [x] Division by zero continues to fail explicitly.
+- [x] Failures are reported through normal validation and compile diagnostics.
+- [x] Regression tests cover the finite-number paths.

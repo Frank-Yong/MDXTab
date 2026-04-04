@@ -48,6 +48,7 @@
 
 ## Cross-language Compatibility
 - Follow the format spec rules for numbers: only finite values, division by zero errors, `round` uses half-to-even, and no NaN/Infinity.
+- In the current TypeScript implementation, non-finite arithmetic results surface as `E_NUMBER` diagnostics.
 - Apply null rules consistently: arithmetic with null yields null; aggregates skip nulls and use the defined empty-set results; comparisons with null error.
 - Use the shared diagnostics shape (code, message, severity, file, table, column/aggregate, range).
 - Pass the golden test vectors; use them as a contract for other language ports.
