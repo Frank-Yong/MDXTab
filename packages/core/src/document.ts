@@ -114,7 +114,7 @@ function coerceValue(text: string, type: ColumnType): Scalar {
     if (!type || type === "number") {
       const value = Number(text);
       if (!Number.isFinite(value)) {
-        throw new Error(`E_NUMBER: numeric literal must be finite for value '${text}'`);
+        throw new Error("E_NUMBER: numeric literal must be finite");
       }
       return value;
     }
