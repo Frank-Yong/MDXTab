@@ -26,4 +26,4 @@ result overflows.
 
 ### Expected diagnostic
 - Code: E_NUMBER
-- Message: arithmetic result must be finite while evaluating computed column `total` in table `t` for row `x`
+- Message: [computed] table t total id=x: E_NUMBER: arithmetic result must be finite
