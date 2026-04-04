@@ -12,7 +12,7 @@ Use `dev/docs/backlog.md` for broader feature backlog items and proposals.
    - Link: https://github.com/Frank-Yong/MDXTab/issues/24
    - Why first: This is the main hardening issue. It reduces denial-of-service style failures from deep or oversized expressions and protects the core engine, CLI, and VS Code extension at once.
 
-2. **#25 - Enforce finite-number semantics in arithmetic evaluation**
+2. **#25 - Enforce finite-number semantics in arithmetic evaluation** (COMPLETE)
    - Link: https://github.com/Frank-Yong/MDXTab/issues/25
    - Why second: This closes a spec conformance gap in core numeric behavior. It should land before 1.0 so the implementation matches the documented number rules.
 
@@ -36,18 +36,20 @@ Use `dev/docs/backlog.md` for broader feature backlog items and proposals.
 
 Issue #24 is complete.
 
-Do not cut `1.0.0` until #25, #26, #27, and #28 are complete.
+Issue #25 is complete.
+
+Do not cut `1.0.0` until #26, #27, and #28 are complete.
 
 #29 should be resolved before 1.0 if the command is still considered part of the intended VS Code surface. If the command is no longer planned, update the development spec before release.
 
 ## Suggested Work Phases
 
 ### Phase 1: Core hardening
-- #25
 - #26
 
 Completed in this phase:
 - #24
+- #25
 
 ### Phase 2: Release confidence
 - #27

@@ -19,22 +19,23 @@ before the 1.0 release.
 - Operations that would produce `NaN` or `Infinity` must fail.
 - Division by zero is already defined as an error.
 
-### Current implementation gap
-- The evaluator already rejects divide-by-zero.
-- The evaluator already validates finite inputs for `round(x, n)`.
-- Arithmetic operators do not yet have a central finite-result check after
-  `+`, `-`, `*`, or `/` evaluation.
-- That leaves a spec conformance gap for overflow or other non-finite numeric
-  outcomes.
+### Implementation summary
+- The evaluator rejects divide-by-zero explicitly.
+- The evaluator validates finite inputs for `round(x, n)`.
+- Arithmetic operators now reject non-finite results after `+`, `-`, `*`, and
+  `/` evaluation.
+- Document and CLI diagnostics now surface these failures as `E_NUMBER`.
 
 ### Key files
 - `packages/core/src/evaluator.ts` — arithmetic behavior and numeric helpers
 - `packages/core/src/document.ts` — contextual diagnostic wrapping through
   validation/compile surfaces
+- `packages/cli/src/__tests__/cli.spec.ts` — CLI diagnostic coverage
 - `packages/core/src/__tests__/evaluator.spec.ts` — arithmetic behavior tests
 - `packages/core/src/__tests__/document.spec.ts` — document-level diagnostics
 - `specs/formal-format-spec.md` — source of truth for number semantics
 - `specs/development-spec.md` — cross-runtime compliance notes
+- `dev/examples/errors/non-finite-number.md` — minimal repro for `E_NUMBER`
 
 ## Tasks
 
