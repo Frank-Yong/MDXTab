@@ -46,6 +46,39 @@ describe("document integration", () => {
     expect(result.rendered).toContain("Summary: 300 / 40");
   });
 
+  it("computes min/max aggregates for large tables", () => {
+    const rowCount = 20000;
+    const rows = Array.from({ length: rowCount }, (_, i) => {
+      const value = i % 2 === 0 ? i : -i;
+      return `| r${i} | ${value} |`;
+    }).join("\n");
+
+    const largeDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    aggregates:
+      low: min(value)
+      high: max(value)
+---
+
+## t
+| id | value |
+|----|-------|
+${rows}
+`;
+
+    const result = compileMdxtab(largeDoc);
+
+    expect(result.tables.t.rows).toHaveLength(rowCount);
+    expect(result.tables.t.aggregates.low).toBe(-(rowCount - 1));
+    expect(result.tables.t.aggregates.high).toBe(rowCount - 2);
+  });
+
   it("supports tables whose names would otherwise mutate object prototypes", () => {
     const protoDoc = `---
 mdxtab: "1.0"

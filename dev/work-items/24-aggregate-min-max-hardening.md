@@ -37,8 +37,12 @@ Verification notes:
 - Runtime aggregate paths (`computeAggregate` and `computeGroupedAggregate`) route through `computeAggregateValues` with no spread-based fallback.
 
 ### 2. Add stress-style coverage
-- [ ] Add a regression test with a large numeric table that evaluates `min()` and `max()`.
-- [ ] Ensure the test verifies both correctness and stable execution.
+- [x] Add a regression test with a large numeric table that evaluates `min()` and `max()`.
+- [x] Ensure the test verifies both correctness and stable execution.
+
+Coverage notes:
+- Added a core integration regression test in `packages/core/src/__tests__/document.spec.ts` that compiles a 20,000-row table and validates aggregate `min(value)` and `max(value)` results.
+- The test executes through the normal compile path to confirm stable runtime behavior under larger row counts.
 
 ### 3. Validate and document
 - [ ] Run core tests (and CLI tests if touched).
