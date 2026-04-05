@@ -29,8 +29,12 @@ Harden aggregate `min()` and `max()` evaluation for large tables by avoiding spr
 ## Tasks
 
 ### 1. Verify implementation path
-- [ ] Confirm `min()` and `max()` use iterative logic in aggregate evaluation.
-- [ ] Confirm no spread-based aggregate fallback remains in runtime paths.
+- [x] Confirm `min()` and `max()` use iterative logic in aggregate evaluation.
+- [x] Confirm no spread-based aggregate fallback remains in runtime paths.
+
+Verification notes:
+- `packages/core/src/document.ts` uses iterative scans for `min` and `max` in `computeAggregateValues`.
+- Runtime aggregate paths (`computeAggregate` and `computeGroupedAggregate`) route through `computeAggregateValues` with no spread-based fallback.
 
 ### 2. Add stress-style coverage
 - [ ] Add a regression test with a large numeric table that evaluates `min()` and `max()`.
