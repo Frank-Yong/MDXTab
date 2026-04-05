@@ -1,7 +1,7 @@
 # Work Item: Aggregate min/max hardening
 
 ## Status
-- State: TODO
+- State: DONE
 - Priority: HIGH
 - Branch: `issue-26-aggregate-min-max-hardening`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/26
@@ -45,10 +45,14 @@ Coverage notes:
 - The test executes through the normal compile path to confirm stable runtime behavior under larger row counts.
 
 ### 3. Validate and document
-- [ ] Run core tests (and CLI tests if touched).
-- [ ] Update issue/work-item status notes after validation.
+- [x] Run core tests (and CLI tests if touched).
+- [x] Update issue/work-item status notes after validation.
+
+Validation notes:
+- `npm run -w @mdxtab/core test` passed (104 tests).
+- `npm run -w @mdxtab/cli test` passed (13 tests).
 
 ## Acceptance criteria
-- [ ] Aggregate `min()` and `max()` do not rely on spread over full arrays.
-- [ ] Large-table regression test passes reliably.
-- [ ] Test suite passes with no regressions in aggregate behavior.
+- [x] Aggregate `min()` and `max()` do not rely on spread over full arrays.
+- [x] Large-table regression test passes reliably.
+- [x] Test suite passes with no regressions in aggregate behavior.
