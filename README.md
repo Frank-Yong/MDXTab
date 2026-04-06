@@ -20,7 +20,7 @@ npm install
 ## Build
 
 ```sh
-npm run -w mdxtab build
+npm run build
 ```
 
 ## Test
