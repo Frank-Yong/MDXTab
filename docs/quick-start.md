@@ -16,7 +16,8 @@ npm install
 ## 2) Build local packages
 
 ```sh
-npm run -w mdxtab build
+npm run -w @mdxtab/core build
+npm run -w @mdxtab/cli build
 ```
 
 ## 3) Validate a sample document
