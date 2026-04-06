@@ -294,7 +294,7 @@ describe("vscode extension smoke", () => {
   });
 
   it("activates and registers core commands/providers", async () => {
-    const extension = await import("../extension.ts");
+    const extension = await import("../extension.js");
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
 
     const api = extension.activate(context as never);
@@ -323,7 +323,7 @@ describe("vscode extension smoke", () => {
       ],
     });
 
-    const extension = await import("../extension.ts");
+    const extension = await import("../extension.js");
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     extension.activate(context as never);
 
@@ -340,7 +340,7 @@ describe("vscode extension smoke", () => {
   });
 
   it("renders preview content via the registered content provider", async () => {
-    const extension = await import("../extension.ts");
+    const extension = await import("../extension.js");
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     extension.activate(context as never);
 
@@ -365,7 +365,7 @@ describe("vscode extension smoke", () => {
 
   it("executes render-preview command and opens mdxtab-preview uri", async () => {
     const vscode = await import("vscode");
-    const extension = await import("../extension.ts");
+    const extension = await import("../extension.js");
     const context = { subscriptions: [] as Array<{ dispose: () => void }> };
     extension.activate(context as never);
 

@@ -2,6 +2,10 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-06 - 0.6.4
+- Fix VS Code smoke test import paths to use `.js` extension targets under NodeNext so extension package builds succeed in CI.
+- Restore Marketplace publish pipeline by removing `.ts` import suffixes that required unsupported TypeScript compiler settings.
+
 ## 2026-04-06 - 0.6.3
 - Add automated VS Code extension smoke tests for activation, diagnostics update on open, preview rendering, and render-preview command execution.
 - Replace the VS Code package placeholder test script with Vitest smoke-test execution.
