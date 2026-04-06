@@ -4,7 +4,7 @@ The extension provides preview rendering and diagnostics inside markdown files.
 
 ## Install
 
-- Marketplace: install `Frank-Yong.mdxtab`
+- Marketplace: install `frank-yong.mdxtab`
 - Local: install generated VSIX from `packages/vscode`
 
 ## Core commands
