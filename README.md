@@ -32,8 +32,8 @@ npm test
 ## CLI examples
 
 ```sh
-node packages/cli/dist/bin.js validate dev/examples/expenses.md
-node packages/cli/dist/bin.js render dev/examples/expenses.md
+npm exec -w @mdxtab/cli -- mdxtab validate ../../dev/examples/expenses.md
+npm exec -w @mdxtab/cli -- mdxtab render ../../dev/examples/expenses.md
 ```
 
 ## Deep references
