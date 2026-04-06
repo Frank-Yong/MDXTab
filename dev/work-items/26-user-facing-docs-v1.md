@@ -39,10 +39,16 @@ Task 1 notes:
 - Added focused top-level pages for quick start, format overview, CLI usage, VS Code usage, and troubleshooting.
 
 ### 2. Core user docs
-- [ ] Add quick-start guide with minimal end-to-end example.
-- [ ] Add format overview (frontmatter, tables, computed, aggregates, summary/report tables as applicable).
-- [ ] Add CLI usage page with validate/render examples.
-- [ ] Add VS Code extension usage page with preview/diagnostics commands and settings highlights.
+- [x] Add quick-start guide with minimal end-to-end example.
+- [x] Add format overview (frontmatter, tables, computed, aggregates, summary/report tables as applicable).
+- [x] Add CLI usage page with validate/render examples.
+- [x] Add VS Code extension usage page with preview/diagnostics commands and settings highlights.
+
+Task 2 notes:
+- Expanded `docs/quick-start.md` with prerequisites, build step, minimal sample document, and end-to-end validate/render/preview flow.
+- Expanded `docs/format-overview.md` with a practical mental model, key concepts, and example links.
+- Expanded `docs/cli-usage.md` with command shape, JSON diagnostics usage, guardrail flag overrides, and CI usage.
+- Expanded `docs/vscode-extension.md` with install paths, command workflow, settings guidance, and diagnostics behavior.
 
 ### 3. Reliability and support docs
 - [ ] Add common errors/troubleshooting page with actionable fixes.
