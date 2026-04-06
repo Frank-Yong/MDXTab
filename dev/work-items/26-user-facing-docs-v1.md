@@ -1,7 +1,7 @@
 # Work Item: User-facing docs for v1.0
 
 ## Status
-- State: TODO
+- State: DONE
 - Priority: HIGH
 - Branch: `issue-28-user-facing-docs`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/28
@@ -66,10 +66,15 @@ Task 3 notes (complete):
 - Verified troubleshooting error-code references against current core diagnostics (`E_LIMIT`, `E_NUMBER`, `E_REF`, `E_LOOKUP`, `E_TYPE`, `E_AGG_ARGUMENT`, `E_AGG_REF`, `E_CYCLE`, `E_TABLE_TAB`, `E_TABLE_COLUMN_COUNT`, `E_KEY`, `E_KEY_DUP`).
 
 ### 4. Validation and completion
-- [ ] Validate doc links and examples for consistency.
-- [ ] Update this work item with completion notes.
+- [x] Validate doc links and examples for consistency.
+- [x] Update this work item with completion notes.
+
+Task 4 notes:
+- Ran a local markdown link integrity sweep across `docs/**/*.md` and `README.md`; no broken local links found.
+- Verified referenced example files exist: `dev/examples/expenses.md`, `dev/examples/time-entries.md`, `dev/examples/grouped-aggregates.md`, `dev/examples/transactions.md`.
+- Confirmed issue scope now includes concise user docs plus reduced-root-noise structure (compact README and archived internal planning docs via git move).
 
 ## Acceptance criteria
-- [ ] Public docs include quick start, format overview, CLI usage, VS Code usage, and troubleshooting.
-- [ ] Content is concise, task-oriented, and accurate to shipped behavior.
-- [ ] Users can complete a first run without reading internal specs.
+- [x] Public docs include quick start, format overview, CLI usage, VS Code usage, and troubleshooting.
+- [x] Content is concise, task-oriented, and accurate to shipped behavior.
+- [x] Users can complete a first run without reading internal specs.
