@@ -49,16 +49,16 @@ Expected result: rendered markdown output with computed and aggregate values.
 ---
 mdxtab: "1.0"
 tables:
-	expenses:
-		key: id
-		columns: [id, net, tax]
-		types:
-			net: number
-			tax: number
-		computed:
-			tax: net * 0.25
-		aggregates:
-			net_total: sum(net)
+  expenses:
+    key: id
+    columns: [id, net, tax]
+    types:
+      net: number
+      tax: number
+    computed:
+      tax: net * 0.25
+    aggregates:
+      net_total: sum(net)
 ---
 
 ## expenses
