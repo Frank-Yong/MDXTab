@@ -13,6 +13,8 @@ Markdown eXtended Tables: keep data in markdown tables and logic in frontmatter.
 
 ## Install
 
+Prerequisites: Node.js 20+ (CI runs on Node 20) and npm.
+
 ```sh
 npm install
 ```
