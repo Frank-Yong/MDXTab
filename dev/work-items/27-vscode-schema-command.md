@@ -40,11 +40,11 @@ Task 1 notes:
 
 Task 2 notes:
 - Added command contribution in `packages/vscode/package.json`:
-	- `mdxtab.showTableSchema` / `MDXTab: Show Table Schema`
+  - `mdxtab.showTableSchema` / `MDXTab: Show Table Schema`
 - Registered `mdxtab.showTableSchema` in `packages/vscode/src/extension.ts` with user-visible behavior:
-	- reads active MDXTab frontmatter schema
-	- opens a preview markdown document containing JSON schema for `tables`
-	- shows clear messages for missing active editor, non-MDXTab files, empty schema, and parse failures
+  - reads active MDXTab frontmatter schema
+  - opens a preview markdown document containing JSON schema for `tables`
+  - shows clear messages for missing active editor, non-MDXTab files, empty schema, and parse failures
 - Kept descope path unchecked because implementation path is selected for v1.0.
 
 ### 3. Tests and docs alignment
@@ -54,8 +54,8 @@ Task 2 notes:
 
 Task 3 notes:
 - Extended `packages/vscode/src/__tests__/extension.smoke.spec.ts` with schema-command behavior checks:
-	- opens a schema document for a valid MDXTab file
-	- warns for non-MDXTab files
+  - opens a schema document for a valid MDXTab file
+  - warns for non-MDXTab files
 - Updated user docs command surface in `docs/vscode-extension.md` to include `MDXTab: Show Table Schema` and usage in the typical flow.
 - Updated `packages/vscode/README.md` command list to include validate + schema commands so extension docs stay aligned.
 - Verified active docs/spec references now align with the implemented command set (`renderPreview`, `validateDocument`, `showTableSchema`).
@@ -67,12 +67,12 @@ Task 3 notes:
 
 Task 4 notes:
 - Ran final validation in the VS Code workspace:
-	- `npm run -w mdxtab test` passed (`6/6` tests).
-	- `npm run -w mdxtab build` passed.
+  - `npm run -w mdxtab test` passed (`6/6` tests).
+  - `npm run -w mdxtab build` passed.
 - Verified command surface alignment across implementation and docs/spec:
-	- `packages/vscode/package.json` contributes `mdxtab.renderPreview`, `mdxtab.validateDocument`, and `mdxtab.showTableSchema`.
-	- `docs/vscode-extension.md` documents all three core commands.
-	- `specs/technical-design.md` command list includes `MDXTab: Show Table Schema`.
+  - `packages/vscode/package.json` contributes `mdxtab.renderPreview`, `mdxtab.validateDocument`, and `mdxtab.showTableSchema`.
+  - `docs/vscode-extension.md` documents all three core commands.
+  - `specs/technical-design.md` command list includes `MDXTab: Show Table Schema`.
 - Work item closed as DONE for issue #29 implementation path.
 
 ## Acceptance criteria
