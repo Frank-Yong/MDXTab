@@ -1,7 +1,7 @@
 # Work Item: VS Code extension smoke tests
 
 ## Status
-- State: TODO
+- State: DONE
 - Priority: HIGH
 - Branch: `issue-27-vscode-extension-smoke-tests`
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/27
@@ -29,21 +29,27 @@ Add a focused automated smoke test layer for the VS Code extension before v1.0 s
 ## Tasks
 
 ### 1. Test harness setup
-- [ ] Choose and wire a minimal extension test harness suitable for smoke tests.
-- [ ] Ensure tests can run headlessly in CI.
+- [x] Choose and wire a minimal extension test harness suitable for smoke tests.
+- [x] Ensure tests can run headlessly in CI.
 
 ### 2. Smoke coverage
-- [ ] Add an activation smoke test.
-- [ ] Add diagnostics smoke coverage for a markdown document path.
-- [ ] Add preview rendering path smoke coverage.
-- [ ] Add at least one command-path smoke check (`mdxtab.renderPreview` or `mdxtab.validateDocument`).
+- [x] Add an activation smoke test.
+- [x] Add diagnostics smoke coverage for a markdown document path.
+- [x] Add preview rendering path smoke coverage.
+- [x] Add at least one command-path smoke check (`mdxtab.renderPreview` or `mdxtab.validateDocument`).
 
 ### 3. CI and documentation
-- [ ] Hook extension smoke tests into package/workspace scripts.
-- [ ] Run impacted test suites and verify pass.
-- [ ] Update work-item notes with final validation details.
+- [x] Hook extension smoke tests into package/workspace scripts.
+- [x] Run impacted test suites and verify pass.
+- [x] Update work-item notes with final validation details.
+
+Validation notes:
+- Added `packages/vscode/vitest.config.ts` for a minimal node-based smoke harness.
+- Added `packages/vscode/src/__tests__/extension.smoke.spec.ts` with smoke coverage for activation, diagnostics, preview rendering, and render-preview command execution.
+- Updated `packages/vscode/package.json` test script to run Vitest smoke tests.
+- `npm run -w mdxtab test` passed (4 tests).
 
 ## Acceptance criteria
-- [ ] Extension smoke tests run automatically.
-- [ ] Activation, diagnostics, preview, and one command path are covered.
-- [ ] Failures in these paths are caught by automated tests before release.
+- [x] Extension smoke tests run automatically.
+- [x] Activation, diagnostics, preview, and one command path are covered.
+- [x] Failures in these paths are caught by automated tests before release.
