@@ -20,7 +20,7 @@ Use `dev/docs/backlog.md` for broader feature backlog items and proposals.
    - Link: https://github.com/Frank-Yong/MDXTab/issues/26
    - Why third: This is another core stability fix, but it is narrower than #24 and #25. It should be completed in the same hardening pass before the release candidate is finalized.
 
-4. **#27 - Add automated smoke tests for the VS Code extension**
+4. **#27 - Add automated smoke tests for the VS Code extension** (COMPLETE)
    - Link: https://github.com/Frank-Yong/MDXTab/issues/27
    - Why fourth: Once the core hardening work is in place, add a lightweight test net around the extension so the release surface is protected from regressions.
 
