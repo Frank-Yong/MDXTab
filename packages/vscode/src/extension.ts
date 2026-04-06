@@ -1139,6 +1139,49 @@ export function activate(context: ExtensionContext) {
   });
   context.subscriptions.push(validateCommand);
 
+  const showSchemaCommand = commands.registerCommand("mdxtab.showTableSchema", async () => {
+    const editor = window.activeTextEditor;
+    if (!editor) {
+      window.showErrorMessage("No active editor to inspect");
+      return;
+    }
+
+    const text = editor.document.getText();
+    if (!looksLikeMdxtab(text)) {
+      window.showWarningMessage("MDXTab: active file does not look like an MDXTab document");
+      return;
+    }
+
+    try {
+      const frontmatter = parseFrontmatter(text);
+      const tableCount = Object.keys(frontmatter.tables).length;
+      if (tableCount === 0) {
+        window.showInformationMessage("MDXTab: no table schemas found in frontmatter");
+        return;
+      }
+
+      const schemaJson = JSON.stringify({ tables: frontmatter.tables }, null, 2);
+      const schemaDoc = await workspace.openTextDocument({
+        language: "markdown",
+        content: [
+          "# MDXTab Table Schema",
+          "",
+          `Source: ${editor.document.uri.fsPath || editor.document.uri.toString()}`,
+          "",
+          "```json",
+          schemaJson,
+          "```",
+          "",
+        ].join("\n"),
+      });
+
+      await window.showTextDocument(schemaDoc, { preview: true });
+    } catch {
+      window.showErrorMessage("MDXTab: could not read table schema from frontmatter");
+    }
+  });
+  context.subscriptions.push(showSchemaCommand);
+
   const active = window.activeTextEditor?.document;
   if (active) updateDiagnostics(active, diagnostics);
 

@@ -34,12 +34,18 @@ Task 1 notes:
 - Issue #29 confirms acceptance can be either implement or explicit descope. For v1.0, decision is to implement the schema command to preserve product/spec alignment.
 
 ### 2. Implementation or descope execution
-- [ ] If implementing: add command contribution, handler, and user-visible behavior.
+- [x] If implementing: add command contribution, handler, and user-visible behavior.
 - [ ] If descoping: remove/adjust references in specs/docs to reflect actual v1.0 surface.
-- [ ] Ensure command IDs/messages are consistent across manifest and code.
+- [x] Ensure command IDs/messages are consistent across manifest and code.
 
 Task 2 notes:
-- Pending.
+- Added command contribution in `packages/vscode/package.json`:
+	- `mdxtab.showTableSchema` / `MDXTab: Show Table Schema`
+- Registered `mdxtab.showTableSchema` in `packages/vscode/src/extension.ts` with user-visible behavior:
+	- reads active MDXTab frontmatter schema
+	- opens a preview markdown document containing JSON schema for `tables`
+	- shows clear messages for missing active editor, non-MDXTab files, empty schema, and parse failures
+- Kept descope path unchecked because implementation path is selected for v1.0.
 
 ### 3. Tests and docs alignment
 - [ ] Add or update tests covering chosen path.

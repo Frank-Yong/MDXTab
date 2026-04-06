@@ -303,6 +303,7 @@ describe("vscode extension smoke", () => {
     expect(state.previewProvider).toBeDefined();
     expect(state.commands.has("mdxtab.renderPreview")).toBe(true);
     expect(state.commands.has("mdxtab.validateDocument")).toBe(true);
+    expect(state.commands.has("mdxtab.showTableSchema")).toBe(true);
     expect(state.openHandlers.length).toBeGreaterThan(0);
   });
 
