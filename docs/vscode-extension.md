@@ -11,6 +11,7 @@ The extension provides preview rendering and diagnostics inside markdown files.
 
 - `MDXTab: Render Preview` (`mdxtab.renderPreview`)
 - `MDXTab: Validate Document` (`mdxtab.validateDocument`)
+- `MDXTab: Show Table Schema` (`mdxtab.showTableSchema`)
 
 ## Typical flow
 
@@ -18,6 +19,7 @@ The extension provides preview rendering and diagnostics inside markdown files.
 2. Save or edit to trigger diagnostics.
 3. Run render preview command to inspect computed output.
 4. Use validate command to get explicit diagnostic count/status.
+5. Use show table schema command to inspect parsed `tables` frontmatter as JSON.
 
 ## Key settings
 

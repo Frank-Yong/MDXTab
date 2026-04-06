@@ -98,6 +98,10 @@
       {
         "command": "mdxtab.validateDocument",
         "title": "MDXTab: Validate Document"
+      },
+      {
+        "command": "mdxtab.showTableSchema",
+        "title": "MDXTab: Show Table Schema"
       }
     ]
   },

@@ -12,6 +12,8 @@ const state = {
   diagnosticDeleteCalls: [] as MockUri[],
   executedCommands: [] as Array<{ command: string; args: unknown[] }>,
   documents: new Map<string, MockDocument>(),
+  virtualDocumentContents: [] as string[],
+  shownDocumentCount: 0,
   window: undefined as
     | undefined
     | {
@@ -209,7 +211,15 @@ vi.mock("vscode", () => {
       state.saveHandlers.push(callback);
       return { dispose: () => undefined };
     }),
-    openTextDocument: vi.fn(async (uri: MockUri) => state.documents.get(uri.toString())),
+    openTextDocument: vi.fn(async (input: MockUri | { language?: string; content?: string }) => {
+      if (input instanceof MockUri) return state.documents.get(input.toString());
+      if (typeof input === "object" && input && "content" in input) {
+        const content = String(input.content ?? "");
+        state.virtualDocumentContents.push(content);
+        return createDoc(MockUri.from({ scheme: "untitled", path: `/virtual-${state.virtualDocumentContents.length}.md` }), content);
+      }
+      return undefined;
+    }),
   };
 
   const languages = {
@@ -231,6 +241,10 @@ vi.mock("vscode", () => {
     showErrorMessage: vi.fn(),
     showInformationMessage: vi.fn(),
     showWarningMessage: vi.fn(),
+    showTextDocument: vi.fn(async () => {
+      state.shownDocumentCount += 1;
+      return undefined;
+    }),
   };
   state.window = window;
 
@@ -260,12 +274,13 @@ vi.mock("vscode", () => {
 
 const compileMdxtab = vi.fn(() => ({ rendered: "rendered-output" }));
 const validateMdxtab = vi.fn(() => ({ diagnostics: [] as Array<Record<string, unknown>> }));
+const parseFrontmatter = vi.fn(() => ({ tables: {} }));
 
 vi.mock("../core/index.js", () => ({
   compileMdxtab,
   validateMdxtab,
   toDiagnostic: vi.fn(() => ({ code: "E_TEST", message: "boom", severity: "error" })),
-  parseFrontmatter: vi.fn(() => ({ tables: {} })),
+  parseFrontmatter,
   parseMarkdownTables: vi.fn(() => []),
 }));
 
@@ -282,6 +297,8 @@ describe("vscode extension smoke", () => {
     state.diagnosticDeleteCalls.length = 0;
     state.executedCommands.length = 0;
     state.documents.clear();
+    state.virtualDocumentContents.length = 0;
+    state.shownDocumentCount = 0;
     if (state.window) {
       state.window.activeTextEditor = undefined;
       state.window.visibleTextEditors.length = 0;
@@ -291,6 +308,8 @@ describe("vscode extension smoke", () => {
     compileMdxtab.mockReturnValue({ rendered: "rendered-output" });
     validateMdxtab.mockReset();
     validateMdxtab.mockReturnValue({ diagnostics: [] });
+    parseFrontmatter.mockReset();
+    parseFrontmatter.mockReturnValue({ tables: {} });
   });
 
   it("activates and registers core commands/providers", async () => {
@@ -303,6 +322,7 @@ describe("vscode extension smoke", () => {
     expect(state.previewProvider).toBeDefined();
     expect(state.commands.has("mdxtab.renderPreview")).toBe(true);
     expect(state.commands.has("mdxtab.validateDocument")).toBe(true);
+    expect(state.commands.has("mdxtab.showTableSchema")).toBe(true);
     expect(state.openHandlers.length).toBeGreaterThan(0);
   });
 
@@ -384,5 +404,87 @@ describe("vscode extension smoke", () => {
     expect(state.executedCommands.length).toBe(1);
     expect(state.executedCommands[0].command).toBe("vscode.open");
     expect(String(state.executedCommands[0].args[0])).toContain("mdxtab-preview");
+  });
+
+  it("executes show-table-schema command and opens a schema document", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        expenses: {
+          key: "id",
+          columns: ["id", "amount"],
+        },
+      },
+    });
+
+    const sourceUri = MockUri.from({ scheme: "file", path: "/tmp/schema.md" });
+    const sourceDoc = createDoc(
+      sourceUri,
+      "---\nmdxtab: \"1.0\"\ntables:\n  expenses:\n    columns: [id, amount]\n---\n\n## expenses\n| id | amount |\n|---|---|\n| a | 1 |",
+    );
+    (vscode.window as { activeTextEditor?: { document: MockDocument } }).activeTextEditor = { document: sourceDoc };
+
+    const command = state.commands.get("mdxtab.showTableSchema");
+    expect(command).toBeDefined();
+
+    await command?.();
+
+    expect(state.shownDocumentCount).toBe(1);
+    expect(state.virtualDocumentContents.length).toBe(1);
+    expect(state.virtualDocumentContents[0]).toContain("# MDXTab Table Schema");
+    expect(state.virtualDocumentContents[0]).toContain('"expenses"');
+  });
+
+  it("warns when show-table-schema runs on a non-MDXTab file", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    const sourceUri = MockUri.from({ scheme: "file", path: "/tmp/plain.md" });
+    const sourceDoc = createDoc(sourceUri, "# plain markdown\n\nno mdxtab frontmatter here");
+    (vscode.window as { activeTextEditor?: { document: MockDocument } }).activeTextEditor = { document: sourceDoc };
+
+    const command = state.commands.get("mdxtab.showTableSchema");
+    expect(command).toBeDefined();
+
+    await command?.();
+
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+      "MDXTab: active file does not look like an MDXTab document",
+    );
+    expect(state.shownDocumentCount).toBe(0);
+  });
+
+  it("surfaces parse error details when show-table-schema cannot parse frontmatter", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockImplementation(() => {
+      throw new Error("invalid YAML near line 2");
+    });
+
+    const sourceUri = MockUri.from({ scheme: "file", path: "/tmp/bad-frontmatter.md" });
+    const sourceDoc = createDoc(
+      sourceUri,
+      "---\nmdxtab: \"1.0\"\ntables: [\n---\n\n## t\n| id | value |\n|---|---|\n| a | 1 |",
+    );
+    (vscode.window as { activeTextEditor?: { document: MockDocument } }).activeTextEditor = { document: sourceDoc };
+
+    const command = state.commands.get("mdxtab.showTableSchema");
+    expect(command).toBeDefined();
+
+    await command?.();
+
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      "MDXTab: could not read table schema from frontmatter: invalid YAML near line 2",
+    );
+    expect(state.shownDocumentCount).toBe(0);
   });
 });

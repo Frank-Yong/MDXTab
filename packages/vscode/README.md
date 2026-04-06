@@ -3,6 +3,8 @@
 **Markdown Extended Tables**
 
 - Command: **MDXTab: Render Preview** (`mdxtab.renderPreview`) — renders the active Markdown file through the MDXTab compiler into a preview document.
+- Command: **MDXTab: Validate Document** (`mdxtab.validateDocument`) — validates the active Markdown file and reports diagnostic count/status.
+- Command: **MDXTab: Show Table Schema** (`mdxtab.showTableSchema`) — opens a markdown view with the parsed `tables` frontmatter schema as JSON.
 - Diagnostics: recompiles on open/change/save; errors surface as markdown diagnostics at the top of the file.
 - Preview scheme: `mdxtab-preview:` opens a virtual document with the rendered output (frontmatter + interpolated aggregates).
 - **Computed column preview**: columns defined in frontmatter `computed` are rendered in the Markdown preview with their evaluated per-row values. Columns already authored as headers have their empty cells filled in; columns not in the source table are appended automatically.
