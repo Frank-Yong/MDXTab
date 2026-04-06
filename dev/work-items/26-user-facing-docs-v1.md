@@ -51,11 +51,14 @@ Task 2 notes:
 - Expanded `docs/vscode-extension.md` with install paths, command workflow, settings guidance, and diagnostics behavior.
 
 ### 3. Reliability and support docs
-- [ ] Add common errors/troubleshooting page with actionable fixes.
+- [x] Add common errors/troubleshooting page with actionable fixes.
 - [ ] Cross-link README and docs pages for discovery.
 - [ ] Verify all command names/settings/error codes referenced are current.
 - [x] Compact root `README.md` so user-facing entry points are obvious.
 - [x] Archive older internal development docs using git move history.
+
+Task 3 notes (partial):
+- Expanded `docs/troubleshooting.md` into symptom-first guidance with actionable fixes by diagnostic code (`E_LIMIT`, `E_NUMBER`, `E_REF`, `E_LOOKUP`, `E_TYPE`, `E_AGG_ARGUMENT`, `E_AGG_REF`, `E_CYCLE`, table/key structural codes).
 
 ### 4. Validation and completion
 - [ ] Validate doc links and examples for consistency.
