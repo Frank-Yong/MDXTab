@@ -48,12 +48,17 @@ Task 2 notes:
 - Kept descope path unchecked because implementation path is selected for v1.0.
 
 ### 3. Tests and docs alignment
-- [ ] Add or update tests covering chosen path.
-- [ ] Update user docs where command availability/usage is described.
-- [ ] Confirm no stale references remain.
+- [x] Add or update tests covering chosen path.
+- [x] Update user docs where command availability/usage is described.
+- [x] Confirm no stale references remain.
 
 Task 3 notes:
-- Pending.
+- Extended `packages/vscode/src/__tests__/extension.smoke.spec.ts` with schema-command behavior checks:
+	- opens a schema document for a valid MDXTab file
+	- warns for non-MDXTab files
+- Updated user docs command surface in `docs/vscode-extension.md` to include `MDXTab: Show Table Schema` and usage in the typical flow.
+- Updated `packages/vscode/README.md` command list to include validate + schema commands so extension docs stay aligned.
+- Verified active docs/spec references now align with the implemented command set (`renderPreview`, `validateDocument`, `showTableSchema`).
 
 ### 4. Validation and completion
 - [ ] Run build/test validation for affected packages.
