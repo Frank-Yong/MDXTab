@@ -28,7 +28,7 @@ Historical backlog and phase planning docs are archived under `dev/docs/archive/
    - Link: https://github.com/Frank-Yong/MDXTab/issues/28
    - Why fifth: This is required for a credible 1.0 release, but it should follow the core behavior fixes so the docs describe the stabilized implementation.
 
-6. **#29 - Resolve the missing VS Code schema command**
+6. **#29 - Resolve the missing VS Code schema command** (COMPLETE)
    - Link: https://github.com/Frank-Yong/MDXTab/issues/29
    - Why sixth: This is important for product/spec alignment, but it is the least urgent of the current release tasks. It can be handled last, either by implementing the command or explicitly descoping it in the spec.
 
@@ -44,7 +44,7 @@ Issue #27 is complete.
 
 Issue #28 is complete.
 
-#29 should be resolved before 1.0 if the command is still considered part of the intended VS Code surface. If the command is no longer planned, update the development spec before release.
+Issue #29 is complete.
 
 ## Suggested Work Phases
 
@@ -63,7 +63,6 @@ Completed in this phase:
 - #27
 
 ### Phase 3: Release completeness
-- #29
-
 Completed in this phase:
 - #28
+- #29
