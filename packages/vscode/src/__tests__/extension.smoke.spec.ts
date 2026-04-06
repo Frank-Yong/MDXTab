@@ -12,6 +12,12 @@ const state = {
   diagnosticDeleteCalls: [] as MockUri[],
   executedCommands: [] as Array<{ command: string; args: unknown[] }>,
   documents: new Map<string, MockDocument>(),
+  window: undefined as
+    | undefined
+    | {
+        activeTextEditor: undefined | { document: MockDocument };
+        visibleTextEditors: Array<{ document: { uri: MockUri } }>;
+      },
 };
 
 type MockUriParts = { scheme?: string; path?: string; query?: string };
@@ -226,6 +232,7 @@ vi.mock("vscode", () => {
     showInformationMessage: vi.fn(),
     showWarningMessage: vi.fn(),
   };
+  state.window = window;
 
   return {
     CodeAction: MockCodeAction,
@@ -275,6 +282,10 @@ describe("vscode extension smoke", () => {
     state.diagnosticDeleteCalls.length = 0;
     state.executedCommands.length = 0;
     state.documents.clear();
+    if (state.window) {
+      state.window.activeTextEditor = undefined;
+      state.window.visibleTextEditors.length = 0;
+    }
 
     compileMdxtab.mockReset();
     compileMdxtab.mockReturnValue({ rendered: "rendered-output" });
