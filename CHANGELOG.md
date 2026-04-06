@@ -2,6 +2,10 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-06 - 0.6.2
+- Complete issue #26 and mark aggregate `min`/`max` large-table hardening done in release tracking docs.
+- Strengthen core regression coverage for large-table `min`/`max` with a deterministic guard against spread-based fallback behavior.
+
 ## 2026-04-04 - 0.6.1
 - Enforce finite-number semantics across parsing, coercion, evaluation, and aggregate paths so non-finite values fail with `E_NUMBER`.
 - Harden aggregate `min`/`max` against large row sets by replacing spread-based calls with iterative scans.
