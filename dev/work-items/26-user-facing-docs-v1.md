@@ -52,13 +52,18 @@ Task 2 notes:
 
 ### 3. Reliability and support docs
 - [x] Add common errors/troubleshooting page with actionable fixes.
-- [ ] Cross-link README and docs pages for discovery.
-- [ ] Verify all command names/settings/error codes referenced are current.
+- [x] Cross-link README and docs pages for discovery.
+- [x] Verify all command names/settings/error codes referenced are current.
 - [x] Compact root `README.md` so user-facing entry points are obvious.
 - [x] Archive older internal development docs using git move history.
 
 Task 3 notes (partial):
 - Expanded `docs/troubleshooting.md` into symptom-first guidance with actionable fixes by diagnostic code (`E_LIMIT`, `E_NUMBER`, `E_REF`, `E_LOOKUP`, `E_TYPE`, `E_AGG_ARGUMENT`, `E_AGG_REF`, `E_CYCLE`, table/key structural codes).
+
+Task 3 notes (complete):
+- Verified root README links to user docs and docs pages cross-link through `index.md`, `Next`, and `Related` sections.
+- Verified command IDs and settings names against `packages/vscode/package.json` (`mdxtab.renderPreview`, `mdxtab.validateDocument`, `mdxtab.preview.*`, `mdxtab.limits.*`).
+- Verified troubleshooting error-code references against current core diagnostics (`E_LIMIT`, `E_NUMBER`, `E_REF`, `E_LOOKUP`, `E_TYPE`, `E_AGG_ARGUMENT`, `E_AGG_REF`, `E_CYCLE`, `E_TABLE_TAB`, `E_TABLE_COLUMN_COUNT`, `E_KEY`, `E_KEY_DUP`).
 
 ### 4. Validation and completion
 - [ ] Validate doc links and examples for consistency.
