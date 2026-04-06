@@ -104,12 +104,13 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "build": "npm run -w @mdxtab/core build --if-present && tsc -p tsconfig.json && node ./scripts/copy-core.mjs",
-    "test": "echo \"(no tests yet)\""
+    "test": "vitest run --config vitest.config.ts"
   },
   "devDependencies": {
     "@types/vscode": "^1.88.0",
     "@vscode/vsce": "^2.26.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@mdxtab/core": "0.6.2"
