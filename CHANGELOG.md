@@ -2,6 +2,11 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-06 - 0.6.3
+- Add automated VS Code extension smoke tests for activation, diagnostics update on open, preview rendering, and render-preview command execution.
+- Replace the VS Code package placeholder test script with Vitest smoke-test execution.
+- Set and package the Marketplace extension icon from `media/logo.png`.
+
 ## 2026-04-06 - 0.6.2
 - Complete issue #26 and mark aggregate `min`/`max` large-table hardening done in release tracking docs.
 - Strengthen core regression coverage for large-table `min`/`max` with a deterministic guard against spread-based fallback behavior.

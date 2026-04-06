@@ -40,7 +40,9 @@ Issue #25 is complete.
 
 Issue #26 is complete.
 
-Do not cut `1.0.0` until #27 and #28 are complete.
+Issue #27 is complete.
+
+Do not cut `1.0.0` until #28 is complete.
 
 #29 should be resolved before 1.0 if the command is still considered part of the intended VS Code surface. If the command is no longer planned, update the development spec before release.
 
@@ -55,6 +57,9 @@ Completed in this phase:
 - #26
 
 ### Phase 2: Release confidence
+- #27
+
+Completed in this phase:
 - #27
 
 ### Phase 3: Release completeness
