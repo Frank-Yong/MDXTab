@@ -16,7 +16,7 @@ Use `dev/docs/backlog.md` for broader feature backlog items and proposals.
    - Link: https://github.com/Frank-Yong/MDXTab/issues/25
    - Why second: This closes a spec conformance gap in core numeric behavior. It should land before 1.0 so the implementation matches the documented number rules.
 
-3. **#26 - Harden aggregate min/max implementation for large tables**
+3. **#26 - Harden aggregate min/max implementation for large tables** (COMPLETE)
    - Link: https://github.com/Frank-Yong/MDXTab/issues/26
    - Why third: This is another core stability fix, but it is narrower than #24 and #25. It should be completed in the same hardening pass before the release candidate is finalized.
 
@@ -38,7 +38,9 @@ Issue #24 is complete.
 
 Issue #25 is complete.
 
-Do not cut `1.0.0` until #26, #27, and #28 are complete.
+Issue #26 is complete.
+
+Do not cut `1.0.0` until #27 and #28 are complete.
 
 #29 should be resolved before 1.0 if the command is still considered part of the intended VS Code surface. If the command is no longer planned, update the development spec before release.
 
@@ -50,6 +52,7 @@ Do not cut `1.0.0` until #26, #27, and #28 are complete.
 Completed in this phase:
 - #24
 - #25
+- #26
 
 ### Phase 2: Release confidence
 - #27

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { compileMdxtab, validateMdxtab } from "../document.js";
 
 const doc = `---
@@ -44,6 +44,59 @@ describe("document integration", () => {
     expect(result.tables.expenses.aggregates.total_net).toBe(300);
     expect(result.tables.expenses.aggregates.total_tax).toBe(40);
     expect(result.rendered).toContain("Summary: 300 / 40");
+  });
+
+  it("computes min/max aggregates for large tables", () => {
+    const rowCount = 20000;
+    const maxSafeArgs = 1000;
+    const originalMin = Math.min.bind(Math);
+    const originalMax = Math.max.bind(Math);
+    const minSpy = vi.spyOn(Math, "min").mockImplementation((...args: number[]) => {
+      if (args.length > maxSafeArgs) {
+        throw new Error("spread-based min detected");
+      }
+      return originalMin(...args);
+    });
+    const maxSpy = vi.spyOn(Math, "max").mockImplementation((...args: number[]) => {
+      if (args.length > maxSafeArgs) {
+        throw new Error("spread-based max detected");
+      }
+      return originalMax(...args);
+    });
+    const rows = Array.from({ length: rowCount }, (_, i) => {
+      const value = i % 2 === 0 ? i : -i;
+      return `| r${i} | ${value} |`;
+    }).join("\n");
+
+    const largeDoc = `---
+mdxtab: "1.0"
+tables:
+  t:
+    key: id
+    columns: [id, value]
+    types:
+      value: number
+    aggregates:
+      low: min(value)
+      high: max(value)
+---
+
+## t
+| id | value |
+|----|-------|
+${rows}
+`;
+
+    try {
+      const result = compileMdxtab(largeDoc);
+
+      expect(result.tables.t.rows).toHaveLength(rowCount);
+      expect(result.tables.t.aggregates.low).toBe(-(rowCount - 1));
+      expect(result.tables.t.aggregates.high).toBe(rowCount - 2);
+    } finally {
+      minSpy.mockRestore();
+      maxSpy.mockRestore();
+    }
   });
 
   it("supports tables whose names would otherwise mutate object prototypes", () => {
