@@ -6,6 +6,7 @@
   "type": "module",
   "private": true,
   "publisher": "frank-yong",
+  "icon": "media/logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Frank-Yong/MDXTab"
