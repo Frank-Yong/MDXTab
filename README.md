@@ -10,6 +10,17 @@
 
 ---
 
+# User documentation
+
+- Start here: [docs/index.md](docs/index.md)
+- Quick start: [docs/quick-start.md](docs/quick-start.md)
+- Format overview: [docs/format-overview.md](docs/format-overview.md)
+- CLI usage: [docs/cli-usage.md](docs/cli-usage.md)
+- VS Code extension usage: [docs/vscode-extension.md](docs/vscode-extension.md)
+- Troubleshooting: [docs/troubleshooting.md](docs/troubleshooting.md)
+
+---
+
 # Development quickstart
 
 ## Prerequisites
