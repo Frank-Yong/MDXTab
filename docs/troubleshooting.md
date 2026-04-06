@@ -31,7 +31,7 @@ Typical causes:
 Fixes:
 - Break one expression into multiple computed columns.
 - Reduce nesting and repeated subexpressions.
-- Increase limits only when needed via CLI flags or VS Code settings (`mdxtab.limits.*`).
+- Increase limits only when needed via CLI flags or VS Code settings (`mdxtab.limits.maxExpressionLength`, `mdxtab.limits.maxTokens`, `mdxtab.limits.maxAstDepth`, `mdxtab.limits.maxParseDepth`, `mdxtab.limits.maxDependencyDepth`).
 
 ### E_NUMBER
 
