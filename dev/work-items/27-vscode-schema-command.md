@@ -1,7 +1,7 @@
 # Work Item: Resolve missing VS Code schema command
 
 ## Status
-- State: TODO
+- State: DONE
 - Priority: HIGH
 - Branch: issue-29-vscode-schema-command
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/29
@@ -61,14 +61,21 @@ Task 3 notes:
 - Verified active docs/spec references now align with the implemented command set (`renderPreview`, `validateDocument`, `showTableSchema`).
 
 ### 4. Validation and completion
-- [ ] Run build/test validation for affected packages.
-- [ ] Verify extension command surface matches docs/spec outcomes.
-- [ ] Update this work item with completion notes.
+- [x] Run build/test validation for affected packages.
+- [x] Verify extension command surface matches docs/spec outcomes.
+- [x] Update this work item with completion notes.
 
 Task 4 notes:
-- Pending.
+- Ran final validation in the VS Code workspace:
+	- `npm run -w mdxtab test` passed (`6/6` tests).
+	- `npm run -w mdxtab build` passed.
+- Verified command surface alignment across implementation and docs/spec:
+	- `packages/vscode/package.json` contributes `mdxtab.renderPreview`, `mdxtab.validateDocument`, and `mdxtab.showTableSchema`.
+	- `docs/vscode-extension.md` documents all three core commands.
+	- `specs/technical-design.md` command list includes `MDXTab: Show Table Schema`.
+- Work item closed as DONE for issue #29 implementation path.
 
 ## Acceptance criteria
-- [ ] No unresolved mismatch remains between intended v1.0 VS Code command surface and docs/spec references.
-- [ ] Chosen path (implement or descope) is fully reflected in code, docs, and tests.
-- [ ] Validation commands pass for impacted areas.
+- [x] No unresolved mismatch remains between intended v1.0 VS Code command surface and docs/spec references.
+- [x] Chosen path (implement or descope) is fully reflected in code, docs, and tests.
+- [x] Validation commands pass for impacted areas.
