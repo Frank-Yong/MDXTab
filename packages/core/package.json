@@ -1,6 +1,6 @@
 {
   "name": "@mdxtab/core",
-  "version": "0.6.4",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",

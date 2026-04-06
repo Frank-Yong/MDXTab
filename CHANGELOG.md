@@ -2,6 +2,12 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-06 - 1.0.0
+- Finalize v1.0 user-facing docs and documentation structure for first-run discoverability.
+- Add and ship `MDXTab: Show Table Schema` (`mdxtab.showTableSchema`) in the VS Code extension.
+- Keep VS Code command/docs/spec surfaces aligned for v1.0 (`Render Preview`, `Validate Document`, `Show Table Schema`).
+- Complete v1 priority issues #24 through #29 and validate release readiness.
+
 ## 2026-04-06 - 0.6.4
 - Fix VS Code smoke test import paths to use `.js` extension targets under NodeNext so extension package builds succeed in CI.
 - Restore Marketplace publish pipeline by removing `.ts` import suffixes that required unsupported TypeScript compiler settings.
