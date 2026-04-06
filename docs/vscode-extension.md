@@ -25,13 +25,17 @@ The extension provides preview rendering and diagnostics inside markdown files.
 - `mdxtab.preview.showFrontmatter`
 - `mdxtab.preview.showComputedColumns`
 - `mdxtab.preview.showSummaryRows`
-- `mdxtab.limits.*`
+- `mdxtab.limits.maxExpressionLength`
+- `mdxtab.limits.maxTokens`
+- `mdxtab.limits.maxAstDepth`
+- `mdxtab.limits.maxParseDepth`
+- `mdxtab.limits.maxDependencyDepth`
 
 ## Suggested setup
 
 - Keep `mdxtab.preview.markdownIt.enabled` on for integrated preview.
 - Keep computed/summary toggles on while authoring and debugging formulas.
-- Tune `mdxtab.limits.*` only when your expressions are legitimately large.
+- Tune the `mdxtab.limits.*` settings only when your expressions are legitimately large (for example `mdxtab.limits.maxExpressionLength` or `mdxtab.limits.maxTokens`).
 
 ## When diagnostics appear
 
