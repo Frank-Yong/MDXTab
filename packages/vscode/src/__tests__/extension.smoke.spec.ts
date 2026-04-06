@@ -459,4 +459,32 @@ describe("vscode extension smoke", () => {
     );
     expect(state.shownDocumentCount).toBe(0);
   });
+
+  it("surfaces parse error details when show-table-schema cannot parse frontmatter", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockImplementation(() => {
+      throw new Error("invalid YAML near line 2");
+    });
+
+    const sourceUri = MockUri.from({ scheme: "file", path: "/tmp/bad-frontmatter.md" });
+    const sourceDoc = createDoc(
+      sourceUri,
+      "---\nmdxtab: \"1.0\"\ntables: [\n---\n\n## t\n| id | value |\n|---|---|\n| a | 1 |",
+    );
+    (vscode.window as { activeTextEditor?: { document: MockDocument } }).activeTextEditor = { document: sourceDoc };
+
+    const command = state.commands.get("mdxtab.showTableSchema");
+    expect(command).toBeDefined();
+
+    await command?.();
+
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      "MDXTab: could not read table schema from frontmatter: invalid YAML near line 2",
+    );
+    expect(state.shownDocumentCount).toBe(0);
+  });
 });

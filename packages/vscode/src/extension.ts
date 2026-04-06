@@ -1152,14 +1152,22 @@ export function activate(context: ExtensionContext) {
       return;
     }
 
+    let frontmatter: ReturnType<typeof parseFrontmatter>;
     try {
-      const frontmatter = parseFrontmatter(text);
-      const tableCount = Object.keys(frontmatter.tables).length;
-      if (tableCount === 0) {
-        window.showInformationMessage("MDXTab: no table schemas found in frontmatter");
-        return;
-      }
+      frontmatter = parseFrontmatter(text);
+    } catch (err) {
+      const detail = err instanceof Error ? `: ${err.message}` : "";
+      window.showErrorMessage(`MDXTab: could not read table schema from frontmatter${detail}`);
+      return;
+    }
 
+    const tableCount = Object.keys(frontmatter.tables).length;
+    if (tableCount === 0) {
+      window.showInformationMessage("MDXTab: no table schemas found in frontmatter");
+      return;
+    }
+
+    try {
       const schemaJson = JSON.stringify({ tables: frontmatter.tables }, null, 2);
       const schemaDoc = await workspace.openTextDocument({
         language: "markdown",
@@ -1176,8 +1184,9 @@ export function activate(context: ExtensionContext) {
       });
 
       await window.showTextDocument(schemaDoc, { preview: true });
-    } catch {
-      window.showErrorMessage("MDXTab: could not read table schema from frontmatter");
+    } catch (err) {
+      const detail = err instanceof Error ? `: ${err.message}` : "";
+      window.showErrorMessage(`MDXTab: could not open schema view${detail}`);
     }
   });
   context.subscriptions.push(showSchemaCommand);
