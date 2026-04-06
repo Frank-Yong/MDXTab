@@ -20,6 +20,6 @@ Start here if you are new to MDXTab.
 
 ## Deep references
 
-- [Formal format spec](../specs/formal-format-spec.md)
-- [Development spec](../specs/development-spec.md)
-- [Examples](../dev/examples)
+- [Formal format spec](https://github.com/Frank-Yong/MDXTab/blob/main/specs/formal-format-spec.md)
+- [Development spec](https://github.com/Frank-Yong/MDXTab/blob/main/specs/development-spec.md)
+- [Examples](https://github.com/Frank-Yong/MDXTab/tree/main/dev/examples)
