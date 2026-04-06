@@ -4,7 +4,7 @@ Date: 2026-03-28
 
 This file is the short operational list for v1.0 readiness work.
 
-Use `dev/docs/backlog.md` for broader feature backlog items and proposals.
+Historical backlog and phase planning docs are archived under `dev/docs/archive/`.
 
 ## Priority Order
 

@@ -48,6 +48,8 @@ Task 1 notes:
 - [ ] Add common errors/troubleshooting page with actionable fixes.
 - [ ] Cross-link README and docs pages for discovery.
 - [ ] Verify all command names/settings/error codes referenced are current.
+- [x] Compact root `README.md` so user-facing entry points are obvious.
+- [x] Archive older internal development docs using git move history.
 
 ### 4. Validation and completion
 - [ ] Validate doc links and examples for consistency.
