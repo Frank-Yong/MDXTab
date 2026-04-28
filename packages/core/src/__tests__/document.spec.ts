@@ -982,6 +982,7 @@ pivot_tables:
     const result = validateMdxtab(badPivotDoc);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].column).toBe("totals.column.accumulated.mode");
     expect(result.diagnostics[0].message).toContain("totals.column.accumulated.mode must be one of sum, running_sum");
   });
 

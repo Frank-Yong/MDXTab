@@ -392,11 +392,12 @@ function parsePivotTables(
         const columnObj = expectPivotObject(name, totalsObj.column, `totals.column for pivot_table ${name}`, "totals.column");
         const parsedTotalsColumn = Object.create(null) as NonNullable<NonNullable<PivotTableDefinition["totals"]>["column"]>;
         for (const [footerName, footerValue] of Object.entries(columnObj)) {
+          const footerPath = `totals.column.${footerName}`;
           const footerObj = expectPivotObject(
             name,
             footerValue,
-            `totals.column.${footerName} for pivot_table ${name}`,
-            "totals.column",
+            `${footerPath} for pivot_table ${name}`,
+            footerPath,
           );
           if (
             footerObj.mode !== undefined
@@ -406,7 +407,7 @@ function parsePivotTables(
             throw pivotTableError(
               name,
               `pivot_table ${name} totals.column.${footerName}.mode must be one of sum, running_sum`,
-              "totals.column",
+              `${footerPath}.mode`,
             );
           }
           parsedTotalsColumn[footerName] = { mode: footerObj.mode as "sum" | "running_sum" | undefined };
