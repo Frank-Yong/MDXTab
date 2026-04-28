@@ -1,9 +1,9 @@
 # Work Item: Pivot Tables
 
 ## Status
-- State: PROPOSED
+- State: IN PROGRESS
 - Priority: MEDIUM
-- Branch: `issue-38-pivot-tables` (umbrella only)
+- Branch: `issue-38-pivot-schema-validation` (active), `issue-38-pivot-tables` (umbrella)
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/38
 
 ## Description
@@ -108,13 +108,13 @@ synthetically (same model as `report_tables`).
 ## Tasks
 
 ### 1. Design the `pivot_tables` frontmatter schema
-- [ ] Add `pivot_tables` to frontmatter types.
-- [ ] Required fields: `source`, `rows`, `columns`, `value`.
-- [ ] Optional fields: `empty_cells`, `totals`, `key`.
-- [ ] Validate name uniqueness against `tables` and `report_tables`.
-- [ ] Validate `source` references an authored table; `rows.from` and
+- [x] Add `pivot_tables` to frontmatter types.
+- [x] Required fields: `source`, `rows`, `columns`, `value`.
+- [x] Optional fields: `empty_cells`, `totals`, `key`.
+- [x] Validate name uniqueness against `tables` and `report_tables`.
+- [x] Validate `source` references an authored table; `rows.from` and
       `columns.from` reference real columns or table.column paths.
-- [ ] Diagnostics for missing/invalid fields, unknown identifiers, unsupported
+- [x] Diagnostics for missing/invalid fields, unknown identifiers, unsupported
       `step`, invalid date ranges (`start > end`, non-ISO dates).
 
 ### 2. Define column-axis generation
@@ -165,7 +165,7 @@ synthetically (same model as `report_tables`).
 - [ ] Unit: row/column totals (including running sum).
 - [ ] Integration: full compile + render of a `category × date` pivot matching
       the motivating user file.
-- [ ] Diagnostics: missing source, invalid range, unknown columns, identifier
+- [x] Diagnostics: missing source, invalid range, unknown columns, identifier
       collisions.
 
 ### 9. Docs & spec
@@ -186,6 +186,7 @@ synthetically (same model as `report_tables`).
 - Scope: frontmatter shape, parser validation, and diagnostics.
 - Includes tasks: 1
 - Stretch in same PR if small: diagnostic tests from task 8.
+- Progress: completed in commit `9252d56`.
 
 ### 2) Axes + cell evaluation + totals
 - Branch: `issue-38-pivot-eval-core`
