@@ -3,7 +3,7 @@
 ## Status
 - State: IN PROGRESS
 - Priority: MEDIUM
-- Branch: `issue-38-pivot-schema-validation` (active), `issue-38-pivot-tables` (umbrella)
+- Branch: `issue-38-pivot-eval-core` (active), `issue-38-pivot-tables` (umbrella)
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/38
 
 ## Description
@@ -118,33 +118,33 @@ synthetically (same model as `report_tables`).
       `step`, invalid date ranges (`start > end`, non-ISO dates).
 
 ### 2. Define column-axis generation
-- [ ] Derive the ordered axis from either:
+- [x] Derive the ordered axis from either:
   - distinct source-column values (sorted deterministically), or
   - a `range` over `date` with `step`.
-- [ ] Generate stable header identifiers (must satisfy identifier rules so
+- [x] Generate stable header identifiers (must satisfy identifier rules so
       they can be referenced by `totals` and downstream lookups).
-- [ ] Surface header derivation in compile output for tooling.
+- [x] Surface header derivation in compile output for tooling.
 
 ### 3. Define row-axis generation
-- [ ] Derive the ordered row list from distinct source values, or from a
+- [x] Derive the ordered row list from distinct source values, or from a
       referenced table column when `rows.from: <table>.<col>` is used.
-- [ ] Preserve declared order when sourced from a table; sort deterministically
+- [x] Preserve declared order when sourced from a table; sort deterministically
       otherwise.
 
 ### 4. Evaluate pivot cells
-- [ ] For each (row, column) pair, evaluate `value` over the subset of
+- [x] For each (row, column) pair, evaluate `value` over the subset of
       `source` rows matching that row key and column-axis value.
-- [ ] Apply `empty_cells` policy when no events match.
-- [ ] Reuse the existing aggregate evaluator; no new functions required for
+- [x] Apply `empty_cells` policy when no events match.
+- [x] Reuse the existing aggregate evaluator; no new functions required for
       MVP (`sum` only).
-- [ ] Define error behavior consistent with `report_tables` (missing source,
+- [x] Define error behavior consistent with `report_tables` (missing source,
       type mismatch on axis values, etc.).
 
 ### 5. Totals
-- [ ] `totals.row: <name>` adds a synthesized trailing column equal to
+- [x] `totals.row: <name>` adds a synthesized trailing column equal to
       `sum` across the row's pivot cells.
-- [ ] `totals.column.<name>.mode: sum | running_sum` adds a footer row.
-- [ ] Names must satisfy identifier rules and not collide with axis headers.
+- [x] `totals.column.<name>.mode: sum | running_sum` adds a footer row.
+- [x] Names must satisfy identifier rules and not collide with axis headers.
 
 ### 6. Render injection
 - [ ] Detect `## <pivot_name>` headings and inject the rendered Markdown
@@ -160,10 +160,10 @@ synthetically (same model as `report_tables`).
       table (deferred: pivot output is not addressable in expressions in MVP).
 
 ### 8. Tests
-- [ ] Unit: axis generation (distinct values, date range, deterministic order).
-- [ ] Unit: cell evaluation with `empty_cells` policies.
-- [ ] Unit: row/column totals (including running sum).
-- [ ] Integration: full compile + render of a `category × date` pivot matching
+- [x] Unit: axis generation (distinct values, date range, deterministic order).
+- [x] Unit: cell evaluation with `empty_cells` policies.
+- [x] Unit: row/column totals (including running sum).
+- [x] Integration: full compile + render of a `category × date` pivot matching
       the motivating user file.
 - [x] Diagnostics: missing source, invalid range, unknown columns, identifier
       collisions.
@@ -193,6 +193,7 @@ synthetically (same model as `report_tables`).
 - Scope: row/column axis generation, cell aggregation, totals behavior.
 - Includes tasks: 2, 3, 4, 5
 - Tests in same PR: unit tests for axis/cell/totals from task 8.
+- Progress: completed in commit `8e2fa0c`.
 
 ### 3) Pipeline + rendering
 - Branch: `issue-38-pivot-render-pipeline`
@@ -214,7 +215,7 @@ synthetically (same model as `report_tables`).
 
 ### Notes
 - Keep `issue-38-pivot-tables` as umbrella tracking branch only.
-- Open each PR against `main` to keep review scope focused and parallelizable.
+- Open each sub-branch PR against `issue-38-pivot-tables` for staged integration.
 
 ## Out of scope (v1 of this work item)
 - Multiple aggregators per cell.
