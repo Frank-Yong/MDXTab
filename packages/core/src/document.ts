@@ -852,6 +852,14 @@ function uniqueByString(values: Scalar[]): Scalar[] {
   return out;
 }
 
+function compareByString(a: Scalar, b: Scalar): number {
+  const left = String(a);
+  const right = String(b);
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
 function applyRowOrdering(values: Scalar[], order: string[] | undefined): Scalar[] {
   if (!order || order.length === 0) return values;
   const remaining = [...values];
@@ -989,7 +997,7 @@ function evaluatePivotTables(
     const ensureRowAxisTable = ensureByTable[rowRef.table];
     let rowValues = uniqueByString(rowAxisSourceRows.map((row) => ensureRowAxisTable(row)[rowRef.column]));
     if (rowRef.table === pivot.source) {
-      rowValues = [...rowValues].sort((a, b) => String(a).localeCompare(String(b)));
+      rowValues = [...rowValues].sort(compareByString);
     }
     rowValues = applyRowOrdering(rowValues, pivot.rows.order);
 
@@ -1004,7 +1012,7 @@ function evaluatePivotTables(
       );
     } else {
       columnValues = uniqueByString(columnAxisSourceRows.map((row) => ensureColumnAxisTable(row)[columnRef.column]));
-      columnValues = [...columnValues].sort((a, b) => String(a).localeCompare(String(b)));
+      columnValues = [...columnValues].sort(compareByString);
     }
 
     const rowAxis = rowValues.map((key, index) => ({ key, label: String(key), index }));
