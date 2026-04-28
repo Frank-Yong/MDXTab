@@ -814,7 +814,7 @@ pivot_tables:
     expect(result.diagnostics[0].message).toContain("rows.from references unknown column");
   });
 
-  it("returns frontmatter diagnostics for invalid pivot_tables range", () => {
+  it("returns frontmatter diagnostics when pivot_tables range start is after end", () => {
     const badPivotDoc = `---
 mdxtab: "1.0"
 tables:
@@ -831,7 +831,7 @@ pivot_tables:
       range:
         start: 2026-05-24
         end: 2026-04-24
-        step: quarter
+        step: day
     value: sum(amount)
 ---
 
@@ -845,6 +845,39 @@ pivot_tables:
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
     expect(result.diagnostics[0].message).toContain("start must be before or equal");
+  });
+
+  it("returns frontmatter diagnostics for invalid pivot_tables range step", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-05-24
+        step: quarter
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("columns.range.step must be one of day, week, month");
   });
 
   it("accepts pivot_tables date ranges with years below 0100", () => {
