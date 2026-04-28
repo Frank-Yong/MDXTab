@@ -972,10 +972,11 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
 
   const schemaNames = new Set(Object.keys(frontmatter.tables));
   const reportTableNames = new Set(Object.keys(frontmatter.report_tables ?? {}));
+  const pivotTableNames = new Set(Object.keys(frontmatter.pivot_tables ?? {}));
   const tableByName = Object.create(null) as Record<string, ParsedTable>;
   for (const t of tables) {
     if (!schemaNames.has(t.name)) {
-      if (reportTableNames.has(t.name)) {
+      if (reportTableNames.has(t.name) || pivotTableNames.has(t.name)) {
         continue;
       }
       throw new DiagnosticError({
