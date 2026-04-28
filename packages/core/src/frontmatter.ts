@@ -219,7 +219,7 @@ function parsePivotTables(
     sourceTableName: string,
     reference: string,
     columnLabel: "rows.from" | "columns.from",
-  ) => {
+  ): string => {
     const ref = reference.trim();
     if (ref.length === 0) {
       throw pivotTableError(pivotName, `pivot_table ${pivotName} ${columnLabel} must not be empty`, columnLabel);
@@ -254,6 +254,8 @@ function parsePivotTables(
         columnLabel,
       );
     }
+
+    return tableName === sourceTableName ? columnName : `${tableName}.${columnName}`;
   };
 
   for (const [name, pivotValue] of Object.entries(obj)) {
@@ -275,8 +277,8 @@ function parsePivotTables(
       throw pivotTableError(name, `pivot_table ${name}: rows is required`, "rows");
     }
     const rowsObj = expectPivotObject(name, pivotObj.rows, `rows for pivot_table ${name}`, "rows");
-    const rowsFrom = expectPivotString(name, rowsObj.from, `rows.from for pivot_table ${name}`, "rows.from");
-    validateColumnReference(name, source, rowsFrom, "rows.from");
+    const rowsFromRaw = expectPivotString(name, rowsObj.from, `rows.from for pivot_table ${name}`, "rows.from");
+    const rowsFrom = validateColumnReference(name, source, rowsFromRaw, "rows.from");
     const rowsOrder = rowsObj.order === undefined
       ? undefined
       : expectPivotStringArray(name, rowsObj.order, `rows.order for pivot_table ${name}`, "rows.order");
@@ -291,7 +293,7 @@ function parsePivotTables(
       `columns.from for pivot_table ${name}`,
       "columns.from",
     );
-    validateColumnReference(name, source, columnsFrom, "columns.from");
+    const normalizedColumnsFrom = validateColumnReference(name, source, columnsFrom, "columns.from");
 
     const columnsLabel = columnsObj.label === undefined
       ? undefined
@@ -425,7 +427,7 @@ function parsePivotTables(
         order: rowsOrder,
       },
       columns: {
-        from: columnsFrom,
+        from: normalizedColumnsFrom,
         range: columnsRange,
         label: columnsLabel,
       },

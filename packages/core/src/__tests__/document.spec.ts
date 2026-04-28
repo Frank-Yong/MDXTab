@@ -720,6 +720,44 @@ pivot_tables:
     expect(result.frontmatter.pivot_tables?.liquidity.columns.range?.start).toBe("2026-04-24");
   });
 
+  it("normalizes pivot_tables rows.from and columns.from after validation", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: "  category  "
+    columns:
+      from: "  entries . date  "
+      range:
+        start: 2026-04-24
+        end: 2026-05-24
+        step: day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const validation = validateMdxtab(pivotDoc);
+    expect(validation.diagnostics).toHaveLength(0);
+
+    const result = compileMdxtab(pivotDoc);
+    expect(result.frontmatter.pivot_tables?.liquidity.rows.from).toBe("category");
+    expect(result.frontmatter.pivot_tables?.liquidity.columns.from).toBe("date");
+  });
+
   it("returns frontmatter diagnostics when pivot_tables is missing required fields", () => {
     const badPivotDoc = `---
 mdxtab: "1.0"
