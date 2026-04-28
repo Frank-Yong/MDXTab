@@ -27,6 +27,42 @@ export interface ReportTableDefinition {
   cells: Record<string, string>;
 }
 
+export interface PivotRowsDefinition {
+  from: string;
+  order?: string[];
+}
+
+export interface PivotColumnsRangeDefinition {
+  start: string;
+  end: string;
+  step?: "day" | "week" | "month";
+}
+
+export interface PivotColumnsDefinition {
+  from: string;
+  range?: PivotColumnsRangeDefinition;
+  label?: string;
+}
+
+export interface PivotTotalsColumnModeDefinition {
+  mode?: "sum" | "running_sum";
+}
+
+export interface PivotTotalsDefinition {
+  row?: string;
+  column?: Record<string, PivotTotalsColumnModeDefinition>;
+}
+
+export interface PivotTableDefinition {
+  source: string;
+  rows: PivotRowsDefinition;
+  columns: PivotColumnsDefinition;
+  value: string;
+  key?: string;
+  empty_cells?: "null" | "zero" | "empty-string" | "error";
+  totals?: PivotTotalsDefinition;
+}
+
 export interface TableFrontmatter {
   key?: string;
   columns: string[];
@@ -41,6 +77,7 @@ export interface FrontmatterDocument {
   mdxtab: string;
   tables: Record<string, TableFrontmatter>;
   report_tables?: Record<string, ReportTableDefinition>;
+  pivot_tables?: Record<string, PivotTableDefinition>;
 }
 
 export interface HeaderCell {

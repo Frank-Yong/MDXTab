@@ -1,6 +1,14 @@
 import { parse as parseYaml } from "yaml";
 import { DiagnosticError, lineRange } from "./diagnostics.js";
-import type { FrontmatterDocument, ReportTableDefinition, SummaryRowDefinition, TableFrontmatter } from "./types.js";
+import type {
+  FrontmatterDocument,
+  PivotTableDefinition,
+  ReportTableDefinition,
+  SummaryRowDefinition,
+  TableFrontmatter,
+} from "./types.js";
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function expectObject(value: unknown, context: string): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -150,6 +158,286 @@ function parseReportTables(
   return result;
 }
 
+function isValidIsoDate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false;
+  const [yearRaw, monthRaw, dayRaw] = value.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day
+  );
+}
+
+function parsePivotTables(
+  value: unknown,
+  tables: Record<string, TableFrontmatter>,
+  reportTables: Record<string, ReportTableDefinition>,
+): Record<string, PivotTableDefinition> {
+  const obj = expectObject(value, "pivot_tables");
+  const result = Object.create(null) as Record<string, PivotTableDefinition>;
+  const hasOwnTable = (name: string): name is keyof typeof tables =>
+    Object.prototype.hasOwnProperty.call(tables, name);
+  const hasOwnReportTable = (name: string): boolean =>
+    Object.prototype.hasOwnProperty.call(reportTables, name);
+  const pivotTableError = (name: string, message: string, column?: string): DiagnosticError =>
+    new DiagnosticError({ code: "E_FRONTMATTER", message, table: name, column, range: lineRange(0) });
+
+  const expectPivotObject = (pivotName: string, pivotValue: unknown, context: string, column?: string) => {
+    try {
+      return expectObject(pivotValue, context);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw pivotTableError(pivotName, message, column);
+    }
+  };
+
+  const expectPivotString = (pivotName: string, pivotValue: unknown, context: string, column?: string) => {
+    try {
+      return expectString(pivotValue, context);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw pivotTableError(pivotName, message, column);
+    }
+  };
+
+  const expectPivotStringArray = (pivotName: string, pivotValue: unknown, context: string, column?: string) => {
+    try {
+      return expectStringArray(pivotValue, context);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw pivotTableError(pivotName, message, column);
+    }
+  };
+
+  const validateColumnReference = (
+    pivotName: string,
+    sourceTableName: string,
+    reference: string,
+    columnLabel: "rows.from" | "columns.from",
+  ) => {
+    const ref = reference.trim();
+    if (ref.length === 0) {
+      throw pivotTableError(pivotName, `pivot_table ${pivotName} ${columnLabel} must not be empty`, columnLabel);
+    }
+
+    let tableName = sourceTableName;
+    let columnName = ref;
+    if (ref.includes(".")) {
+      const parts = ref.split(".");
+      if (parts.length !== 2 || parts[0].trim().length === 0 || parts[1].trim().length === 0) {
+        throw pivotTableError(
+          pivotName,
+          `pivot_table ${pivotName} ${columnLabel} must be a column name or table.column reference`,
+          columnLabel,
+        );
+      }
+      tableName = parts[0].trim();
+      columnName = parts[1].trim();
+    }
+
+    if (!hasOwnTable(tableName)) {
+      throw pivotTableError(
+        pivotName,
+        `pivot_table ${pivotName} ${columnLabel} references unknown table ${tableName}`,
+        columnLabel,
+      );
+    }
+    if (!tables[tableName].columns.includes(columnName)) {
+      throw pivotTableError(
+        pivotName,
+        `pivot_table ${pivotName} ${columnLabel} references unknown column ${columnName} in table ${tableName}`,
+        columnLabel,
+      );
+    }
+  };
+
+  for (const [name, pivotValue] of Object.entries(obj)) {
+    if (hasOwnTable(name)) {
+      throw pivotTableError(name, `pivot_tables.${name} conflicts with table ${name}`);
+    }
+    if (hasOwnReportTable(name)) {
+      throw pivotTableError(name, `pivot_tables.${name} conflicts with report_table ${name}`);
+    }
+
+    const pivotObj = expectPivotObject(name, pivotValue, `pivot_table ${name}`);
+    const source = expectPivotString(name, pivotObj.source, `source for pivot_table ${name}`, "source");
+    if (!hasOwnTable(source)) {
+      throw pivotTableError(name, `pivot_table ${name} references unknown source table ${source}`, "source");
+    }
+    const sourceTable = tables[source];
+
+    if (pivotObj.rows === undefined) {
+      throw pivotTableError(name, `pivot_table ${name}: rows is required`, "rows");
+    }
+    const rowsObj = expectPivotObject(name, pivotObj.rows, `rows for pivot_table ${name}`, "rows");
+    const rowsFrom = expectPivotString(name, rowsObj.from, `rows.from for pivot_table ${name}`, "rows.from");
+    validateColumnReference(name, source, rowsFrom, "rows.from");
+    const rowsOrder = rowsObj.order === undefined
+      ? undefined
+      : expectPivotStringArray(name, rowsObj.order, `rows.order for pivot_table ${name}`, "rows.order");
+
+    if (pivotObj.columns === undefined) {
+      throw pivotTableError(name, `pivot_table ${name}: columns is required`, "columns");
+    }
+    const columnsObj = expectPivotObject(name, pivotObj.columns, `columns for pivot_table ${name}`, "columns");
+    const columnsFrom = expectPivotString(
+      name,
+      columnsObj.from,
+      `columns.from for pivot_table ${name}`,
+      "columns.from",
+    );
+    validateColumnReference(name, source, columnsFrom, "columns.from");
+
+    const columnsLabel = columnsObj.label === undefined
+      ? undefined
+      : expectPivotString(name, columnsObj.label, `columns.label for pivot_table ${name}`, "columns.label");
+
+    let columnsRange: PivotTableDefinition["columns"]["range"];
+    if (columnsObj.range !== undefined) {
+      const rangeObj = expectPivotObject(name, columnsObj.range, `columns.range for pivot_table ${name}`, "columns.range");
+      const start = expectPivotString(
+        name,
+        rangeObj.start,
+        `columns.range.start for pivot_table ${name}`,
+        "columns.range.start",
+      );
+      const end = expectPivotString(
+        name,
+        rangeObj.end,
+        `columns.range.end for pivot_table ${name}`,
+        "columns.range.end",
+      );
+
+      if (!isValidIsoDate(start)) {
+        throw pivotTableError(
+          name,
+          `pivot_table ${name} columns.range.start must be an ISO date (YYYY-MM-DD)`,
+          "columns.range.start",
+        );
+      }
+      if (!isValidIsoDate(end)) {
+        throw pivotTableError(
+          name,
+          `pivot_table ${name} columns.range.end must be an ISO date (YYYY-MM-DD)`,
+          "columns.range.end",
+        );
+      }
+      if (start > end) {
+        throw pivotTableError(
+          name,
+          `pivot_table ${name} columns.range.start must be before or equal to columns.range.end`,
+          "columns.range",
+        );
+      }
+
+      if (
+        rangeObj.step !== undefined
+        && rangeObj.step !== "day"
+        && rangeObj.step !== "week"
+        && rangeObj.step !== "month"
+      ) {
+        throw pivotTableError(
+          name,
+          `pivot_table ${name} columns.range.step must be one of day, week, month`,
+          "columns.range.step",
+        );
+      }
+
+      columnsRange = {
+        start,
+        end,
+        step: rangeObj.step,
+      };
+    }
+
+    const valueExpr = expectPivotString(name, pivotObj.value, `value for pivot_table ${name}`, "value");
+    const key = pivotObj.key === undefined
+      ? sourceTable.key ?? "id"
+      : expectPivotString(name, pivotObj.key, `key for pivot_table ${name}`, "key");
+    if (!sourceTable.columns.includes(key)) {
+      throw pivotTableError(name, `pivot_table ${name} key ${key} is not a column in source table ${source}`, "key");
+    }
+
+    if (
+      pivotObj.empty_cells !== undefined
+      && pivotObj.empty_cells !== "null"
+      && pivotObj.empty_cells !== "zero"
+      && pivotObj.empty_cells !== "empty-string"
+      && pivotObj.empty_cells !== "error"
+    ) {
+      throw pivotTableError(
+        name,
+        `Invalid empty_cells value for pivot_table ${name}: ${String(pivotObj.empty_cells)}`,
+        "empty_cells",
+      );
+    }
+
+    let totals: PivotTableDefinition["totals"];
+    if (pivotObj.totals !== undefined) {
+      const totalsObj = expectPivotObject(name, pivotObj.totals, `totals for pivot_table ${name}`, "totals");
+      const totalsRow = totalsObj.row === undefined
+        ? undefined
+        : expectPivotString(name, totalsObj.row, `totals.row for pivot_table ${name}`, "totals.row");
+
+      let totalsColumn: NonNullable<NonNullable<PivotTableDefinition["totals"]>["column"]> | undefined;
+      if (totalsObj.column !== undefined) {
+        const columnObj = expectPivotObject(name, totalsObj.column, `totals.column for pivot_table ${name}`, "totals.column");
+        const parsedTotalsColumn = Object.create(null) as NonNullable<NonNullable<PivotTableDefinition["totals"]>["column"]>;
+        for (const [footerName, footerValue] of Object.entries(columnObj)) {
+          const footerObj = expectPivotObject(
+            name,
+            footerValue,
+            `totals.column.${footerName} for pivot_table ${name}`,
+            "totals.column",
+          );
+          if (
+            footerObj.mode !== undefined
+            && footerObj.mode !== "sum"
+            && footerObj.mode !== "running_sum"
+          ) {
+            throw pivotTableError(
+              name,
+              `pivot_table ${name} totals.column.${footerName}.mode must be one of sum, running_sum`,
+              "totals.column",
+            );
+          }
+          parsedTotalsColumn[footerName] = { mode: footerObj.mode as "sum" | "running_sum" | undefined };
+        }
+        totalsColumn = parsedTotalsColumn;
+      }
+
+      totals = {
+        row: totalsRow,
+        column: totalsColumn,
+      };
+    }
+
+    result[name] = {
+      source,
+      key,
+      rows: {
+        from: rowsFrom,
+        order: rowsOrder,
+      },
+      columns: {
+        from: columnsFrom,
+        range: columnsRange,
+        label: columnsLabel,
+      },
+      value: valueExpr,
+      empty_cells: pivotObj.empty_cells,
+      totals,
+    };
+  }
+
+  return result;
+}
+
 function validateTable(name: string, value: unknown): TableFrontmatter {
   const obj = expectObject(value, `table ${name}`);
   const columns = expectStringArray(obj.columns, `columns for table ${name}`);
@@ -236,8 +524,11 @@ export function parseFrontmatter(raw: string): FrontmatterDocument {
     const report_tables = obj.report_tables
       ? parseReportTables(obj.report_tables, tables)
       : undefined;
+    const pivot_tables = obj.pivot_tables
+      ? parsePivotTables(obj.pivot_tables, tables, report_tables ?? Object.create(null))
+      : undefined;
 
-    return { mdxtab, tables, report_tables };
+    return { mdxtab, tables, report_tables, pivot_tables };
   } catch (err) {
     if (err instanceof DiagnosticError) throw err;
     const message = err instanceof Error ? err.message : String(err);
