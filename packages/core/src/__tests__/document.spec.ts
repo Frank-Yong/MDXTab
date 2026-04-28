@@ -880,6 +880,177 @@ pivot_tables:
     expect(result.diagnostics[0].message).toContain("columns.range.step must be one of day, week, month");
   });
 
+  it("returns frontmatter diagnostics for invalid pivot_tables empty_cells", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-05-24
+        step: day
+    value: sum(amount)
+    empty_cells: nope
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("Invalid empty_cells value");
+  });
+
+  it("returns frontmatter diagnostics for pivot_tables key not in source columns", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    key: missing_key
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-05-24
+        step: day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("key missing_key is not a column");
+  });
+
+  it("returns frontmatter diagnostics for invalid pivot_tables totals.column mode", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-05-24
+        step: day
+    value: sum(amount)
+    totals:
+      column:
+        accumulated:
+          mode: rolling
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("totals.column.accumulated.mode must be one of sum, running_sum");
+  });
+
+  it("returns frontmatter diagnostics for non-ISO pivot_tables range start", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-4-24
+        end: 2026-05-24
+        step: day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("columns.range.start must be an ISO date");
+  });
+
+  it("returns frontmatter diagnostics for non-ISO pivot_tables range end", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-5-24
+        step: day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("columns.range.end must be an ISO date");
+  });
+
   it("accepts pivot_tables date ranges with years below 0100", () => {
     const pivotDoc = `---
 mdxtab: "1.0"
@@ -909,6 +1080,45 @@ pivot_tables:
 
     const result = validateMdxtab(pivotDoc);
     expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it("does not fail when a manual markdown table exists under a pivot heading", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-05-24
+        step: day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+
+## liquidity
+| stale | old |
+|-------|-----|
+| 1     | 2   |
+`;
+
+    const validation = validateMdxtab(pivotDoc);
+    expect(validation.diagnostics).toHaveLength(0);
+
+    const result = compileMdxtab(pivotDoc);
+    expect(result.rendered).toContain("## liquidity");
   });
 
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
