@@ -1018,30 +1018,40 @@ function evaluatePivotTables(
     const rowAxis = rowValues.map((key, index) => ({ key, label: String(key), index }));
     const columnAxis = columnValues.map((key, index) => ({ key, label: String(key), index }));
 
+    const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
+    const pairValueBuckets = new Map<string, Scalar[]>();
+    const pairKey = (rowKey: Scalar, columnKey: Scalar) => `${String(rowKey)}\u0000${String(columnKey)}`;
+
+    for (const row of ensuredSourceRows) {
+      const rowKey = row[rowRef.column];
+      const colKey = row[columnRef.column];
+      if (rowKey === null || rowKey === undefined || colKey === null || colKey === undefined) {
+        continue;
+      }
+      const key = pairKey(rowKey, colKey);
+      const bucket = pairValueBuckets.get(key);
+      if (bucket) {
+        bucket.push(row[valueColumn]);
+      } else {
+        pairValueBuckets.set(key, [row[valueColumn]]);
+      }
+    }
+
+    const pairAggregates = new Map<string, Scalar>();
+    for (const [key, values] of pairValueBuckets.entries()) {
+      pairAggregates.set(key, computeAggregateValues("sum", values));
+    }
+
     const evaluatedRows = rowAxis.map((rowAxisEntry) => {
       const values = Object.create(null) as Record<string, Scalar>;
 
       for (const columnAxisEntry of columnAxis) {
-        const matching = sourceRows
-          .map((row) => ensureSource(row))
-          .filter((row) => {
-            const rowKey = row[rowRef.column];
-            const colKey = row[columnRef.column];
-            return rowKey !== null
-              && rowKey !== undefined
-              && colKey !== null
-              && colKey !== undefined
-              && String(rowKey) === String(rowAxisEntry.key)
-              && String(colKey) === String(columnAxisEntry.key);
-          });
-
-        if (matching.length === 0) {
+        const key = pairKey(rowAxisEntry.key, columnAxisEntry.key);
+        if (!pairValueBuckets.has(key)) {
           values[columnAxisEntry.label] = emptyPivotCell(pivot.empty_cells);
           continue;
         }
-
-        const aggValues = matching.map((row) => row[valueColumn]);
-        values[columnAxisEntry.label] = computeAggregateValues("sum", aggValues);
+        values[columnAxisEntry.label] = pairAggregates.get(key) ?? 0;
       }
 
       const rowTotal = pivot.totals?.row
