@@ -13,6 +13,8 @@ import type {
   ExpressionLimits,
   FrontmatterDocument,
   ParsedTable,
+  PivotTableDefinition,
+  PivotTableEvaluation,
   ReportTableDefinition,
   ReportTableEvaluation,
   Scalar,
@@ -33,7 +35,7 @@ interface EvalRowContext {
   [key: string]: Scalar | EvalRowContext;
 }
 
-type EvalKind = "computed" | "aggregate" | "summary-row" | "report-table";
+type EvalKind = "computed" | "aggregate" | "summary-row" | "report-table" | "pivot-table";
 
 type GroupedAggregate = {
   fn: string;
@@ -829,6 +831,274 @@ function evaluateReportTables(
   return results;
 }
 
+function parseColumnReference(sourceTable: string, reference: string): { table: string; column: string } {
+  if (!reference.includes(".")) {
+    return { table: sourceTable, column: reference };
+  }
+  const [table, column] = reference.split(".");
+  return { table, column };
+}
+
+function uniqueByString(values: Scalar[]): Scalar[] {
+  const seen = new Set<string>();
+  const out: Scalar[] = [];
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const key = String(value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
+function applyRowOrdering(values: Scalar[], order: string[] | undefined): Scalar[] {
+  if (!order || order.length === 0) return values;
+  const remaining = [...values];
+  const remainingByKey = new Map<string, Scalar>(remaining.map((value) => [String(value), value]));
+  const ordered: Scalar[] = [];
+
+  for (const key of order) {
+    if (!remainingByKey.has(key)) continue;
+    ordered.push(remainingByKey.get(key)!);
+    remainingByKey.delete(key);
+  }
+
+  for (const value of remaining) {
+    const key = String(value);
+    if (!remainingByKey.has(key)) continue;
+    ordered.push(value);
+    remainingByKey.delete(key);
+  }
+
+  return ordered;
+}
+
+function parsePivotValueColumn(
+  pivotName: string,
+  source: string,
+  sourceSchema: TableFrontmatter,
+  expression: string,
+): string {
+  const match = expression.trim().match(/^sum\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$/i);
+  if (!match) {
+    throw new DiagnosticError({
+      code: "E_FRONTMATTER",
+      message: `pivot_table ${pivotName} value must be sum(<column>) in v1`,
+      table: pivotName,
+      column: "value",
+      range: lineRange(0),
+    });
+  }
+  const column = match[1];
+  if (!sourceSchema.columns.includes(column)) {
+    throw new DiagnosticError({
+      code: "E_FRONTMATTER",
+      message: `pivot_table ${pivotName} value references unknown column ${column} in source table ${source}`,
+      table: pivotName,
+      column: "value",
+      range: lineRange(0),
+    });
+  }
+  return column;
+}
+
+function parseIsoDatePreserveYear(isoDate: string): Date {
+  const [yearText, monthText, dayText] = isoDate.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(0, 0, 1));
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
+  return date;
+}
+
+function formatIsoDate(date: Date): string {
+  const year = String(date.getUTCFullYear()).padStart(4, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildDateRangeValues(start: string, end: string, step: "day" | "week" | "month"): Scalar[] {
+  const values: Scalar[] = [];
+  const current = parseIsoDatePreserveYear(start);
+  const endDate = parseIsoDatePreserveYear(end);
+
+  let guard = 0;
+  while (current.getTime() <= endDate.getTime()) {
+    values.push(formatIsoDate(current));
+
+    const before = current.getTime();
+    if (step === "day") current.setUTCDate(current.getUTCDate() + 1);
+    else if (step === "week") current.setUTCDate(current.getUTCDate() + 7);
+    else current.setUTCMonth(current.getUTCMonth() + 1);
+
+    if (current.getTime() <= before) {
+      throw new Error("E_RANGE: invalid pivot date range increment");
+    }
+    guard += 1;
+    if (guard > 100000) {
+      throw new Error("E_LIMIT: pivot date range too large");
+    }
+  }
+
+  return values;
+}
+
+function emptyPivotCell(policy: PivotTableDefinition["empty_cells"] | undefined): Scalar {
+  switch (policy ?? "null") {
+    case "null":
+      return null;
+    case "zero":
+      return 0;
+    case "empty-string":
+      return "";
+    case "error":
+      throw new Error("E_EMPTY_CELL: no matching source rows for pivot cell");
+    default:
+      return null;
+  }
+}
+
+function toNumericOrNull(value: Scalar): Scalar {
+  return typeof value === "number" ? value : null;
+}
+
+function evaluatePivotTables(
+  pivotTables: Record<string, PivotTableDefinition> | undefined,
+  schemas: Record<string, TableFrontmatter>,
+  rowList: Record<string, Record<string, Scalar>[]>,
+  ensureByTable: Record<string, (row: Record<string, Scalar>) => Record<string, Scalar>>,
+): Record<string, PivotTableEvaluation> {
+  if (!pivotTables) return Object.create(null) as Record<string, PivotTableEvaluation>;
+
+  const results = Object.create(null) as Record<string, PivotTableEvaluation>;
+
+  for (const [name, pivot] of Object.entries(pivotTables)) {
+    const sourceRows = rowList[pivot.source] ?? [];
+    const ensureSource = ensureByTable[pivot.source];
+    const sourceSchema = schemas[pivot.source];
+
+    const rowRef = parseColumnReference(pivot.source, pivot.rows.from);
+    const columnRef = parseColumnReference(pivot.source, pivot.columns.from);
+    const valueColumn = parsePivotValueColumn(name, pivot.source, sourceSchema, pivot.value);
+
+    const rowAxisSourceRows = rowList[rowRef.table] ?? [];
+    const ensureRowAxisTable = ensureByTable[rowRef.table];
+    let rowValues = uniqueByString(rowAxisSourceRows.map((row) => ensureRowAxisTable(row)[rowRef.column]));
+    if (rowRef.table === pivot.source) {
+      rowValues = [...rowValues].sort((a, b) => String(a).localeCompare(String(b)));
+    }
+    rowValues = applyRowOrdering(rowValues, pivot.rows.order);
+
+    const columnAxisSourceRows = rowList[columnRef.table] ?? [];
+    const ensureColumnAxisTable = ensureByTable[columnRef.table];
+    let columnValues: Scalar[];
+    if (pivot.columns.range) {
+      columnValues = buildDateRangeValues(
+        pivot.columns.range.start,
+        pivot.columns.range.end,
+        pivot.columns.range.step ?? "day",
+      );
+    } else {
+      columnValues = uniqueByString(columnAxisSourceRows.map((row) => ensureColumnAxisTable(row)[columnRef.column]));
+      columnValues = [...columnValues].sort((a, b) => String(a).localeCompare(String(b)));
+    }
+
+    const rowAxis = rowValues.map((key, index) => ({ key, label: String(key), index }));
+    const columnAxis = columnValues.map((key, index) => ({ key, label: String(key), index }));
+
+    const evaluatedRows = rowAxis.map((rowAxisEntry) => {
+      const values = Object.create(null) as Record<string, Scalar>;
+
+      for (const columnAxisEntry of columnAxis) {
+        const matching = sourceRows
+          .map((row) => ensureSource(row))
+          .filter((row) => {
+            const rowKey = row[rowRef.column];
+            const colKey = row[columnRef.column];
+            return rowKey !== null
+              && rowKey !== undefined
+              && colKey !== null
+              && colKey !== undefined
+              && String(rowKey) === String(rowAxisEntry.key)
+              && String(colKey) === String(columnAxisEntry.key);
+          });
+
+        if (matching.length === 0) {
+          values[columnAxisEntry.label] = emptyPivotCell(pivot.empty_cells);
+          continue;
+        }
+
+        const aggValues = matching.map((row) => row[valueColumn]);
+        values[columnAxisEntry.label] = computeAggregateValues("sum", aggValues);
+      }
+
+      const rowTotal = pivot.totals?.row
+        ? computeAggregateValues("sum", Object.values(values).map(toNumericOrNull))
+        : undefined;
+
+      return {
+        key: rowAxisEntry.key,
+        values,
+        total: rowTotal,
+      };
+    });
+
+    let footerRows: PivotTableEvaluation["footerRows"];
+    if (pivot.totals?.column) {
+      footerRows = [];
+      for (const [footerName, footerDef] of Object.entries(pivot.totals.column)) {
+        const mode = footerDef.mode ?? "sum";
+        const footerValues = Object.create(null) as Record<string, Scalar>;
+        let running = 0;
+        for (const columnAxisEntry of columnAxis) {
+          const colTotal = computeAggregateValues(
+            "sum",
+            evaluatedRows.map((row) => toNumericOrNull(row.values[columnAxisEntry.label])),
+          );
+
+          if (mode === "running_sum") {
+            const numericColTotal = typeof colTotal === "number" ? colTotal : 0;
+            running += numericColTotal;
+            footerValues[columnAxisEntry.label] = running;
+          } else {
+            footerValues[columnAxisEntry.label] = colTotal;
+          }
+        }
+
+        const footerTotal = pivot.totals.row
+          ? computeAggregateValues("sum", Object.values(footerValues).map(toNumericOrNull))
+          : undefined;
+
+        footerRows.push({
+          key: footerName,
+          mode,
+          values: footerValues,
+          total: footerTotal,
+        });
+      }
+    }
+
+    results[name] = {
+      name,
+      source: pivot.source,
+      rowsFrom: pivot.rows.from,
+      columnsFrom: pivot.columns.from,
+      value: pivot.value,
+      rowAxis,
+      columnAxis,
+      rows: evaluatedRows,
+      rowTotalName: pivot.totals?.row,
+      footerRows,
+    };
+  }
+
+  return results;
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
@@ -1210,6 +1480,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     groupedAggregateResults,
     limits,
   );
+  const pivotTableResults = evaluatePivotTables(frontmatter.pivot_tables, frontmatter.tables, rowList, ensureByTable);
 
   const results = Object.create(null) as Record<string, TableEvaluation>;
   for (const [name, rows] of Object.entries(rowList)) {
@@ -1256,6 +1527,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     frontmatter: frontmatter as FrontmatterDocument,
     tables: results,
     reportTables: reportTableResults,
+    pivotTables: pivotTableResults,
     rendered,
   };
 }

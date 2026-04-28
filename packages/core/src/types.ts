@@ -131,10 +131,43 @@ export interface ReportTableEvaluation {
   rows: Record<string, Scalar>[];
 }
 
+export interface PivotAxisEntry {
+  key: Scalar;
+  label: string;
+  index: number;
+}
+
+export interface PivotRowEvaluation {
+  key: Scalar;
+  values: Record<string, Scalar>;
+  total?: Scalar;
+}
+
+export interface PivotFooterRowEvaluation {
+  key: string;
+  mode: "sum" | "running_sum";
+  values: Record<string, Scalar>;
+  total?: Scalar;
+}
+
+export interface PivotTableEvaluation {
+  name: string;
+  source: string;
+  rowsFrom: string;
+  columnsFrom: string;
+  value: string;
+  rowAxis: PivotAxisEntry[];
+  columnAxis: PivotAxisEntry[];
+  rows: PivotRowEvaluation[];
+  rowTotalName?: string;
+  footerRows?: PivotFooterRowEvaluation[];
+}
+
 export interface CompileResult {
   frontmatter: FrontmatterDocument;
   tables: Record<string, TableEvaluation>;
   reportTables: Record<string, ReportTableEvaluation>;
+  pivotTables: Record<string, PivotTableEvaluation>;
   rendered: string;
 }
 

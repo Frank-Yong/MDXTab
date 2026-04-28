@@ -1122,6 +1122,117 @@ pivot_tables:
     expect(result.rendered).toContain("## liquidity");
   });
 
+  it("evaluates pivot tables with range columns, row totals, and running footer", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+      order: [Salary, Food]
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-25
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+    totals:
+      row: summary
+      column:
+        accumulated:
+          mode: running_sum
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-24 | Salary | 50 |
+| e3 | 2026-04-25 | Food | -30 |
+| e4 | 2026-04-25 | Salary | 20 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+
+    expect(pivot.rowAxis.map((r) => r.key)).toEqual(["Salary", "Food"]);
+    expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-04-24", "2026-04-25"]);
+
+    expect(pivot.rows[0].values["2026-04-24"]).toBe(150);
+    expect(pivot.rows[0].values["2026-04-25"]).toBe(20);
+    expect(pivot.rows[0].total).toBe(170);
+
+    expect(pivot.rows[1].values["2026-04-24"]).toBe(0);
+    expect(pivot.rows[1].values["2026-04-25"]).toBe(-30);
+    expect(pivot.rows[1].total).toBe(-30);
+
+    expect(pivot.footerRows?.[0].key).toBe("accumulated");
+    expect(pivot.footerRows?.[0].values["2026-04-24"]).toBe(150);
+    expect(pivot.footerRows?.[0].values["2026-04-25"]).toBe(140);
+    expect(pivot.footerRows?.[0].total).toBe(290);
+  });
+
+  it("derives pivot row axis from another table in authored order", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, category]
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: categories.category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-24
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## categories
+| id | category |
+|----|----------|
+| c1 | Travel |
+| c2 | Salary |
+| c3 | Food |
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-24 | Food | -30 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+
+    expect(pivot.rowAxis.map((r) => r.key)).toEqual(["Travel", "Salary", "Food"]);
+    expect(pivot.rows[0].values["2026-04-24"]).toBe(0);
+    expect(pivot.rows[1].values["2026-04-24"]).toBe(100);
+    expect(pivot.rows[2].values["2026-04-24"]).toBe(-30);
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"
