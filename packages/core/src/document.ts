@@ -108,6 +108,11 @@ function splitFrontmatter(raw: string): { frontmatter: string; body: string; bod
   return { frontmatter, body, bodyOffset: endIndex + 1 };
 }
 
+function scalarIdentity(value: Scalar): string {
+  if (value === null) return "null:null";
+  return `${typeof value}:${String(value)}`;
+}
+
 function coerceValue(text: string, type: ColumnType): Scalar {
   if (text === "true" || text === "false") {
     if (!type || type === "bool") return text === "true";
@@ -840,12 +845,11 @@ function parseColumnReference(sourceTable: string, reference: string): { table: 
 }
 
 function uniqueByString(values: Scalar[]): Scalar[] {
-  const scalarKey = (value: Scalar) => `${value === null ? "null" : typeof value}:${String(value)}`;
   const seen = new Set<string>();
   const out: Scalar[] = [];
   for (const value of values) {
     if (value === null || value === undefined) continue;
-    const key = scalarKey(value);
+    const key = scalarIdentity(value);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(value);
@@ -862,21 +866,20 @@ function compareByString(a: Scalar, b: Scalar): number {
 }
 
 function applyRowOrdering(values: Scalar[], order: string[] | undefined): Scalar[] {
-  const scalarKey = (value: Scalar) => `${value === null ? "null" : typeof value}:${String(value)}`;
   if (!order || order.length === 0) return values;
   const remaining = [...values];
-  const remainingByKey = new Map<string, Scalar>(remaining.map((value) => [scalarKey(value), value]));
+  const remainingByKey = new Map<string, Scalar>(remaining.map((value) => [scalarIdentity(value), value]));
   const ordered: Scalar[] = [];
 
   for (const orderedValue of order) {
-    const key = scalarKey(orderedValue);
+    const key = scalarIdentity(orderedValue);
     if (!remainingByKey.has(key)) continue;
     ordered.push(remainingByKey.get(key)!);
     remainingByKey.delete(key);
   }
 
   for (const value of remaining) {
-    const key = scalarKey(value);
+    const key = scalarIdentity(value);
     if (!remainingByKey.has(key)) continue;
     ordered.push(value);
     remainingByKey.delete(key);
@@ -932,6 +935,26 @@ function formatIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function daysInUtcMonth(year: number, monthIndexZeroBased: number): number {
+  return new Date(Date.UTC(year, monthIndexZeroBased + 1, 0)).getUTCDate();
+}
+
+function addUtcMonthsClamped(date: Date, months: number): Date {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+
+  const rawTargetMonth = month + months;
+  const targetYear = year + Math.floor(rawTargetMonth / 12);
+  const targetMonth = ((rawTargetMonth % 12) + 12) % 12;
+  const clampedDay = Math.min(day, daysInUtcMonth(targetYear, targetMonth));
+
+  const next = new Date(Date.UTC(0, 0, 1));
+  next.setUTCFullYear(targetYear, targetMonth, clampedDay);
+  next.setUTCHours(0, 0, 0, 0);
+  return next;
+}
+
 function buildDateRangeValues(
   pivotName: string,
   start: string,
@@ -939,7 +962,7 @@ function buildDateRangeValues(
   step: "day" | "week" | "month",
 ): Scalar[] {
   const values: Scalar[] = [];
-  const current = parseIsoDatePreserveYear(start);
+  let current = parseIsoDatePreserveYear(start);
   const endDate = parseIsoDatePreserveYear(end);
 
   let guard = 0;
@@ -949,7 +972,7 @@ function buildDateRangeValues(
     const before = current.getTime();
     if (step === "day") current.setUTCDate(current.getUTCDate() + 1);
     else if (step === "week") current.setUTCDate(current.getUTCDate() + 7);
-    else current.setUTCMonth(current.getUTCMonth() + 1);
+    else current = addUtcMonthsClamped(current, 1);
 
     if (current.getTime() <= before) {
       throw new DiagnosticError({
@@ -1066,7 +1089,8 @@ function evaluatePivotTables(
 
     const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
     const pairValueBuckets = new Map<string, Scalar[]>();
-    const pairKey = (rowKey: Scalar, columnKey: Scalar) => `${String(rowKey)}\u0000${String(columnKey)}`;
+    const pairKey = (rowKey: Scalar, columnKey: Scalar) =>
+      JSON.stringify([scalarIdentity(rowKey), scalarIdentity(columnKey)]);
 
     for (const row of ensuredSourceRows) {
       const rowKey = row[rowRef.column];
@@ -1088,7 +1112,7 @@ function evaluatePivotTables(
       try {
         pairAggregates.set(key, computeAggregateValues("sum", values));
       } catch (err) {
-        const [rowKeyRaw, columnKeyRaw] = key.split("\u0000");
+        const [rowKeyRaw, columnKeyRaw] = JSON.parse(key) as [string, string];
         throw toPivotDiagnostic(err, {
           table: name,
           rowKey: rowKeyRaw,
