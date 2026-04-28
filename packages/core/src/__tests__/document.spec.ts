@@ -1233,6 +1233,51 @@ pivot_tables:
     expect(pivot.rows[2].values["2026-04-24"]).toBe(-30);
   });
 
+  it("returns contextual diagnostics for runtime pivot empty_cells errors", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, category]
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: categories.category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-24
+        step: day
+    value: sum(amount)
+    empty_cells: error
+---
+
+## categories
+| id | category |
+|----|----------|
+| c1 | Travel |
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(pivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_EMPTY_CELL");
+    expect(result.diagnostics[0].table).toBe("liquidity");
+    expect(result.diagnostics[0].column).toBe("empty_cells");
+    expect(result.diagnostics[0].rowKey).toBe("Travel");
+    expect(result.diagnostics[0].message).toContain("[pivot-table]");
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"

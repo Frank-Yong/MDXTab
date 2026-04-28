@@ -929,7 +929,12 @@ function formatIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function buildDateRangeValues(start: string, end: string, step: "day" | "week" | "month"): Scalar[] {
+function buildDateRangeValues(
+  pivotName: string,
+  start: string,
+  end: string,
+  step: "day" | "week" | "month",
+): Scalar[] {
   const values: Scalar[] = [];
   const current = parseIsoDatePreserveYear(start);
   const endDate = parseIsoDatePreserveYear(end);
@@ -944,11 +949,23 @@ function buildDateRangeValues(start: string, end: string, step: "day" | "week" |
     else current.setUTCMonth(current.getUTCMonth() + 1);
 
     if (current.getTime() <= before) {
-      throw new Error("E_RANGE: invalid pivot date range increment");
+      throw new DiagnosticError({
+        code: "E_RANGE",
+        message: `pivot_table ${pivotName} has invalid date range increment`,
+        table: pivotName,
+        column: "columns.range",
+        range: lineRange(0),
+      });
     }
     guard += 1;
     if (guard > 100000) {
-      throw new Error("E_LIMIT: pivot date range too large");
+      throw new DiagnosticError({
+        code: "E_LIMIT",
+        message: `pivot_table ${pivotName} date range is too large`,
+        table: pivotName,
+        column: "columns.range",
+        range: lineRange(0),
+      });
     }
   }
 
@@ -972,6 +989,31 @@ function emptyPivotCell(policy: PivotTableDefinition["empty_cells"] | undefined)
 
 function toNumericOrNull(value: Scalar): Scalar {
   return typeof value === "number" ? value : null;
+}
+
+function toPivotDiagnostic(
+  err: unknown,
+  info: { table: string; rowKey?: string; column?: string; messagePrefix: string },
+): DiagnosticError {
+  if (err instanceof DiagnosticError) {
+    return new DiagnosticError({
+      code: err.code,
+      message: `${info.messagePrefix}: ${err.message}`,
+      severity: err.severity,
+      table: err.table ?? info.table,
+      column: err.column ?? info.column,
+      rowKey: err.rowKey ?? info.rowKey,
+      range: err.range,
+    });
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  return new DiagnosticError({
+    code: errorCodeFromMessage(message),
+    message: `${info.messagePrefix}: ${message}`,
+    table: info.table,
+    column: info.column,
+    rowKey: info.rowKey,
+  });
 }
 
 function evaluatePivotTables(
@@ -1006,6 +1048,7 @@ function evaluatePivotTables(
     let columnValues: Scalar[];
     if (pivot.columns.range) {
       columnValues = buildDateRangeValues(
+        name,
         pivot.columns.range.start,
         pivot.columns.range.end,
         pivot.columns.range.step ?? "day",
@@ -1039,7 +1082,17 @@ function evaluatePivotTables(
 
     const pairAggregates = new Map<string, Scalar>();
     for (const [key, values] of pairValueBuckets.entries()) {
-      pairAggregates.set(key, computeAggregateValues("sum", values));
+      try {
+        pairAggregates.set(key, computeAggregateValues("sum", values));
+      } catch (err) {
+        const [rowKeyRaw, columnKeyRaw] = key.split("\u0000");
+        throw toPivotDiagnostic(err, {
+          table: name,
+          rowKey: rowKeyRaw,
+          column: columnKeyRaw,
+          messagePrefix: `[pivot-table] table ${name} cell row=${rowKeyRaw} column=${columnKeyRaw}`,
+        });
+      }
     }
 
     const evaluatedRows = rowAxis.map((rowAxisEntry) => {
@@ -1048,7 +1101,16 @@ function evaluatePivotTables(
       for (const columnAxisEntry of columnAxis) {
         const key = pairKey(rowAxisEntry.key, columnAxisEntry.key);
         if (!pairValueBuckets.has(key)) {
-          values[columnAxisEntry.label] = emptyPivotCell(pivot.empty_cells);
+          try {
+            values[columnAxisEntry.label] = emptyPivotCell(pivot.empty_cells);
+          } catch (err) {
+            throw toPivotDiagnostic(err, {
+              table: name,
+              rowKey: String(rowAxisEntry.key),
+              column: "empty_cells",
+              messagePrefix: `[pivot-table] table ${name} cell row=${String(rowAxisEntry.key)} column=${columnAxisEntry.label}`,
+            });
+          }
           continue;
         }
         values[columnAxisEntry.label] = pairAggregates.get(key) ?? 0;
