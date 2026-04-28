@@ -165,12 +165,13 @@ function isValidIsoDate(value: string): boolean {
   const month = Number(monthRaw);
   const day = Number(dayRaw);
   if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year
-    && date.getUTCMonth() === month - 1
-    && date.getUTCDate() === day
-  );
+
+  if (month < 1 || month > 12) return false;
+  if (day < 1) return false;
+
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
 }
 
 function parsePivotTables(

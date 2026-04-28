@@ -847,6 +847,37 @@ pivot_tables:
     expect(result.diagnostics[0].message).toContain("start must be before or equal");
   });
 
+  it("accepts pivot_tables date ranges with years below 0100", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 0099-01-01
+        end: 0099-01-02
+        step: day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(pivotDoc);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"
