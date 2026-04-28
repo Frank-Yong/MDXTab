@@ -840,11 +840,12 @@ function parseColumnReference(sourceTable: string, reference: string): { table: 
 }
 
 function uniqueByString(values: Scalar[]): Scalar[] {
+  const scalarKey = (value: Scalar) => `${value === null ? "null" : typeof value}:${String(value)}`;
   const seen = new Set<string>();
   const out: Scalar[] = [];
   for (const value of values) {
     if (value === null || value === undefined) continue;
-    const key = String(value);
+    const key = scalarKey(value);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(value);
@@ -861,19 +862,21 @@ function compareByString(a: Scalar, b: Scalar): number {
 }
 
 function applyRowOrdering(values: Scalar[], order: string[] | undefined): Scalar[] {
+  const scalarKey = (value: Scalar) => `${value === null ? "null" : typeof value}:${String(value)}`;
   if (!order || order.length === 0) return values;
   const remaining = [...values];
-  const remainingByKey = new Map<string, Scalar>(remaining.map((value) => [String(value), value]));
+  const remainingByKey = new Map<string, Scalar>(remaining.map((value) => [scalarKey(value), value]));
   const ordered: Scalar[] = [];
 
-  for (const key of order) {
+  for (const orderedValue of order) {
+    const key = scalarKey(orderedValue);
     if (!remainingByKey.has(key)) continue;
     ordered.push(remainingByKey.get(key)!);
     remainingByKey.delete(key);
   }
 
   for (const value of remaining) {
-    const key = String(value);
+    const key = scalarKey(value);
     if (!remainingByKey.has(key)) continue;
     ordered.push(value);
     remainingByKey.delete(key);
