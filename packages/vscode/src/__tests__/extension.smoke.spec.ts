@@ -419,7 +419,25 @@ describe("vscode extension smoke", () => {
           columns: ["id", "amount"],
         },
       },
-    });
+      report_tables: {
+        category_balances: {
+          rows_from: "expenses",
+          columns: ["label", "total"],
+          cells: {
+            label: "row.id",
+            total: "expenses.sum_total",
+          },
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "expenses",
+          rows: { from: "id" },
+          columns: { from: "amount" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
 
     const sourceUri = MockUri.from({ scheme: "file", path: "/tmp/schema.md" });
     const sourceDoc = createDoc(
@@ -437,6 +455,8 @@ describe("vscode extension smoke", () => {
     expect(state.virtualDocumentContents.length).toBe(1);
     expect(state.virtualDocumentContents[0]).toContain("# MDXTab Table Schema");
     expect(state.virtualDocumentContents[0]).toContain('"expenses"');
+    expect(state.virtualDocumentContents[0]).toContain('"report_tables"');
+    expect(state.virtualDocumentContents[0]).toContain('"pivot_tables"');
   });
 
   it("warns when show-table-schema runs on a non-MDXTab file", async () => {

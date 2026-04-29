@@ -175,9 +175,9 @@ synthetically (same model as `report_tables`).
       `dev/examples/`.
 
 ### 10. Tooling (follow-up, not blocking MVP)
-- [ ] Snippets for `pivot_tables`.
-- [ ] Schema-command output includes `pivot_tables`.
-- [ ] Hover/completion in the VS Code extension.
+- [x] Snippets for `pivot_tables`.
+- [x] Schema-command output includes `pivot_tables`.
+- [x] Hover/completion in the VS Code extension.
 
 ## Sub-branch plan (4 PRs)
 
@@ -208,6 +208,7 @@ synthetically (same model as `report_tables`).
 - Branch: `issue-38-pivot-docs-tooling`
 - Scope: spec/docs updates, examples, optional VS Code/schema/snippet polish.
 - Includes tasks: 9, 10
+- Progress: task 9 docs/spec and task 10 VS Code tooling updates completed.
 
 ### Merge order
 1. `issue-38-pivot-schema-validation`

@@ -168,7 +168,7 @@ class MdxtabSymbolProvider implements DocumentSymbolProvider {
 
 type HoverEntry = {
   table: string;
-  kind: "computed" | "aggregate";
+  kind: "computed" | "aggregate" | "report-table" | "pivot-table";
   name: string;
   expr: string;
   line: number;
@@ -186,7 +186,14 @@ class MdxtabHoverProvider implements HoverProvider {
     const entry = findHoverEntry(document, position, this.cache);
     if (!entry) return undefined;
 
-    const title = entry.kind === "computed" ? "Computed" : "Aggregate";
+    const title =
+      entry.kind === "computed"
+        ? "Computed"
+        : entry.kind === "aggregate"
+        ? "Aggregate"
+        : entry.kind === "report-table"
+        ? "Report Table"
+        : "Pivot Table";
     const label = `${entry.table}.${entry.name}`;
     const md = new MarkdownString(`**${title}:** ${label}\n\n\`${entry.expr}\``);
     return new Hover(md);
@@ -237,6 +244,17 @@ class MdxtabCompletionProvider {
     }
 
     if (parsedFrontmatter && parsedTables) {
+      const headingStart = matchHeadingStart(lines[position.line] ?? "", position.character);
+      if (headingStart) {
+        for (const name of Object.keys(parsedFrontmatter.report_tables ?? {})) {
+          items.push(new CompletionItem(name, CompletionItemKind.Struct));
+        }
+        for (const name of Object.keys(parsedFrontmatter.pivot_tables ?? {})) {
+          items.push(new CompletionItem(name, CompletionItemKind.Struct));
+        }
+        return items;
+      }
+
       const interpolation = matchAggregateInterpolation(lines[position.line] ?? "", position.character);
       if (interpolation) {
         const table = parsedFrontmatter.tables[interpolation.table];
@@ -473,6 +491,43 @@ function findBodyHoverEntry(
   tables: ReturnType<typeof parseMarkdownTables>,
 ): HoverEntry | undefined {
   const lineText = lines[position.line] ?? "";
+  const headingMatch = lineText.match(/^\s*#{1,6}\s+([A-Za-z0-9_]+)\s*$/);
+  if (headingMatch) {
+    const heading = headingMatch[1];
+    const start = lineText.indexOf(heading);
+    const end = start + heading.length;
+    if (position.character >= start && position.character <= end) {
+      const report = frontmatter.report_tables?.[heading];
+      if (report) {
+        return {
+          table: heading,
+          kind: "report-table",
+          name: "rows_from",
+          expr: `rows_from=${report.rows_from}, columns=${report.columns.join(", ")}`,
+          line: position.line,
+          start,
+          end,
+          exprStart: start,
+          exprEnd: end,
+        };
+      }
+      const pivot = frontmatter.pivot_tables?.[heading];
+      if (pivot) {
+        return {
+          table: heading,
+          kind: "pivot-table",
+          name: "source",
+          expr: `source=${pivot.source}, rows.from=${pivot.rows.from}, columns.from=${pivot.columns.from}, value=${pivot.value}`,
+          line: position.line,
+          start,
+          end,
+          exprStart: start,
+          exprEnd: end,
+        };
+      }
+    }
+  }
+
   const aggregateMatch = matchAggregateInterpolation(lineText, position.character);
   if (aggregateMatch) {
     const table = frontmatter.tables[aggregateMatch.table];
@@ -541,6 +596,15 @@ function matchInterpolationStart(line: string, position: number): { start: numbe
   const endIndex = line.indexOf("}}", startIndex + 2);
   if (endIndex !== -1 && endIndex < position) return undefined;
   return { start: startIndex };
+}
+
+function matchHeadingStart(line: string, position: number): { start: number } | undefined {
+  const headingMatch = line.match(/^\s*#{1,6}\s+([A-Za-z0-9_]*)$/);
+  if (!headingMatch) return undefined;
+  const start = line.indexOf(headingMatch[1]);
+  const end = start + headingMatch[1].length;
+  if (position < start || position > end) return undefined;
+  return { start };
 }
 
 function findDotCompletionTable(
@@ -1162,13 +1226,23 @@ export function activate(context: ExtensionContext) {
     }
 
     const tableCount = Object.keys(frontmatter.tables).length;
-    if (tableCount === 0) {
-      window.showInformationMessage("MDXTab: no table schemas found in frontmatter");
+    const reportCount = Object.keys(frontmatter.report_tables ?? {}).length;
+    const pivotCount = Object.keys(frontmatter.pivot_tables ?? {}).length;
+    if (tableCount === 0 && reportCount === 0 && pivotCount === 0) {
+      window.showInformationMessage("MDXTab: no schemas found in frontmatter");
       return;
     }
 
     try {
-      const schemaJson = JSON.stringify({ tables: frontmatter.tables }, null, 2);
+      const schemaJson = JSON.stringify(
+        {
+          tables: frontmatter.tables,
+          report_tables: frontmatter.report_tables ?? {},
+          pivot_tables: frontmatter.pivot_tables ?? {},
+        },
+        null,
+        2,
+      );
       const schemaDoc = await workspace.openTextDocument({
         language: "markdown",
         content: [
