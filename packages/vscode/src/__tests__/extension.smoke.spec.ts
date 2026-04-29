@@ -604,4 +604,39 @@ describe("vscode extension smoke", () => {
     expect(hover?.contents.value).toContain("category-balances.rows_from");
     expect(hover?.contents.value).toContain("rows_from=entries");
   });
+
+  it("provides hover details for pivot table headings", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        entries: {
+          key: "id",
+          columns: ["id", "date", "category", "amount"],
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "entries",
+          rows: { from: "category" },
+          columns: { from: "date" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
+
+    const sourceDoc = createDoc(
+      MockUri.from({ scheme: "file", path: "/tmp/hover-pivot-heading.md" }),
+      "---\nmdxtab: \"1.0\"\ntables:\n  entries:\n    columns: [id, date, category, amount]\n---\n\n## liquidity\n",
+    );
+
+    const hover = state.hoverProvider?.provideHover(sourceDoc, new vscode.Position(7, 6)) as { contents: { value: string } } | undefined;
+    expect(hover?.contents.value).toContain("Pivot Table");
+    expect(hover?.contents.value).toContain("liquidity.source");
+    expect(hover?.contents.value).toContain("source=entries");
+    expect(hover?.contents.value).toContain("rows.from=category");
+  });
 });
