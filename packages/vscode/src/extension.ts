@@ -425,7 +425,7 @@ function getFencedLines(lines: string[]): Set<number> {
   for (let i = 0; i < lines.length; i += 1) {
     if (inFence) {
       fencedLines.add(i);
-      const closeRe = new RegExp(`^\\s*` + "`".repeat(fenceTicks) + `\\s*$`);
+      const closeRe = new RegExp(`^\\s*` + "`" + `{${fenceTicks},}\\s*$`);
       if (closeRe.test(lines[i])) {
         inFence = false;
         fenceTicks = 0;
