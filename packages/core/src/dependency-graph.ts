@@ -19,7 +19,7 @@ export function buildNameDependencyGraph(
   const names = Object.keys(nodes);
   const nameSet = new Set(names);
   const edges: DependencyEdge[] = [];
-  const depMap: Record<string, Set<string>> = {};
+  const depMap = Object.create(null) as Record<string, Set<string>>;
 
   for (const [name, deps] of Object.entries(nodes)) {
     const depSet = new Set<string>(deps);
@@ -30,7 +30,7 @@ export function buildNameDependencyGraph(
   }
 
   const order: string[] = [];
-  const state: Record<string, "visiting" | "visited"> = {};
+  const state = Object.create(null) as Record<string, "visiting" | "visited">;
 
   const visit = (name: string, depth = 1) => {
     try {
@@ -122,7 +122,7 @@ export function buildDependencyGraph(
   };
 
   const edges: DependencyEdge[] = [];
-  const depMap: Record<string, Set<string>> = {};
+  const depMap = Object.create(null) as Record<string, Set<string>>;
 
   for (const [name, ast] of Object.entries(nodes)) {
     const deps = new Set<string>();
@@ -134,7 +134,7 @@ export function buildDependencyGraph(
   }
 
   const order: string[] = [];
-  const state: Record<string, "visiting" | "visited"> = {};
+  const state = Object.create(null) as Record<string, "visiting" | "visited">;
 
   const visit = (n: string, depth = 1) => {
     try {
