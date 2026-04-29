@@ -2,6 +2,12 @@
 
 All notable changes to MDXTab will be documented in this file.
 
+## 2026-04-29 - 1.1.0
+- Add `pivot_tables` end-to-end support across core evaluation/rendering, formal spec, docs, examples, and VS Code extension UX.
+- Add pivot heading completions/hover support in the VS Code extension and align fenced-block handling with CommonMark fence closing rules.
+- Improve pivot/frontmatter validation and correctness (axis reference constraints, label-mode validation, numeric axis sorting, and shared ISO date validation).
+- Harden dependency graph map internals against prototype-key edge cases and extend regression coverage for pivot rendering/validation paths.
+
 ## 2026-04-06 - 1.0.0
 - Finalize v1.0 user-facing docs and documentation structure for first-run discoverability.
 - Add and ship `MDXTab: Show Table Schema` (`mdxtab.showTableSchema`) in the VS Code extension.
