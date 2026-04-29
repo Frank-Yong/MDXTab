@@ -569,6 +569,48 @@ describe("vscode extension smoke", () => {
     expect(labels).toContain("liquidity");
   });
 
+  it("does not provide heading completions one character past heading text", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        entries: {
+          key: "id",
+          columns: ["id", "amount"],
+        },
+      },
+      report_tables: {
+        "category-balances": {
+          rows_from: "entries",
+          columns: ["label"],
+          cells: {
+            label: "row.id",
+          },
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "entries",
+          rows: { from: "id" },
+          columns: { from: "id" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
+
+    const sourceDoc = createDoc(
+      MockUri.from({ scheme: "file", path: "/tmp/completion-heading-end.md" }),
+      "---\nmdxtab: \"1.0\"\ntables:\n  entries:\n    columns: [id, amount]\n---\n\n## liquidity\n",
+    );
+
+    const items = state.completionProvider?.provideCompletionItems(sourceDoc, new vscode.Position(7, 12)) ?? [];
+
+    expect(items).toEqual([]);
+  });
+
   it("provides hover details for synthetic table headings", async () => {
     const vscode = await import("vscode");
     const extension = await import("../extension.js");

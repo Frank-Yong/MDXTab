@@ -524,8 +524,8 @@ function findBodyHoverEntry(
   const lineText = lines[position.line] ?? "";
   const heading = extractHeadingInfo(lineText);
   if (heading) {
-    const { text, start, end } = heading;
-    if (position.character >= start && position.character <= end) {
+    const { text, start, endExclusive } = heading;
+    if (position.character >= start && position.character < endExclusive) {
       const report = frontmatter.report_tables?.[text];
       if (report) {
         return {
@@ -535,9 +535,9 @@ function findBodyHoverEntry(
           expr: `rows_from=${report.rows_from}, columns=${report.columns.join(", ")}`,
           line: position.line,
           start,
-          end,
+          end: endExclusive,
           exprStart: start,
-          exprEnd: end,
+          exprEnd: endExclusive,
         };
       }
       const pivot = frontmatter.pivot_tables?.[text];
@@ -549,9 +549,9 @@ function findBodyHoverEntry(
           expr: `source=${pivot.source}, rows.from=${pivot.rows.from}, columns.from=${pivot.columns.from}, value=${pivot.value}`,
           line: position.line,
           start,
-          end,
+          end: endExclusive,
           exprStart: start,
-          exprEnd: end,
+          exprEnd: endExclusive,
         };
       }
     }
@@ -630,20 +630,23 @@ function matchInterpolationStart(line: string, position: number): { start: numbe
 function matchHeadingStart(line: string, position: number): { start: number } | undefined {
   const heading = extractHeadingInfo(line);
   if (!heading) return undefined;
-  const { start, end } = heading;
-  if (position < start || position > end) return undefined;
+  const { start, endExclusive } = heading;
+  if (start === endExclusive) {
+    return position === start ? { start } : undefined;
+  }
+  if (position < start || position >= endExclusive) return undefined;
   return { start };
 }
 
-function extractHeadingInfo(line: string): { text: string; start: number; end: number } | undefined {
+function extractHeadingInfo(line: string): { text: string; start: number; endExclusive: number } | undefined {
   const markerMatch = line.match(/^\s*#{1,6}\s+/);
   if (!markerMatch) return undefined;
   const rawHeading = line.slice(markerMatch[0].length);
   const text = rawHeading.trim();
   const leadingWhitespace = rawHeading.match(/^\s*/)?.[0].length ?? 0;
   const start = markerMatch[0].length + leadingWhitespace;
-  const end = start + text.length;
-  return { text, start, end };
+  const endExclusive = start + text.length;
+  return { text, start, endExclusive };
 }
 
 function findDotCompletionTable(
