@@ -13,7 +13,7 @@ tables:
   <tableName>:
     key: <columnName>                # optional, default: id
     columns: [<columnName>, ...]
-    empty_cells: null|zero|empty-string|error  # optional, default: null
+    empty_cells: "null"|"zero"|"empty-string"|"error"  # optional; omit field for default null behavior
     types:                           # optional
       <columnName>: number|string|bool|date
     computed:                        # optional
@@ -46,7 +46,7 @@ pivot_tables:                        # optional
         step: day|week|month         # optional, default: day
       label: iso_date|short_month_day  # optional, default: iso_date
     value: sum(<columnName>)
-    empty_cells: null|zero|empty-string|error  # optional, default: null
+    empty_cells: "null"|"zero"|"empty-string"|"error"  # optional; omit field for default null behavior
     totals:                          # optional
       row: <name>
       column:
