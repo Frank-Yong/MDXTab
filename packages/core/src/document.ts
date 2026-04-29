@@ -1096,7 +1096,7 @@ function addUtcMonthsClamped(date: Date, months: number): Date {
 function derivePivotColumnLabel(
   pivotName: string,
   key: Scalar,
-  labelMode: string | undefined,
+  labelMode: PivotTableDefinition["columns"]["label"],
 ): string {
   const raw = String(key);
   if (!labelMode || labelMode === "iso_date") return raw;

@@ -306,9 +306,20 @@ function parsePivotTables(
     );
     const normalizedColumnsFrom = validateColumnReference(name, source, columnsFrom, "columns.from");
 
-    const columnsLabel = columnsObj.label === undefined
+    const columnsLabelRaw = columnsObj.label === undefined
       ? undefined
       : expectPivotString(name, columnsObj.label, `columns.label for pivot_table ${name}`, "columns.label");
+    let columnsLabel: PivotTableDefinition["columns"]["label"];
+    if (columnsLabelRaw !== undefined) {
+      if (columnsLabelRaw !== "iso_date" && columnsLabelRaw !== "short_month_day") {
+        throw pivotTableError(
+          name,
+          `pivot_table ${name} columns.label must be one of iso_date, short_month_day`,
+          "columns.label",
+        );
+      }
+      columnsLabel = columnsLabelRaw;
+    }
 
     let columnsRange: PivotTableDefinition["columns"]["range"];
     if (columnsObj.range !== undefined) {

@@ -41,7 +41,7 @@ export interface PivotColumnsRangeDefinition {
 export interface PivotColumnsDefinition {
   from: string;
   range?: PivotColumnsRangeDefinition;
-  label?: string;
+  label?: "iso_date" | "short_month_day";
 }
 
 export interface PivotTotalsColumnModeDefinition {

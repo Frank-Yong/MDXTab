@@ -987,6 +987,36 @@ pivot_tables:
     expect(result.diagnostics[0].message).toContain("Invalid empty_cells value");
   });
 
+  it("returns frontmatter diagnostics for invalid pivot_tables columns.label", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: month_day
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("columns.label must be one of iso_date, short_month_day");
+  });
+
   it("ignores pivot_tables key when provided", () => {
     const badPivotDoc = `---
 mdxtab: "1.0"
