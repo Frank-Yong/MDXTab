@@ -1281,6 +1281,45 @@ pivot_tables:
     expect(pivot.rows[0].values[c2]).toBe(120);
   });
 
+  it("applies pivot.columns.label when generating column axis labels", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: short_month_day
+      range:
+        start: 2026-04-24
+        end: 2026-04-25
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-25 | Salary | 200 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-04-24", "2026-04-25"]);
+    expect(pivot.columnAxis.map((c) => c.label)).toEqual(["apr_24", "apr_25"]);
+  });
+
   it("returns contextual diagnostics for runtime pivot empty_cells errors", () => {
     const pivotDoc = `---
 mdxtab: "1.0"

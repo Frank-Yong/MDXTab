@@ -27,6 +27,7 @@ import type {
 const NUMERIC_RE = /^-?\d+(?:\.\d+)?$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d+:\d{2}$/;
+const SHORT_MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
 type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
@@ -955,6 +956,38 @@ function addUtcMonthsClamped(date: Date, months: number): Date {
   return next;
 }
 
+function derivePivotColumnLabel(
+  pivotName: string,
+  key: Scalar,
+  labelMode: string | undefined,
+): string {
+  const raw = String(key);
+  if (!labelMode || labelMode === "iso_date") return raw;
+
+  if (labelMode === "short_month_day") {
+    if (!DATE_RE.test(raw)) {
+      throw new DiagnosticError({
+        code: "E_FRONTMATTER",
+        message: `pivot_table ${pivotName} columns.label short_month_day requires ISO date keys`,
+        table: pivotName,
+        column: "columns.label",
+        range: lineRange(0),
+      });
+    }
+    const [, monthText, dayText] = raw.split("-");
+    const month = Number(monthText);
+    return `${SHORT_MONTHS[month - 1]}_${dayText}`;
+  }
+
+  throw new DiagnosticError({
+    code: "E_FRONTMATTER",
+    message: `pivot_table ${pivotName} columns.label must be one of iso_date, short_month_day`,
+    table: pivotName,
+    column: "columns.label",
+    range: lineRange(0),
+  });
+}
+
 function buildDateRangeValues(
   pivotName: string,
   start: string,
@@ -1085,7 +1118,12 @@ function evaluatePivotTables(
     }
 
     const rowAxis = rowValues.map((key, index) => ({ id: scalarIdentity(key), key, label: String(key), index }));
-    const columnAxis = columnValues.map((key, index) => ({ id: scalarIdentity(key), key, label: String(key), index }));
+    const columnAxis = columnValues.map((key, index) => ({
+      id: scalarIdentity(key),
+      key,
+      label: derivePivotColumnLabel(name, key, pivot.columns.label),
+      index,
+    }));
 
     const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
     const pairValueBuckets = new Map<string, Scalar[]>();
