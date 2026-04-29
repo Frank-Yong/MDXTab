@@ -1,4 +1,5 @@
 import { buildDependencyGraph, buildNameDependencyGraph } from "./dependency-graph.js";
+import { isValidIsoDate } from "./date-utils.js";
 import { evaluateAst } from "./evaluator.js";
 import { parseExpression, type AstNode } from "./parser.js";
 import { parseFrontmatter } from "./frontmatter.js";
@@ -1055,21 +1056,6 @@ function parseIsoDatePreserveYear(isoDate: string): Date {
   date.setUTCFullYear(year, month - 1, day);
   date.setUTCHours(0, 0, 0, 0);
   return date;
-}
-
-function isValidIsoDate(value: string): boolean {
-  if (!DATE_RE.test(value)) return false;
-  const [yearText, monthText, dayText] = value.split("-");
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
-  if (month < 1 || month > 12) return false;
-  if (day < 1) return false;
-
-  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return day <= daysInMonth[month - 1];
 }
 
 function formatIsoDate(date: Date): string {
