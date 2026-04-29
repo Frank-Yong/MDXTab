@@ -207,7 +207,7 @@ class MdxtabCompletionProvider {
     if (document.languageId !== "markdown") return [];
     const context = getParsedContext(document, this.cache);
     if (!context.frontmatter || !context.frontmatterBounds) return [];
-    const { frontmatter: parsedFrontmatter, tables: parsedTables, entries, lines } = context;
+    const { frontmatter: parsedFrontmatter, tables: parsedTables, entries, lines, fencedLines } = context;
     const entry = entries.find(
       (item) =>
         item.line === position.line && position.character >= item.exprStart && position.character <= item.exprEnd,
@@ -244,7 +244,9 @@ class MdxtabCompletionProvider {
     }
 
     if (parsedFrontmatter && parsedTables) {
-      const headingStart = matchHeadingStart(lines[position.line] ?? "", position.character);
+      const headingStart = fencedLines.has(position.line)
+        ? undefined
+        : matchHeadingStart(lines[position.line] ?? "", position.character);
       if (headingStart) {
         for (const name of Object.keys(parsedFrontmatter.report_tables ?? {})) {
           items.push(new CompletionItem(name, CompletionItemKind.Struct));
@@ -389,7 +391,7 @@ function findHoverEntry(
   cache: Map<string, ParsedContext>,
 ): HoverEntry | undefined {
   const context = getParsedContext(document, cache);
-  const { lines, frontmatterBounds, frontmatter, tables, entries } = context;
+  const { lines, frontmatterBounds, frontmatter, tables, entries, fencedLines } = context;
   if (!frontmatterBounds) return undefined;
 
   if (position.line > frontmatterBounds.start && position.line < frontmatterBounds.end) {
@@ -401,7 +403,7 @@ function findHoverEntry(
   }
 
   if (frontmatter && tables) {
-    return findBodyHoverEntry(lines, position, frontmatter, tables);
+    return findBodyHoverEntry(lines, position, frontmatter, tables, fencedLines);
   }
 
   return undefined;
@@ -413,6 +415,33 @@ function getFrontmatterBounds(lines: string[]): { start: number; end: number } |
     if (lines[i].trim() === "---") return { start: 0, end: i };
   }
   return undefined;
+}
+
+function getFencedLines(lines: string[]): Set<number> {
+  const fencedLines = new Set<number>();
+  let inFence = false;
+  let fenceTicks = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    if (inFence) {
+      fencedLines.add(i);
+      const closeRe = new RegExp(`^\\s*` + "`".repeat(fenceTicks) + `\\s*$`);
+      if (closeRe.test(lines[i])) {
+        inFence = false;
+        fenceTicks = 0;
+      }
+      continue;
+    }
+
+    const openMatch = lines[i].match(/^\s*(`{3,})/);
+    if (openMatch) {
+      inFence = true;
+      fenceTicks = openMatch[1].length;
+      fencedLines.add(i);
+    }
+  }
+
+  return fencedLines;
 }
 
 function parseFrontmatterEntries(lines: string[], start: number, end: number): HoverEntry[] {
@@ -489,7 +518,9 @@ function findBodyHoverEntry(
   position: Position,
   frontmatter: ReturnType<typeof parseFrontmatter>,
   tables: ReturnType<typeof parseMarkdownTables>,
+  fencedLines: Set<number>,
 ): HoverEntry | undefined {
+  if (fencedLines.has(position.line)) return undefined;
   const lineText = lines[position.line] ?? "";
   const heading = extractHeadingInfo(lineText);
   if (heading) {
@@ -1033,6 +1064,7 @@ function extractContextValue(message: string, key: string): string | undefined {
 type ParsedContext = {
   version: number;
   lines: string[];
+  fencedLines: Set<number>;
   frontmatterBounds?: { start: number; end: number };
   frontmatter?: ReturnType<typeof parseFrontmatter>;
   tables?: ReturnType<typeof parseMarkdownTables>;
@@ -1046,6 +1078,7 @@ function getParsedContext(document: TextDocument, cache: Map<string, ParsedConte
 
   const text = document.getText();
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const fencedLines = getFencedLines(lines);
   const frontmatterBounds = getFrontmatterBounds(lines);
   let frontmatter: ReturnType<typeof parseFrontmatter> | undefined;
   let tables: ReturnType<typeof parseMarkdownTables> | undefined;
@@ -1066,6 +1099,7 @@ function getParsedContext(document: TextDocument, cache: Map<string, ParsedConte
   const parsed: ParsedContext = {
     version: document.version,
     lines,
+    fencedLines,
     frontmatterBounds,
     frontmatter,
     tables,
