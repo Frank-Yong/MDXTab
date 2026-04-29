@@ -1324,6 +1324,42 @@ pivot_tables:
     expect(pivot.columnAxis.map((c) => c.label)).toEqual(["apr_24", "apr_25"]);
   });
 
+  it("renders pivot rows correctly when column labels collide", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: short_month_day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2025-04-24 | Salary | 100 |
+| e2 | 2026-04-24 | Salary | 200 |
+
+## liquidity
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    expect(result.rendered).toContain("| category | apr_24 | apr_24 |");
+    expect(result.rendered).toContain("| Salary | 100 | 200 |");
+  });
+
   it("throws when short_month_day receives a calendar-invalid ISO date key", () => {
     const pivotDoc = `---
 mdxtab: "1.0"

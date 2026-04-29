@@ -733,40 +733,46 @@ function renderMarkdownTable(columns: string[], rows: Record<string, Scalar>[]):
   return [header, separator, ...dataLines];
 }
 
+function renderMarkdownTableFromMatrix(headers: string[], rows: Scalar[][]): string[] {
+  const headerCells = headers.map((header) => formatScalar(header));
+  const header = `| ${headerCells.join(" | ")} |`;
+  const separator = `|${headerCells.map((cell) => "-".repeat(Math.max(cell.length + 2, 3))).join("|")}|`;
+  const dataLines = rows.map((cells) => `| ${cells.map((cell) => formatScalar(cell)).join(" | ")} |`);
+  return [header, separator, ...dataLines];
+}
+
 function renderPivotMarkdownTable(pivot: PivotTableEvaluation): string[] {
   const columns = [pivot.rowsFrom, ...pivot.columnAxis.map((entry) => entry.label)];
   if (pivot.rowTotalName) {
     columns.push(pivot.rowTotalName);
   }
 
-  const rows: Record<string, Scalar>[] = [];
+  const rows: Scalar[][] = [];
   for (let rowIndex = 0; rowIndex < pivot.rowAxis.length; rowIndex += 1) {
     const axis = pivot.rowAxis[rowIndex];
     const row = pivot.rows[rowIndex];
-    const out = Object.create(null) as Record<string, Scalar>;
-    out[pivot.rowsFrom] = axis.label;
+    const out: Scalar[] = [axis.label];
     for (const columnEntry of pivot.columnAxis) {
-      out[columnEntry.label] = row.values[columnEntry.id];
+      out.push(row.values[columnEntry.id]);
     }
     if (pivot.rowTotalName) {
-      out[pivot.rowTotalName] = row.total ?? null;
+      out.push(row.total ?? null);
     }
     rows.push(out);
   }
 
   for (const footer of pivot.footerRows ?? []) {
-    const out = Object.create(null) as Record<string, Scalar>;
-    out[pivot.rowsFrom] = footer.key;
+    const out: Scalar[] = [footer.key];
     for (const columnEntry of pivot.columnAxis) {
-      out[columnEntry.label] = footer.values[columnEntry.id];
+      out.push(footer.values[columnEntry.id]);
     }
     if (pivot.rowTotalName) {
-      out[pivot.rowTotalName] = footer.total ?? null;
+      out.push(footer.total ?? null);
     }
     rows.push(out);
   }
 
-  return renderMarkdownTable(columns, rows);
+  return renderMarkdownTableFromMatrix(columns, rows);
 }
 
 function isMarkdownTableStart(lines: string[], startIndex: number): boolean {
@@ -919,6 +925,7 @@ function parseColumnReference(sourceTable: string, reference: string): { table: 
 function buildSyntheticEvaluationPlan(
   reportTables: Record<string, ParsedReportTable>,
   pivotTables: Record<string, PivotTableDefinition> | undefined,
+  limits: ExpressionLimits,
 ): { reportOrder: string[]; pivotOrder: string[] } {
   const reportNames = new Set(Object.keys(reportTables));
   const pivotNames = new Set(Object.keys(pivotTables ?? {}));
@@ -949,7 +956,7 @@ function buildSyntheticEvaluationPlan(
     nodes[`pivot:${name}`] = [...deps];
   }
 
-  const graph = buildNameDependencyGraph(nodes);
+  const graph = buildNameDependencyGraph(nodes, limits);
   const reportOrder = graph.order
     .filter((node) => node.startsWith("report:"))
     .map((node) => node.slice("report:".length));
@@ -1758,7 +1765,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   const parsedReportTables = parseReportTableExpressions(frontmatter.report_tables, limits);
   let syntheticPlan: { reportOrder: string[]; pivotOrder: string[] };
   try {
-    syntheticPlan = buildSyntheticEvaluationPlan(parsedReportTables, frontmatter.pivot_tables);
+    syntheticPlan = buildSyntheticEvaluationPlan(parsedReportTables, frontmatter.pivot_tables, limits);
   } catch (err) {
     throw wrapExpressionDiagnostic(err, { table: "<synthetic>", target: "<dependency>", kind: "dependency" });
   }
