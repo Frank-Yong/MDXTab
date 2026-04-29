@@ -37,7 +37,7 @@ pivot_tables:                        # optional
     source: <tableName>
     rows:
       from: <columnName>|<tableName>.<columnName>
-      order: [<value>, ...]          # optional
+      order: [<string>, ...]         # optional
     columns:
       from: <columnName>|<tableName>.<columnName>
       range:                         # optional
