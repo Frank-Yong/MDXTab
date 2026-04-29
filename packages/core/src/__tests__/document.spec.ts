@@ -850,6 +850,43 @@ pivot_tables:
     expect(result.diagnostics[0].message).toContain("rows.from references unknown column");
   });
 
+  it("returns frontmatter diagnostics when table.column axis references use a non-source column", () => {
+    const badPivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+  categories:
+    key: id
+    columns: [id, label]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: categories.label
+    columns:
+      from: date
+    value: sum(amount)
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+
+## categories
+| id | label |
+|----|-------|
+| Salary | Salary |
+`;
+
+    const result = validateMdxtab(badPivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
+    expect(result.diagnostics[0].message).toContain("does not exist in source table entries");
+  });
+
   it("returns frontmatter diagnostics when pivot_tables range start is after end", () => {
     const badPivotDoc = `---
 mdxtab: "1.0"

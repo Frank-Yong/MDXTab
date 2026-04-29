@@ -228,6 +228,7 @@ function parsePivotTables(
 
     let tableName = sourceTableName;
     let columnName = ref;
+    let usedTableReference = false;
     if (ref.includes(".")) {
       const parts = ref.split(".");
       if (parts.length !== 2 || parts[0].trim().length === 0 || parts[1].trim().length === 0) {
@@ -239,6 +240,7 @@ function parsePivotTables(
       }
       tableName = parts[0].trim();
       columnName = parts[1].trim();
+      usedTableReference = true;
     }
 
     if (!hasOwnTable(tableName)) {
@@ -252,6 +254,14 @@ function parsePivotTables(
       throw pivotTableError(
         pivotName,
         `pivot_table ${pivotName} ${columnLabel} references unknown column ${columnName} in table ${tableName}`,
+        columnLabel,
+      );
+    }
+
+    if (usedTableReference && !tables[sourceTableName].columns.includes(columnName)) {
+      throw pivotTableError(
+        pivotName,
+        `pivot_table ${pivotName} ${columnLabel} references column ${columnName} that does not exist in source table ${sourceTableName}`,
         columnLabel,
       );
     }
