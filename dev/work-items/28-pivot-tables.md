@@ -169,15 +169,15 @@ synthetically (same model as `report_tables`).
       collisions.
 
 ### 9. Docs & spec
-- [ ] Update `specs/formal-format-spec.md` with the `pivot_tables` schema and
+- [x] Update `specs/formal-format-spec.md` with the `pivot_tables` schema and
       evaluation order entry.
-- [ ] Add `docs/format-overview.md` mention and a worked example under
+- [x] Add `docs/format-overview.md` mention and a worked example under
       `dev/examples/`.
 
 ### 10. Tooling (follow-up, not blocking MVP)
-- [ ] Snippets for `pivot_tables`.
-- [ ] Schema-command output includes `pivot_tables`.
-- [ ] Hover/completion in the VS Code extension.
+- [x] Snippets for `pivot_tables`.
+- [x] Schema-command output includes `pivot_tables`.
+- [x] Hover/completion in the VS Code extension.
 
 ## Sub-branch plan (4 PRs)
 
@@ -206,8 +206,10 @@ synthetically (same model as `report_tables`).
 
 ### 4) Docs + examples + tooling polish
 - Branch: `issue-38-pivot-docs-tooling`
+- PR: https://github.com/Frank-Yong/MDXTab/pull/42
 - Scope: spec/docs updates, examples, optional VS Code/schema/snippet polish.
 - Includes tasks: 9, 10
+- Progress: task 9 docs/spec and task 10 VS Code tooling updates completed.
 
 ### Merge order
 1. `issue-38-pivot-schema-validation`

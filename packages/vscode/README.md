@@ -4,12 +4,14 @@
 
 - Command: **MDXTab: Render Preview** (`mdxtab.renderPreview`) — renders the active Markdown file through the MDXTab compiler into a preview document.
 - Command: **MDXTab: Validate Document** (`mdxtab.validateDocument`) — validates the active Markdown file and reports diagnostic count/status.
-- Command: **MDXTab: Show Table Schema** (`mdxtab.showTableSchema`) — opens a markdown view with the parsed `tables` frontmatter schema as JSON.
+- Command: **MDXTab: Show Table Schema** (`mdxtab.showTableSchema`) — opens a markdown view with parsed `tables`, `report_tables`, and `pivot_tables` frontmatter schema as JSON.
 - Diagnostics: recompiles on open/change/save; errors surface as markdown diagnostics at the top of the file.
 - Preview scheme: `mdxtab-preview:` opens a virtual document with the rendered output (frontmatter + interpolated aggregates).
 - **Computed column preview**: columns defined in frontmatter `computed` are rendered in the Markdown preview with their evaluated per-row values. Columns already authored as headers have their empty cells filled in; columns not in the source table are appended automatically.
 - **Summary row preview**: rows defined in frontmatter `summary_rows` are rendered as synthetic rows appended at the bottom of the table preview.
 - **Synthetic report table preview**: frontmatter `report_tables` render as derived Markdown tables at matching headings such as `## category_balances`.
+- **Synthetic pivot table preview**: frontmatter `pivot_tables` render as derived matrix tables at matching headings such as `## liquidity`.
+- **Heading completion + hover for synthetic tables**: completion suggests `report_tables` and `pivot_tables` names when editing Markdown headings, and hover shows quick details on matching synthetic-table headings.
 - **Expression guardrails**: validation rejects pathological computed/aggregate
   expressions with `E_LIMIT` diagnostics before they can trigger stack overflow
   or excessive work.
