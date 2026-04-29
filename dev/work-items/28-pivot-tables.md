@@ -169,9 +169,9 @@ synthetically (same model as `report_tables`).
       collisions.
 
 ### 9. Docs & spec
-- [ ] Update `specs/formal-format-spec.md` with the `pivot_tables` schema and
+- [x] Update `specs/formal-format-spec.md` with the `pivot_tables` schema and
       evaluation order entry.
-- [ ] Add `docs/format-overview.md` mention and a worked example under
+- [x] Add `docs/format-overview.md` mention and a worked example under
       `dev/examples/`.
 
 ### 10. Tooling (follow-up, not blocking MVP)
