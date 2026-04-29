@@ -1143,10 +1143,13 @@ function evaluatePivotTables(
     }));
 
     const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
+    const rowAxisIdByIdentity = new Map<string, string>(rowAxis.map((entry) => [scalarIdentity(entry.key), entry.id]));
+    const columnAxisIdByIdentity = new Map<string, string>(
+      columnAxis.map((entry) => [scalarIdentity(entry.key), entry.id]),
+    );
     const pairValueBuckets = new Map<string, Scalar[]>();
     const pairDisplayKeys = new Map<string, { row: string; column: string }>();
-    const pairKey = (rowKey: Scalar, columnKey: Scalar) =>
-      JSON.stringify([scalarIdentity(rowKey), scalarIdentity(columnKey)]);
+    const pairKey = (rowId: string, columnId: string) => `${rowId}\u0000${columnId}`;
 
     for (const row of ensuredSourceRows) {
       const rowKey = row[rowRef.column];
@@ -1154,7 +1157,12 @@ function evaluatePivotTables(
       if (rowKey === null || rowKey === undefined || colKey === null || colKey === undefined) {
         continue;
       }
-      const key = pairKey(rowKey, colKey);
+      const rowId = rowAxisIdByIdentity.get(scalarIdentity(rowKey));
+      const columnId = columnAxisIdByIdentity.get(scalarIdentity(colKey));
+      if (!rowId || !columnId) {
+        continue;
+      }
+      const key = pairKey(rowId, columnId);
       const bucket = pairValueBuckets.get(key);
       if (bucket) {
         bucket.push(row[valueColumn]);
@@ -1183,7 +1191,7 @@ function evaluatePivotTables(
       const values = Object.create(null) as Record<string, Scalar>;
 
       for (const columnAxisEntry of columnAxis) {
-        const key = pairKey(rowAxisEntry.key, columnAxisEntry.key);
+        const key = pairKey(rowAxisEntry.id, columnAxisEntry.id);
         if (!pairValueBuckets.has(key)) {
           try {
             values[columnAxisEntry.id] = emptyPivotCell(pivot.empty_cells);
