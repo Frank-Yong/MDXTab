@@ -147,10 +147,10 @@ synthetically (same model as `report_tables`).
 - [x] Names must satisfy identifier rules and not collide with axis headers.
 
 ### 6. Render injection
-- [ ] Detect `## <pivot_name>` headings and inject the rendered Markdown
+- [x] Detect `## <pivot_name>` headings and inject the rendered Markdown
       table (same mechanism as `report_tables`).
-- [ ] Preserve deterministic header and row order.
-- [ ] Source markdown remains unchanged; rendering occurs in preview/output
+- [x] Preserve deterministic header and row order.
+- [x] Source markdown remains unchanged; rendering occurs in preview/output
       and CLI `render` only.
 
 ### 7. Dependency graph & evaluation order
@@ -201,6 +201,7 @@ synthetically (same model as `report_tables`).
       render injection.
 - Includes tasks: 6, 7
 - Tests in same PR: compile/render integration coverage from task 8.
+- Progress: render injection for pivot headings completed.
 
 ### 4) Docs + examples + tooling polish
 - Branch: `issue-38-pivot-docs-tooling`

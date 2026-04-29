@@ -1083,7 +1083,7 @@ pivot_tables:
     expect(result.diagnostics).toHaveLength(0);
   });
 
-  it("does not fail when a manual markdown table exists under a pivot heading", () => {
+  it("replaces a manual markdown table under a pivot heading with rendered pivot output", () => {
     const pivotDoc = `---
 mdxtab: "1.0"
 tables:
@@ -1099,9 +1099,10 @@ pivot_tables:
       from: date
       range:
         start: 2026-04-24
-        end: 2026-05-24
+        end: 2026-04-25
         step: day
     value: sum(amount)
+    empty_cells: zero
 ---
 
 ## entries
@@ -1120,6 +1121,9 @@ pivot_tables:
 
     const result = compileMdxtab(pivotDoc);
     expect(result.rendered).toContain("## liquidity");
+    expect(result.rendered).toContain("| category | 2026-04-24 | 2026-04-25 |");
+    expect(result.rendered).toContain("| Salary | 100 | 0 |");
+    expect(result.rendered).not.toContain("| stale | old |");
   });
 
   it("evaluates pivot tables with range columns, row totals, and running footer", () => {
