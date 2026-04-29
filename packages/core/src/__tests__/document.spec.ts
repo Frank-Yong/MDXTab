@@ -1320,6 +1320,56 @@ pivot_tables:
     expect(pivot.columnAxis.map((c) => c.label)).toEqual(["apr_24", "apr_25"]);
   });
 
+  it("generates identifier-safe, unique pivot axis ids", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-26
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-25 | Food | -30 |
+| e3 | 2026-04-26 | Travel Expense | -10 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    const axisIdRe = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+    for (const entry of pivot.rowAxis) {
+      expect(entry.id).toMatch(axisIdRe);
+    }
+    for (const entry of pivot.columnAxis) {
+      expect(entry.id).toMatch(axisIdRe);
+    }
+
+    const rowIdSet = new Set(pivot.rowAxis.map((entry) => entry.id));
+    const colIdSet = new Set(pivot.columnAxis.map((entry) => entry.id));
+    expect(rowIdSet.size).toBe(pivot.rowAxis.length);
+    expect(colIdSet.size).toBe(pivot.columnAxis.length);
+  });
+
   it("returns contextual diagnostics for runtime pivot empty_cells errors", () => {
     const pivotDoc = `---
 mdxtab: "1.0"

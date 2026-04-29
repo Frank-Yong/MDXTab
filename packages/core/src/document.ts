@@ -114,6 +114,23 @@ function scalarIdentity(value: Scalar): string {
   return `${typeof value}:${String(value)}`;
 }
 
+function stableHash(input: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function scalarIdentifier(value: Scalar): string {
+  const typeName = value === null ? "null" : typeof value;
+  let slug = String(value).replace(/[^A-Za-z0-9_]/g, "_");
+  if (slug.length === 0) slug = "_";
+  if (!/^[A-Za-z_]/.test(slug)) slug = `_${slug}`;
+  return `k_${typeName}_${slug}_${stableHash(scalarIdentity(value))}`;
+}
+
 function coerceValue(text: string, type: ColumnType): Scalar {
   if (text === "true" || text === "false") {
     if (!type || type === "bool") return text === "true";
@@ -1117,9 +1134,9 @@ function evaluatePivotTables(
       columnValues = [...columnValues].sort(compareByString);
     }
 
-    const rowAxis = rowValues.map((key, index) => ({ id: scalarIdentity(key), key, label: String(key), index }));
+    const rowAxis = rowValues.map((key, index) => ({ id: scalarIdentifier(key), key, label: String(key), index }));
     const columnAxis = columnValues.map((key, index) => ({
-      id: scalarIdentity(key),
+      id: scalarIdentifier(key),
       key,
       label: derivePivotColumnLabel(name, key, pivot.columns.label),
       index,
