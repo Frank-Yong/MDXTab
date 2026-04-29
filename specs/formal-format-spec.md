@@ -75,7 +75,7 @@ pivot_tables:                        # optional
 - `report_tables.<name>.key` is optional and defaults to the key of the `rows_from` source table.
 - `pivot_tables` defines synthetic 2-D matrices rendered at matching headings.
 - `pivot_tables.<name>.source` must reference an authored table.
-- `pivot_tables.<name>.rows.from` and `.columns.from` accept either a source column name or `table.column` reference to an authored table.
+- `pivot_tables.<name>.rows.from` and `.columns.from` accept either a source column name or `table.column` reference to an authored table; when using `table.column`, the referenced column name must also exist in the pivot `source` table schema.
 - `pivot_tables.<name>.columns.range` is optional and requires ISO dates (`YYYY-MM-DD`) with `start <= end`; `step` is `day`, `week`, or `month`.
 - `pivot_tables.<name>.columns.label` supports `iso_date` and `short_month_day`.
 - `pivot_tables.<name>.value` in v1 must be `sum(<column>)` where `<column>` exists in the source table.
