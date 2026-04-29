@@ -32,6 +32,27 @@ report_tables:                       # optional
     columns: [<columnName>, ...]
     cells:
       <columnName>: <expression>
+pivot_tables:                        # optional
+  <pivotName>:
+    source: <tableName>
+    rows:
+      from: <columnName>|<tableName>.<columnName>
+      order: [<string>, ...]         # optional
+    columns:
+      from: <columnName>|<tableName>.<columnName>
+      range:                         # optional
+        start: YYYY-MM-DD
+        end: YYYY-MM-DD
+        step: day|week|month         # optional, default: day
+      label: iso_date|short_month_day  # optional, default: iso_date
+    value: sum(<columnName>)
+    key: <columnName>                # optional, default: source table key
+    empty_cells: null|zero|empty-string|error  # optional, default: null
+    totals:                          # optional
+      row: <name>
+      column:
+        <rowName>:
+          mode: sum|running_sum      # optional, default: sum
 ---
 
 # Markdown body (data + presentation)
@@ -53,6 +74,14 @@ report_tables:                       # optional
 - `report_tables.<name>.columns` defines rendered column order.
 - `report_tables.<name>.cells` must define one expression per rendered column.
 - `report_tables.<name>.key` is optional and defaults to the key of the `rows_from` source table.
+- `pivot_tables` defines synthetic 2-D matrices rendered at matching headings.
+- `pivot_tables.<name>.source` must reference an authored table.
+- `pivot_tables.<name>.rows.from` and `.columns.from` accept either a source column name or `table.column` reference to an authored table.
+- `pivot_tables.<name>.columns.range` is optional and requires ISO dates (`YYYY-MM-DD`) with `start <= end`; `step` is `day`, `week`, or `month`.
+- `pivot_tables.<name>.columns.label` supports `iso_date` and `short_month_day`.
+- `pivot_tables.<name>.value` in v1 must be `sum(<column>)` where `<column>` exists in the source table.
+- `pivot_tables.<name>.totals.row` defines the synthesized trailing row-total column name (it is not required to be a source-table column).
+- `pivot_tables.<name>.totals.column.<name>.mode` supports `sum` and `running_sum` footer rows.
 
 ## Markdown Body Rules
 - Contains only literal values; no inline formulas or expressions.
@@ -60,6 +89,7 @@ report_tables:                       # optional
 - Empty cells adopt `empty_cells` policy.
 - Tables are keyed by the `key` column; key values must be unique per table.
 - A heading whose text matches a `report_tables` name is a render target for that synthetic report table.
+- A heading whose text matches a `pivot_tables` name is a render target for that synthetic pivot table.
 
 ## Data Types
 - Primitive types: `number` (IEEE-754), `string` (UTF-8 text), `bool` (`true`/`false`), `date` (ISO-8601 `YYYY-MM-DD`).
@@ -157,7 +187,8 @@ arguments   ::= expression ( "," expression )*
 4) Evaluate aggregates over final column values.
 5) Evaluate `summary_rows` cell expressions in declaration order.
 6) Evaluate `report_tables` rows from their `rows_from` source tables.
-7) Render outputs (computed columns/summary rows/report tables/interpolation, exports).
+7) Evaluate `pivot_tables` row/column axes, cells, and totals.
+8) Render outputs (computed columns/summary rows/report tables/pivot tables/interpolation, exports).
 
 ### Aggregate Null Handling
 - Aggregates skip null inputs.

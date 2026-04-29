@@ -168,7 +168,7 @@ class MdxtabSymbolProvider implements DocumentSymbolProvider {
 
 type HoverEntry = {
   table: string;
-  kind: "computed" | "aggregate";
+  kind: "computed" | "aggregate" | "report-table" | "pivot-table";
   name: string;
   expr: string;
   line: number;
@@ -186,7 +186,14 @@ class MdxtabHoverProvider implements HoverProvider {
     const entry = findHoverEntry(document, position, this.cache);
     if (!entry) return undefined;
 
-    const title = entry.kind === "computed" ? "Computed" : "Aggregate";
+    const title =
+      entry.kind === "computed"
+        ? "Computed"
+        : entry.kind === "aggregate"
+        ? "Aggregate"
+        : entry.kind === "report-table"
+        ? "Report Table"
+        : "Pivot Table";
     const label = `${entry.table}.${entry.name}`;
     const md = new MarkdownString(`**${title}:** ${label}\n\n\`${entry.expr}\``);
     return new Hover(md);
@@ -200,7 +207,7 @@ class MdxtabCompletionProvider {
     if (document.languageId !== "markdown") return [];
     const context = getParsedContext(document, this.cache);
     if (!context.frontmatter || !context.frontmatterBounds) return [];
-    const { frontmatter: parsedFrontmatter, tables: parsedTables, entries, lines } = context;
+    const { frontmatter: parsedFrontmatter, tables: parsedTables, entries, lines, fencedLines } = context;
     const entry = entries.find(
       (item) =>
         item.line === position.line && position.character >= item.exprStart && position.character <= item.exprEnd,
@@ -237,6 +244,19 @@ class MdxtabCompletionProvider {
     }
 
     if (parsedFrontmatter && parsedTables) {
+      const headingStart = fencedLines.has(position.line)
+        ? undefined
+        : matchHeadingStart(lines[position.line] ?? "", position.character);
+      if (headingStart) {
+        for (const name of Object.keys(parsedFrontmatter.report_tables ?? {})) {
+          items.push(new CompletionItem(name, CompletionItemKind.Struct));
+        }
+        for (const name of Object.keys(parsedFrontmatter.pivot_tables ?? {})) {
+          items.push(new CompletionItem(name, CompletionItemKind.Struct));
+        }
+        return items;
+      }
+
       const interpolation = matchAggregateInterpolation(lines[position.line] ?? "", position.character);
       if (interpolation) {
         const table = parsedFrontmatter.tables[interpolation.table];
@@ -371,7 +391,7 @@ function findHoverEntry(
   cache: Map<string, ParsedContext>,
 ): HoverEntry | undefined {
   const context = getParsedContext(document, cache);
-  const { lines, frontmatterBounds, frontmatter, tables, entries } = context;
+  const { lines, frontmatterBounds, frontmatter, tables, entries, fencedLines } = context;
   if (!frontmatterBounds) return undefined;
 
   if (position.line > frontmatterBounds.start && position.line < frontmatterBounds.end) {
@@ -383,7 +403,7 @@ function findHoverEntry(
   }
 
   if (frontmatter && tables) {
-    return findBodyHoverEntry(lines, position, frontmatter, tables);
+    return findBodyHoverEntry(lines, position, frontmatter, tables, fencedLines);
   }
 
   return undefined;
@@ -395,6 +415,33 @@ function getFrontmatterBounds(lines: string[]): { start: number; end: number } |
     if (lines[i].trim() === "---") return { start: 0, end: i };
   }
   return undefined;
+}
+
+function getFencedLines(lines: string[]): Set<number> {
+  const fencedLines = new Set<number>();
+  let inFence = false;
+  let fenceTicks = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    if (inFence) {
+      fencedLines.add(i);
+      const closeRe = new RegExp(`^\\s*` + "`".repeat(fenceTicks) + `\\s*$`);
+      if (closeRe.test(lines[i])) {
+        inFence = false;
+        fenceTicks = 0;
+      }
+      continue;
+    }
+
+    const openMatch = lines[i].match(/^\s*(`{3,})/);
+    if (openMatch) {
+      inFence = true;
+      fenceTicks = openMatch[1].length;
+      fencedLines.add(i);
+    }
+  }
+
+  return fencedLines;
 }
 
 function parseFrontmatterEntries(lines: string[], start: number, end: number): HoverEntry[] {
@@ -471,8 +518,45 @@ function findBodyHoverEntry(
   position: Position,
   frontmatter: ReturnType<typeof parseFrontmatter>,
   tables: ReturnType<typeof parseMarkdownTables>,
+  fencedLines: Set<number>,
 ): HoverEntry | undefined {
+  if (fencedLines.has(position.line)) return undefined;
   const lineText = lines[position.line] ?? "";
+  const heading = extractHeadingInfo(lineText);
+  if (heading) {
+    const { text, start, end } = heading;
+    if (position.character >= start && position.character <= end) {
+      const report = frontmatter.report_tables?.[text];
+      if (report) {
+        return {
+          table: text,
+          kind: "report-table",
+          name: "rows_from",
+          expr: `rows_from=${report.rows_from}, columns=${report.columns.join(", ")}`,
+          line: position.line,
+          start,
+          end,
+          exprStart: start,
+          exprEnd: end,
+        };
+      }
+      const pivot = frontmatter.pivot_tables?.[text];
+      if (pivot) {
+        return {
+          table: text,
+          kind: "pivot-table",
+          name: "source",
+          expr: `source=${pivot.source}, rows.from=${pivot.rows.from}, columns.from=${pivot.columns.from}, value=${pivot.value}`,
+          line: position.line,
+          start,
+          end,
+          exprStart: start,
+          exprEnd: end,
+        };
+      }
+    }
+  }
+
   const aggregateMatch = matchAggregateInterpolation(lineText, position.character);
   if (aggregateMatch) {
     const table = frontmatter.tables[aggregateMatch.table];
@@ -541,6 +625,25 @@ function matchInterpolationStart(line: string, position: number): { start: numbe
   const endIndex = line.indexOf("}}", startIndex + 2);
   if (endIndex !== -1 && endIndex < position) return undefined;
   return { start: startIndex };
+}
+
+function matchHeadingStart(line: string, position: number): { start: number } | undefined {
+  const heading = extractHeadingInfo(line);
+  if (!heading) return undefined;
+  const { start, end } = heading;
+  if (position < start || position > end) return undefined;
+  return { start };
+}
+
+function extractHeadingInfo(line: string): { text: string; start: number; end: number } | undefined {
+  const markerMatch = line.match(/^\s*#{1,6}\s+/);
+  if (!markerMatch) return undefined;
+  const rawHeading = line.slice(markerMatch[0].length);
+  const text = rawHeading.trim();
+  const leadingWhitespace = rawHeading.match(/^\s*/)?.[0].length ?? 0;
+  const start = markerMatch[0].length + leadingWhitespace;
+  const end = start + text.length;
+  return { text, start, end };
 }
 
 function findDotCompletionTable(
@@ -961,6 +1064,7 @@ function extractContextValue(message: string, key: string): string | undefined {
 type ParsedContext = {
   version: number;
   lines: string[];
+  fencedLines: Set<number>;
   frontmatterBounds?: { start: number; end: number };
   frontmatter?: ReturnType<typeof parseFrontmatter>;
   tables?: ReturnType<typeof parseMarkdownTables>;
@@ -974,6 +1078,7 @@ function getParsedContext(document: TextDocument, cache: Map<string, ParsedConte
 
   const text = document.getText();
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const fencedLines = getFencedLines(lines);
   const frontmatterBounds = getFrontmatterBounds(lines);
   let frontmatter: ReturnType<typeof parseFrontmatter> | undefined;
   let tables: ReturnType<typeof parseMarkdownTables> | undefined;
@@ -994,6 +1099,7 @@ function getParsedContext(document: TextDocument, cache: Map<string, ParsedConte
   const parsed: ParsedContext = {
     version: document.version,
     lines,
+    fencedLines,
     frontmatterBounds,
     frontmatter,
     tables,
@@ -1162,13 +1268,23 @@ export function activate(context: ExtensionContext) {
     }
 
     const tableCount = Object.keys(frontmatter.tables).length;
-    if (tableCount === 0) {
-      window.showInformationMessage("MDXTab: no table schemas found in frontmatter");
+    const reportCount = Object.keys(frontmatter.report_tables ?? {}).length;
+    const pivotCount = Object.keys(frontmatter.pivot_tables ?? {}).length;
+    if (tableCount === 0 && reportCount === 0 && pivotCount === 0) {
+      window.showInformationMessage("MDXTab: no schemas found in frontmatter");
       return;
     }
 
     try {
-      const schemaJson = JSON.stringify({ tables: frontmatter.tables }, null, 2);
+      const schemaJson = JSON.stringify(
+        {
+          tables: frontmatter.tables,
+          report_tables: frontmatter.report_tables ?? {},
+          pivot_tables: frontmatter.pivot_tables ?? {},
+        },
+        null,
+        2,
+      );
       const schemaDoc = await workspace.openTextDocument({
         language: "markdown",
         content: [

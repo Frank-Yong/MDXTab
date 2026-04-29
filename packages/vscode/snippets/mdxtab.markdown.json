@@ -26,5 +26,37 @@
       "| ${4} | ${5} |"
     ],
     "description": "Insert a basic MDXTab table scaffold."
+  },
+  "MDXTab pivot frontmatter block": {
+    "prefix": "mdxtab-pivot",
+    "body": [
+      "pivot_tables:",
+      "  ${1:pivot_name}:",
+      "    source: ${2:entries}",
+      "    rows:",
+      "      from: ${3:category}",
+      "    columns:",
+      "      from: ${4:date}",
+      "      range:",
+      "        start: ${5:2026-04-24}",
+      "        end: ${6:2026-04-26}",
+      "        step: ${7:day}",
+      "      label: ${8:short_month_day}",
+      "    value: sum(${9:amount})",
+      "    empty_cells: ${10:zero}",
+      "    totals:",
+      "      row: ${11:total}",
+      "      column:",
+      "        ${12:accumulated}:",
+      "          mode: ${13:running_sum}"
+    ],
+    "description": "Insert a pivot_tables frontmatter scaffold."
+  },
+  "MDXTab pivot render heading": {
+    "prefix": "mdxtab-pivot-heading",
+    "body": [
+      "## ${1:pivot_name}"
+    ],
+    "description": "Insert a Markdown heading render target for a pivot table."
   }
 }

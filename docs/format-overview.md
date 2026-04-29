@@ -38,12 +38,20 @@ tables:
 - `aggregates`: table-wide results (`sum`, `avg`, `min`, `max`, `count`)
 - `summary_rows`: synthetic footer-style rows
 - `report_tables`: synthetic derived tables rendered at matching headings
+- `pivot_tables`: synthetic matrix tables rendered at matching headings
 
 ## Common expression inputs
 
 - `row.<column>` for current row values
 - aggregate functions like `sum(net)`
 - lookup paths like `transactions.total_by_category[row.id]`
+
+## Pivot tables
+
+- Use `pivot_tables` when you need a matrix layout such as `category x date`.
+- Define `source`, `rows.from`, `columns.from`, and `value`.
+- Optional `columns.range` generates a deterministic date axis (`day`, `week`, `month`).
+- Optional `totals` adds row-total and footer rows.
 
 ## Design rule
 
@@ -55,6 +63,7 @@ Keep formulas in frontmatter and keep markdown tables as data only.
 - `dev/examples/time-entries.md`
 - `dev/examples/grouped-aggregates.md`
 - `dev/examples/transactions.md`
+- `dev/examples/pivot-liquidity.md`
 
 ## Next
 
