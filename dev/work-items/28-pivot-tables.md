@@ -3,7 +3,7 @@
 ## Status
 - State: IN PROGRESS
 - Priority: MEDIUM
-- Branch: `issue-38-pivot-eval-core` (active), `issue-38-pivot-tables` (umbrella)
+- Branch: `issue-38-pivot-render-pipeline` (active), `issue-38-pivot-tables` (umbrella)
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/38
 
 ## Description
@@ -193,7 +193,7 @@ synthetically (same model as `report_tables`).
 - Scope: row/column axis generation, cell aggregation, totals behavior.
 - Includes tasks: 2, 3, 4, 5
 - Tests in same PR: unit tests for axis/cell/totals from task 8.
-- Progress: completed in commit `8e2fa0c`.
+- Progress: completed in commit `8e2fa0c`, merged into `issue-38-pivot-tables`.
 
 ### 3) Pipeline + rendering
 - Branch: `issue-38-pivot-render-pipeline`
