@@ -359,12 +359,6 @@ function parsePivotTables(
     }
 
     const valueExpr = expectPivotString(name, pivotObj.value, `value for pivot_table ${name}`, "value");
-    const key = pivotObj.key === undefined
-      ? sourceTable.key ?? "id"
-      : expectPivotString(name, pivotObj.key, `key for pivot_table ${name}`, "key");
-    if (!sourceTable.columns.includes(key)) {
-      throw pivotTableError(name, `pivot_table ${name} key ${key} is not a column in source table ${source}`, "key");
-    }
 
     if (
       pivotObj.empty_cells !== undefined
@@ -423,7 +417,6 @@ function parsePivotTables(
 
     result[name] = {
       source,
-      key,
       rows: {
         from: rowsFrom,
         order: rowsOrder,

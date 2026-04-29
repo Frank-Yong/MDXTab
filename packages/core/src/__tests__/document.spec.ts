@@ -950,7 +950,7 @@ pivot_tables:
     expect(result.diagnostics[0].message).toContain("Invalid empty_cells value");
   });
 
-  it("returns frontmatter diagnostics for pivot_tables key not in source columns", () => {
+  it("ignores pivot_tables key when provided", () => {
     const badPivotDoc = `---
 mdxtab: "1.0"
 tables:
@@ -979,9 +979,10 @@ pivot_tables:
 `;
 
     const result = validateMdxtab(badPivotDoc);
-    expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0].code).toBe("E_FRONTMATTER");
-    expect(result.diagnostics[0].message).toContain("key missing_key is not a column");
+  expect(result.diagnostics).toHaveLength(0);
+
+  const compiled = compileMdxtab(badPivotDoc);
+  expect(compiled.pivotTables.liquidity.rows).toHaveLength(1);
   });
 
   it("returns frontmatter diagnostics for invalid pivot_tables totals.column mode", () => {

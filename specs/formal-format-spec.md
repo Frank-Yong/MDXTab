@@ -46,7 +46,6 @@ pivot_tables:                        # optional
         step: day|week|month         # optional, default: day
       label: iso_date|short_month_day  # optional, default: iso_date
     value: sum(<columnName>)
-    key: <columnName>                # optional, default: source table key
     empty_cells: null|zero|empty-string|error  # optional, default: null
     totals:                          # optional
       row: <name>

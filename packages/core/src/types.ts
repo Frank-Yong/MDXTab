@@ -58,7 +58,6 @@ export interface PivotTableDefinition {
   rows: PivotRowsDefinition;
   columns: PivotColumnsDefinition;
   value: string;
-  key?: string;
   empty_cells?: "null" | "zero" | "empty-string" | "error";
   totals?: PivotTotalsDefinition;
 }
