@@ -1084,8 +1084,8 @@ function evaluatePivotTables(
       columnValues = [...columnValues].sort(compareByString);
     }
 
-    const rowAxis = rowValues.map((key, index) => ({ key, label: String(key), index }));
-    const columnAxis = columnValues.map((key, index) => ({ key, label: String(key), index }));
+    const rowAxis = rowValues.map((key, index) => ({ id: scalarIdentity(key), key, label: String(key), index }));
+    const columnAxis = columnValues.map((key, index) => ({ id: scalarIdentity(key), key, label: String(key), index }));
 
     const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
     const pairValueBuckets = new Map<string, Scalar[]>();
@@ -1129,7 +1129,7 @@ function evaluatePivotTables(
         const key = pairKey(rowAxisEntry.key, columnAxisEntry.key);
         if (!pairValueBuckets.has(key)) {
           try {
-            values[columnAxisEntry.label] = emptyPivotCell(pivot.empty_cells);
+            values[columnAxisEntry.id] = emptyPivotCell(pivot.empty_cells);
           } catch (err) {
             throw toPivotDiagnostic(err, {
               table: name,
@@ -1140,7 +1140,7 @@ function evaluatePivotTables(
           }
           continue;
         }
-        values[columnAxisEntry.label] = pairAggregates.get(key) ?? 0;
+        values[columnAxisEntry.id] = pairAggregates.get(key) ?? 0;
       }
 
       const rowTotal = pivot.totals?.row
@@ -1164,15 +1164,15 @@ function evaluatePivotTables(
         for (const columnAxisEntry of columnAxis) {
           const colTotal = computeAggregateValues(
             "sum",
-            evaluatedRows.map((row) => toNumericOrNull(row.values[columnAxisEntry.label])),
+            evaluatedRows.map((row) => toNumericOrNull(row.values[columnAxisEntry.id])),
           );
 
           if (mode === "running_sum") {
             const numericColTotal = typeof colTotal === "number" ? colTotal : 0;
             running += numericColTotal;
-            footerValues[columnAxisEntry.label] = running;
+            footerValues[columnAxisEntry.id] = running;
           } else {
-            footerValues[columnAxisEntry.label] = colTotal;
+            footerValues[columnAxisEntry.id] = colTotal;
           }
         }
 

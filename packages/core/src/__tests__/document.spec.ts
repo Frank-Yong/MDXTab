@@ -1164,21 +1164,23 @@ pivot_tables:
 
     const result = compileMdxtab(pivotDoc);
     const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
+    const c1 = pivot.columnAxis[1].id;
 
     expect(pivot.rowAxis.map((r) => r.key)).toEqual(["Salary", "Food"]);
     expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-04-24", "2026-04-25"]);
 
-    expect(pivot.rows[0].values["2026-04-24"]).toBe(150);
-    expect(pivot.rows[0].values["2026-04-25"]).toBe(20);
+    expect(pivot.rows[0].values[c0]).toBe(150);
+    expect(pivot.rows[0].values[c1]).toBe(20);
     expect(pivot.rows[0].total).toBe(170);
 
-    expect(pivot.rows[1].values["2026-04-24"]).toBe(0);
-    expect(pivot.rows[1].values["2026-04-25"]).toBe(-30);
+    expect(pivot.rows[1].values[c0]).toBe(0);
+    expect(pivot.rows[1].values[c1]).toBe(-30);
     expect(pivot.rows[1].total).toBe(-30);
 
     expect(pivot.footerRows?.[0].key).toBe("accumulated");
-    expect(pivot.footerRows?.[0].values["2026-04-24"]).toBe(150);
-    expect(pivot.footerRows?.[0].values["2026-04-25"]).toBe(140);
+    expect(pivot.footerRows?.[0].values[c0]).toBe(150);
+    expect(pivot.footerRows?.[0].values[c1]).toBe(140);
     expect(pivot.footerRows?.[0].total).toBe(290);
   });
 
@@ -1226,11 +1228,12 @@ pivot_tables:
 
     const result = compileMdxtab(pivotDoc);
     const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
 
     expect(pivot.rowAxis.map((r) => r.key)).toEqual(["Travel", "Salary", "Food"]);
-    expect(pivot.rows[0].values["2026-04-24"]).toBe(0);
-    expect(pivot.rows[1].values["2026-04-24"]).toBe(100);
-    expect(pivot.rows[2].values["2026-04-24"]).toBe(-30);
+    expect(pivot.rows[0].values[c0]).toBe(0);
+    expect(pivot.rows[1].values[c0]).toBe(100);
+    expect(pivot.rows[2].values[c0]).toBe(-30);
   });
 
   it("generates month-stepped pivot columns with clamped month-end progression", () => {
@@ -1268,11 +1271,14 @@ pivot_tables:
 
     const result = compileMdxtab(pivotDoc);
     const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
+    const c1 = pivot.columnAxis[1].id;
+    const c2 = pivot.columnAxis[2].id;
 
     expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-01-31", "2026-02-28", "2026-03-28"]);
-    expect(pivot.rows[0].values["2026-01-31"]).toBe(100);
-    expect(pivot.rows[0].values["2026-02-28"]).toBe(110);
-    expect(pivot.rows[0].values["2026-03-28"]).toBe(120);
+    expect(pivot.rows[0].values[c0]).toBe(100);
+    expect(pivot.rows[0].values[c1]).toBe(110);
+    expect(pivot.rows[0].values[c2]).toBe(120);
   });
 
   it("returns contextual diagnostics for runtime pivot empty_cells errors", () => {

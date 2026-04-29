@@ -132,6 +132,7 @@ export interface ReportTableEvaluation {
 }
 
 export interface PivotAxisEntry {
+  id: string;
   key: Scalar;
   label: string;
   index: number;
