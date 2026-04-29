@@ -1083,7 +1083,7 @@ pivot_tables:
     expect(result.diagnostics).toHaveLength(0);
   });
 
-  it("does not fail when a manual markdown table exists under a pivot heading", () => {
+  it("replaces a manual markdown table under a pivot heading with rendered pivot output", () => {
     const pivotDoc = `---
 mdxtab: "1.0"
 tables:
@@ -1099,9 +1099,10 @@ pivot_tables:
       from: date
       range:
         start: 2026-04-24
-        end: 2026-05-24
+        end: 2026-04-25
         step: day
     value: sum(amount)
+    empty_cells: zero
 ---
 
 ## entries
@@ -1120,6 +1121,9 @@ pivot_tables:
 
     const result = compileMdxtab(pivotDoc);
     expect(result.rendered).toContain("## liquidity");
+    expect(result.rendered).toContain("| category | 2026-04-24 | 2026-04-25 |");
+    expect(result.rendered).toContain("| Salary | 100 | 0 |");
+    expect(result.rendered).not.toContain("| stale | old |");
   });
 
   it("evaluates pivot tables with range columns, row totals, and running footer", () => {
@@ -1318,6 +1322,42 @@ pivot_tables:
     const pivot = result.pivotTables.liquidity;
     expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-04-24", "2026-04-25"]);
     expect(pivot.columnAxis.map((c) => c.label)).toEqual(["apr_24", "apr_25"]);
+  });
+
+  it("renders pivot rows correctly when column labels collide", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: short_month_day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2025-04-24 | Salary | 100 |
+| e2 | 2026-04-24 | Salary | 200 |
+
+## liquidity
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    expect(result.rendered).toContain("| category | apr_24 | apr_24 |");
+    expect(result.rendered).toContain("| Salary | 100 | 200 |");
   });
 
   it("throws when short_month_day receives a calendar-invalid ISO date key", () => {

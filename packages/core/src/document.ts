@@ -1,4 +1,4 @@
-import { buildDependencyGraph } from "./dependency-graph.js";
+import { buildDependencyGraph, buildNameDependencyGraph } from "./dependency-graph.js";
 import { evaluateAst } from "./evaluator.js";
 import { parseExpression, type AstNode } from "./parser.js";
 import { parseFrontmatter } from "./frontmatter.js";
@@ -733,6 +733,48 @@ function renderMarkdownTable(columns: string[], rows: Record<string, Scalar>[]):
   return [header, separator, ...dataLines];
 }
 
+function renderMarkdownTableFromMatrix(headers: string[], rows: Scalar[][]): string[] {
+  const headerCells = headers.map((header) => formatScalar(header));
+  const header = `| ${headerCells.join(" | ")} |`;
+  const separator = `|${headerCells.map((cell) => "-".repeat(Math.max(cell.length + 2, 3))).join("|")}|`;
+  const dataLines = rows.map((cells) => `| ${cells.map((cell) => formatScalar(cell)).join(" | ")} |`);
+  return [header, separator, ...dataLines];
+}
+
+function renderPivotMarkdownTable(pivot: PivotTableEvaluation): string[] {
+  const columns = [pivot.rowsFrom, ...pivot.columnAxis.map((entry) => entry.label)];
+  if (pivot.rowTotalName) {
+    columns.push(pivot.rowTotalName);
+  }
+
+  const rows: Scalar[][] = [];
+  for (let rowIndex = 0; rowIndex < pivot.rowAxis.length; rowIndex += 1) {
+    const axis = pivot.rowAxis[rowIndex];
+    const row = pivot.rows[rowIndex];
+    const out: Scalar[] = [axis.label];
+    for (const columnEntry of pivot.columnAxis) {
+      out.push(row.values[columnEntry.id]);
+    }
+    if (pivot.rowTotalName) {
+      out.push(row.total ?? null);
+    }
+    rows.push(out);
+  }
+
+  for (const footer of pivot.footerRows ?? []) {
+    const out: Scalar[] = [footer.key];
+    for (const columnEntry of pivot.columnAxis) {
+      out.push(footer.values[columnEntry.id]);
+    }
+    if (pivot.rowTotalName) {
+      out.push(footer.total ?? null);
+    }
+    rows.push(out);
+  }
+
+  return renderMarkdownTableFromMatrix(columns, rows);
+}
+
 function isMarkdownTableStart(lines: string[], startIndex: number): boolean {
   if (startIndex + 1 >= lines.length) return false;
   const header = lines[startIndex];
@@ -747,12 +789,9 @@ function isPipeDelimitedRow(line: string): boolean {
   return trimmed.startsWith("|") && trimmed.endsWith("|");
 }
 
-function injectReportTables(
-  body: string,
-  reportTables: Record<string, ReportTableEvaluation>,
-): string {
-  const hasOwnReportTable = (heading: string): heading is keyof typeof reportTables =>
-    Object.prototype.hasOwnProperty.call(reportTables, heading);
+function injectSyntheticMarkdownTables(body: string, tableLinesByHeading: Record<string, string[]>): string {
+  const hasOwnSyntheticTable = (heading: string): heading is keyof typeof tableLinesByHeading =>
+    Object.prototype.hasOwnProperty.call(tableLinesByHeading, heading);
   const lines = body.split("\n");
   const fencedLines = getFencedLines(lines);
   const headings = lines
@@ -763,12 +802,11 @@ function injectReportTables(
       heading: line.match(/^\s*#{1,6}\s+(.*)$/)?.[1].trim(),
     }))
     .filter((entry): entry is { index: number; heading: string } => Boolean(entry.heading))
-    .filter(({ heading }) => hasOwnReportTable(heading))
+    .filter(({ heading }) => hasOwnSyntheticTable(heading))
     .sort((a, b) => b.index - a.index);
 
   for (const { index, heading } of headings) {
-    const report = reportTables[heading];
-    const tableLines = renderMarkdownTable(report.columns, report.rows);
+    const tableLines = tableLinesByHeading[heading];
     let replaceStart = index + 1;
     while (replaceStart < lines.length && lines[replaceStart].trim() === "") {
       replaceStart += 1;
@@ -784,6 +822,28 @@ function injectReportTables(
   }
 
   return lines.join("\n");
+}
+
+function injectReportTables(
+  body: string,
+  reportTables: Record<string, ReportTableEvaluation>,
+): string {
+  const tableLinesByHeading = Object.create(null) as Record<string, string[]>;
+  for (const [name, report] of Object.entries(reportTables)) {
+    tableLinesByHeading[name] = renderMarkdownTable(report.columns, report.rows);
+  }
+  return injectSyntheticMarkdownTables(body, tableLinesByHeading);
+}
+
+function injectPivotTables(
+  body: string,
+  pivotTables: Record<string, PivotTableEvaluation>,
+): string {
+  const tableLinesByHeading = Object.create(null) as Record<string, string[]>;
+  for (const [name, pivot] of Object.entries(pivotTables)) {
+    tableLinesByHeading[name] = renderPivotMarkdownTable(pivot);
+  }
+  return injectSyntheticMarkdownTables(body, tableLinesByHeading);
 }
 
 function evaluateReportTables(
@@ -860,6 +920,51 @@ function parseColumnReference(sourceTable: string, reference: string): { table: 
   }
   const [table, column] = reference.split(".");
   return { table, column };
+}
+
+function buildSyntheticEvaluationPlan(
+  reportTables: Record<string, ParsedReportTable>,
+  pivotTables: Record<string, PivotTableDefinition> | undefined,
+  limits: ExpressionLimits,
+): { reportOrder: string[]; pivotOrder: string[] } {
+  const reportNames = new Set(Object.keys(reportTables));
+  const pivotNames = new Set(Object.keys(pivotTables ?? {}));
+  const nodes = Object.create(null) as Record<string, string[]>;
+
+  const syntheticNodeName = (name: string): string | undefined => {
+    if (reportNames.has(name)) return `report:${name}`;
+    if (pivotNames.has(name)) return `pivot:${name}`;
+    return undefined;
+  };
+
+  for (const [name, report] of Object.entries(reportTables)) {
+    const deps: string[] = [];
+    const dep = syntheticNodeName(report.rowsFrom);
+    if (dep) deps.push(dep);
+    nodes[`report:${name}`] = deps;
+  }
+
+  for (const [name, pivot] of Object.entries(pivotTables ?? {})) {
+    const deps = new Set<string>();
+    const rowRef = parseColumnReference(pivot.source, pivot.rows.from);
+    const columnRef = parseColumnReference(pivot.source, pivot.columns.from);
+    const candidates = [pivot.source, rowRef.table, columnRef.table];
+    for (const candidate of candidates) {
+      const dep = syntheticNodeName(candidate);
+      if (dep) deps.add(dep);
+    }
+    nodes[`pivot:${name}`] = [...deps];
+  }
+
+  const graph = buildNameDependencyGraph(nodes, limits);
+  const reportOrder = graph.order
+    .filter((node) => node.startsWith("report:"))
+    .map((node) => node.slice("report:".length));
+  const pivotOrder = graph.order
+    .filter((node) => node.startsWith("pivot:"))
+    .map((node) => node.slice("pivot:".length));
+
+  return { reportOrder, pivotOrder };
 }
 
 function uniqueByString(values: Scalar[]): Scalar[] {
@@ -1658,8 +1763,29 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const parsedReportTables = parseReportTableExpressions(frontmatter.report_tables, limits);
+  let syntheticPlan: { reportOrder: string[]; pivotOrder: string[] };
+  try {
+    syntheticPlan = buildSyntheticEvaluationPlan(parsedReportTables, frontmatter.pivot_tables, limits);
+  } catch (err) {
+    throw wrapExpressionDiagnostic(err, { table: "<synthetic>", target: "<dependency>", kind: "dependency" });
+  }
+
+  const orderedParsedReportTables = Object.create(null) as Record<string, ParsedReportTable>;
+  for (const name of syntheticPlan.reportOrder) {
+    if (Object.prototype.hasOwnProperty.call(parsedReportTables, name)) {
+      orderedParsedReportTables[name] = parsedReportTables[name];
+    }
+  }
+
+  const orderedPivotTables = Object.create(null) as Record<string, PivotTableDefinition>;
+  for (const name of syntheticPlan.pivotOrder) {
+    if (Object.prototype.hasOwnProperty.call(frontmatter.pivot_tables ?? {}, name)) {
+      orderedPivotTables[name] = (frontmatter.pivot_tables ?? {})[name];
+    }
+  }
+
   const reportTableResults = evaluateReportTables(
-    parsedReportTables,
+    orderedParsedReportTables,
     rowList,
     ensureByTable,
     lookupRow,
@@ -1667,7 +1793,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     groupedAggregateResults,
     limits,
   );
-  const pivotTableResults = evaluatePivotTables(frontmatter.pivot_tables, frontmatter.tables, rowList, ensureByTable);
+  const pivotTableResults = evaluatePivotTables(orderedPivotTables, frontmatter.tables, rowList, ensureByTable);
 
   const results = Object.create(null) as Record<string, TableEvaluation>;
   for (const [name, rows] of Object.entries(rowList)) {
@@ -1704,6 +1830,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     );
   }
   renderedBody = injectReportTables(renderedBody, reportTableResults);
+  renderedBody = injectPivotTables(renderedBody, pivotTableResults);
   renderedBody = interpolateAggregates(renderedBody, aggregateResults, groupedAggregateResults, bodyOffset);
   if (!includeFrontmatter && renderedBody.startsWith("\n")) {
     renderedBody = renderedBody.slice(1);
