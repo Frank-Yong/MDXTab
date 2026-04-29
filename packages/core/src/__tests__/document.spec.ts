@@ -1046,10 +1046,10 @@ pivot_tables:
 `;
 
     const result = validateMdxtab(badPivotDoc);
-  expect(result.diagnostics).toHaveLength(0);
+    expect(result.diagnostics).toHaveLength(0);
 
-  const compiled = compileMdxtab(badPivotDoc);
-  expect(compiled.pivotTables.liquidity.rows).toHaveLength(1);
+    const compiled = compileMdxtab(badPivotDoc);
+    expect(compiled.pivotTables.liquidity.rows).toHaveLength(1);
   });
 
   it("returns frontmatter diagnostics for invalid pivot_tables totals.column mode", () => {
