@@ -1320,6 +1320,37 @@ pivot_tables:
     expect(pivot.columnAxis.map((c) => c.label)).toEqual(["apr_24", "apr_25"]);
   });
 
+  it("throws when short_month_day receives a calendar-invalid ISO date key", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: short_month_day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-13-10 | Salary | 100 |
+`;
+
+    expect(() => compileMdxtab(pivotDoc)).toThrow(/short_month_day requires ISO date keys/);
+  });
+
   it("generates identifier-safe, unique pivot axis ids", () => {
     const pivotDoc = `---
 mdxtab: "1.0"

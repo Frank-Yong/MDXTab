@@ -946,6 +946,21 @@ function parseIsoDatePreserveYear(isoDate: string): Date {
   return date;
 }
 
+function isValidIsoDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false;
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1) return false;
+
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
 function formatIsoDate(date: Date): string {
   const year = String(date.getUTCFullYear()).padStart(4, "0");
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -982,7 +997,7 @@ function derivePivotColumnLabel(
   if (!labelMode || labelMode === "iso_date") return raw;
 
   if (labelMode === "short_month_day") {
-    if (!DATE_RE.test(raw)) {
+    if (!isValidIsoDate(raw)) {
       throw new DiagnosticError({
         code: "E_FRONTMATTER",
         message: `pivot_table ${pivotName} columns.label short_month_day requires ISO date keys`,
