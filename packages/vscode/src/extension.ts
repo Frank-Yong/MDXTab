@@ -491,16 +491,14 @@ function findBodyHoverEntry(
   tables: ReturnType<typeof parseMarkdownTables>,
 ): HoverEntry | undefined {
   const lineText = lines[position.line] ?? "";
-  const headingMatch = lineText.match(/^\s*#{1,6}\s+([A-Za-z0-9_]+)\s*$/);
-  if (headingMatch) {
-    const heading = headingMatch[1];
-    const start = lineText.indexOf(heading);
-    const end = start + heading.length;
+  const heading = extractHeadingInfo(lineText);
+  if (heading) {
+    const { text, start, end } = heading;
     if (position.character >= start && position.character <= end) {
-      const report = frontmatter.report_tables?.[heading];
+      const report = frontmatter.report_tables?.[text];
       if (report) {
         return {
-          table: heading,
+          table: text,
           kind: "report-table",
           name: "rows_from",
           expr: `rows_from=${report.rows_from}, columns=${report.columns.join(", ")}`,
@@ -511,10 +509,10 @@ function findBodyHoverEntry(
           exprEnd: end,
         };
       }
-      const pivot = frontmatter.pivot_tables?.[heading];
+      const pivot = frontmatter.pivot_tables?.[text];
       if (pivot) {
         return {
-          table: heading,
+          table: text,
           kind: "pivot-table",
           name: "source",
           expr: `source=${pivot.source}, rows.from=${pivot.rows.from}, columns.from=${pivot.columns.from}, value=${pivot.value}`,
@@ -599,12 +597,23 @@ function matchInterpolationStart(line: string, position: number): { start: numbe
 }
 
 function matchHeadingStart(line: string, position: number): { start: number } | undefined {
-  const headingMatch = line.match(/^\s*#{1,6}\s+([A-Za-z0-9_]*)$/);
-  if (!headingMatch) return undefined;
-  const start = line.indexOf(headingMatch[1]);
-  const end = start + headingMatch[1].length;
+  const heading = extractHeadingInfo(line);
+  if (!heading) return undefined;
+  const { start, end } = heading;
   if (position < start || position > end) return undefined;
   return { start };
+}
+
+function extractHeadingInfo(line: string): { text: string; start: number; end: number } | undefined {
+  const markerMatch = line.match(/^\s*#{1,6}\s+/);
+  if (!markerMatch) return undefined;
+  const rawHeading = line.slice(markerMatch[0].length);
+  const text = rawHeading.trim();
+  if (!text) return undefined;
+  const leadingWhitespace = rawHeading.match(/^\s*/)?.[0].length ?? 0;
+  const start = markerMatch[0].length + leadingWhitespace;
+  const end = start + text.length;
+  return { text, start, end };
 }
 
 function findDotCompletionTable(
