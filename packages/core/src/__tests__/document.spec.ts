@@ -590,6 +590,42 @@ report_tables:
     expect(result.rendered).not.toContain("## category_balances\n| label |");
   });
 
+  it("injects report tables after fenced blocks closed with longer backtick runs", () => {
+    const reportDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, label]
+report_tables:
+  category_balances:
+    rows_from: categories
+    columns: [label]
+    cells:
+      label: row.label
+---
+
+## categories
+| id | label |
+|----|-------|
+| Utilities | Utilities |
+
+\`\`\`md
+## category_balances
+| label |
+|-------|
+| should-stay-literal |
+\`\`\`\`
+
+## category_balances
+`;
+
+    const result = compileMdxtab(reportDoc);
+
+    expect(result.rendered).toContain("## category_balances\n\n| label |");
+    expect(result.rendered).toContain("should-stay-literal");
+  });
+
   it("ignores inherited object property names when matching report-table headings", () => {
     const reportDoc = `---
 mdxtab: "1.0"
