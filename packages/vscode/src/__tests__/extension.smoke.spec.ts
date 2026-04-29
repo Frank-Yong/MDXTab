@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = {
   commands: new Map<string, (...args: unknown[]) => unknown>(),
   previewProvider: undefined as undefined | { provideTextDocumentContent: (uri: unknown) => Promise<string> },
+  hoverProvider: undefined as undefined | { provideHover: (document: MockDocument, position: MockPosition) => unknown },
+  completionProvider: undefined as undefined | {
+    provideCompletionItems: (document: MockDocument, position: MockPosition) => Array<{ label: string }>;
+  },
   openHandlers: [] as Array<(doc: MockDocument) => void>,
   closeHandlers: [] as Array<(doc: MockDocument) => void>,
   changeHandlers: [] as Array<(event: { document: MockDocument }) => void>,
@@ -225,8 +229,19 @@ vi.mock("vscode", () => {
   const languages = {
     createDiagnosticCollection: vi.fn(() => diagnosticCollection),
     registerDocumentSymbolProvider: vi.fn(() => ({ dispose: () => undefined })),
-    registerHoverProvider: vi.fn(() => ({ dispose: () => undefined })),
-    registerCompletionItemProvider: vi.fn(() => ({ dispose: () => undefined })),
+    registerHoverProvider: vi.fn((_selector: unknown, provider: { provideHover: (document: MockDocument, position: MockPosition) => unknown }) => {
+      state.hoverProvider = provider;
+      return { dispose: () => undefined };
+    }),
+    registerCompletionItemProvider: vi.fn(
+      (
+        _selector: unknown,
+        provider: { provideCompletionItems: (document: MockDocument, position: MockPosition) => Array<{ label: string }> },
+      ) => {
+        state.completionProvider = provider;
+        return { dispose: () => undefined };
+      },
+    ),
     registerDefinitionProvider: vi.fn(() => ({ dispose: () => undefined })),
     registerCodeActionsProvider: vi.fn(() => ({ dispose: () => undefined })),
   };
@@ -288,6 +303,8 @@ describe("vscode extension smoke", () => {
   beforeEach(() => {
     state.commands.clear();
     state.previewProvider = undefined;
+    state.hoverProvider = undefined;
+    state.completionProvider = undefined;
     state.openHandlers.length = 0;
     state.closeHandlers.length = 0;
     state.changeHandlers.length = 0;
@@ -419,7 +436,25 @@ describe("vscode extension smoke", () => {
           columns: ["id", "amount"],
         },
       },
-    });
+      report_tables: {
+        category_balances: {
+          rows_from: "expenses",
+          columns: ["label", "total"],
+          cells: {
+            label: "row.id",
+            total: "expenses.sum_total",
+          },
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "expenses",
+          rows: { from: "id" },
+          columns: { from: "amount" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
 
     const sourceUri = MockUri.from({ scheme: "file", path: "/tmp/schema.md" });
     const sourceDoc = createDoc(
@@ -437,6 +472,8 @@ describe("vscode extension smoke", () => {
     expect(state.virtualDocumentContents.length).toBe(1);
     expect(state.virtualDocumentContents[0]).toContain("# MDXTab Table Schema");
     expect(state.virtualDocumentContents[0]).toContain('"expenses"');
+    expect(state.virtualDocumentContents[0]).toContain('"report_tables"');
+    expect(state.virtualDocumentContents[0]).toContain('"pivot_tables"');
   });
 
   it("warns when show-table-schema runs on a non-MDXTab file", async () => {
@@ -486,5 +523,162 @@ describe("vscode extension smoke", () => {
       "MDXTab: could not read table schema from frontmatter: invalid YAML near line 2",
     );
     expect(state.shownDocumentCount).toBe(0);
+  });
+
+  it("provides completion items for synthetic table names in headings", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        entries: {
+          key: "id",
+          columns: ["id", "amount"],
+        },
+      },
+      report_tables: {
+        "category-balances": {
+          rows_from: "entries",
+          columns: ["label"],
+          cells: {
+            label: "row.id",
+          },
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "entries",
+          rows: { from: "id" },
+          columns: { from: "id" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
+
+    const sourceDoc = createDoc(
+      MockUri.from({ scheme: "file", path: "/tmp/completion-heading.md" }),
+      "---\nmdxtab: \"1.0\"\ntables:\n  entries:\n    columns: [id, amount]\n---\n\n## \n",
+    );
+
+    const items = state.completionProvider?.provideCompletionItems(sourceDoc, new vscode.Position(7, 3)) ?? [];
+    const labels = items.map((item) => item.label);
+
+    expect(labels).toContain("category-balances");
+    expect(labels).toContain("liquidity");
+  });
+
+  it("does not provide heading completions one character past heading text", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        entries: {
+          key: "id",
+          columns: ["id", "amount"],
+        },
+      },
+      report_tables: {
+        "category-balances": {
+          rows_from: "entries",
+          columns: ["label"],
+          cells: {
+            label: "row.id",
+          },
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "entries",
+          rows: { from: "id" },
+          columns: { from: "id" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
+
+    const sourceDoc = createDoc(
+      MockUri.from({ scheme: "file", path: "/tmp/completion-heading-end.md" }),
+      "---\nmdxtab: \"1.0\"\ntables:\n  entries:\n    columns: [id, amount]\n---\n\n## liquidity\n",
+    );
+
+    const items = state.completionProvider?.provideCompletionItems(sourceDoc, new vscode.Position(7, 12)) ?? [];
+
+    expect(items).toEqual([]);
+  });
+
+  it("provides hover details for synthetic table headings", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        entries: {
+          key: "id",
+          columns: ["id", "amount"],
+        },
+      },
+      report_tables: {
+        "category-balances": {
+          rows_from: "entries",
+          columns: ["label", "total"],
+          cells: {
+            label: "row.id",
+            total: "entries.total",
+          },
+        },
+      },
+    } as any);
+
+    const sourceDoc = createDoc(
+      MockUri.from({ scheme: "file", path: "/tmp/hover-heading.md" }),
+      "---\nmdxtab: \"1.0\"\ntables:\n  entries:\n    columns: [id, amount]\n---\n\n## category-balances\n",
+    );
+
+    const hover = state.hoverProvider?.provideHover(sourceDoc, new vscode.Position(7, 6)) as { contents: { value: string } } | undefined;
+    expect(hover?.contents.value).toContain("Report Table");
+    expect(hover?.contents.value).toContain("category-balances.rows_from");
+    expect(hover?.contents.value).toContain("rows_from=entries");
+  });
+
+  it("provides hover details for pivot table headings", async () => {
+    const vscode = await import("vscode");
+    const extension = await import("../extension.js");
+    const context = { subscriptions: [] as Array<{ dispose: () => void }> };
+    extension.activate(context as never);
+
+    parseFrontmatter.mockReturnValue({
+      tables: {
+        entries: {
+          key: "id",
+          columns: ["id", "date", "category", "amount"],
+        },
+      },
+      pivot_tables: {
+        liquidity: {
+          source: "entries",
+          rows: { from: "category" },
+          columns: { from: "date" },
+          value: "sum(amount)",
+        },
+      },
+    } as any);
+
+    const sourceDoc = createDoc(
+      MockUri.from({ scheme: "file", path: "/tmp/hover-pivot-heading.md" }),
+      "---\nmdxtab: \"1.0\"\ntables:\n  entries:\n    columns: [id, date, category, amount]\n---\n\n## liquidity\n",
+    );
+
+    const hover = state.hoverProvider?.provideHover(sourceDoc, new vscode.Position(7, 6)) as { contents: { value: string } } | undefined;
+    expect(hover?.contents.value).toContain("Pivot Table");
+    expect(hover?.contents.value).toContain("liquidity.source");
+    expect(hover?.contents.value).toContain("source=entries");
+    expect(hover?.contents.value).toContain("rows.from=category");
   });
 });

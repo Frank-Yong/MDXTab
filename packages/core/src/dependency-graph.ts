@@ -12,6 +12,55 @@ export interface DependencyGraph {
   order: string[];
 }
 
+export function buildNameDependencyGraph(
+  nodes: Record<string, string[]>,
+  limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS,
+): DependencyGraph {
+  const names = Object.keys(nodes);
+  const nameSet = new Set(names);
+  const edges: DependencyEdge[] = [];
+  const depMap = Object.create(null) as Record<string, Set<string>>;
+
+  for (const [name, deps] of Object.entries(nodes)) {
+    const depSet = new Set<string>(deps);
+    depMap[name] = depSet;
+    for (const dep of depSet) {
+      edges.push({ from: name, to: dep });
+    }
+  }
+
+  const order: string[] = [];
+  const state = Object.create(null) as Record<string, "visiting" | "visited">;
+
+  const visit = (name: string, depth = 1) => {
+    try {
+      assertDependencyDepth(depth, limits);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`${message} while visiting ${name}`);
+    }
+
+    if (state[name] === "visited") return;
+    if (state[name] === "visiting") {
+      throw new Error(`E_CYCLE: dependency cycle involving ${name}`);
+    }
+
+    state[name] = "visiting";
+    for (const dep of depMap[name] ?? []) {
+      if (!nameSet.has(dep)) continue;
+      visit(dep, depth + 1);
+    }
+    state[name] = "visited";
+    order.push(name);
+  };
+
+  for (const name of names) {
+    visit(name);
+  }
+
+  return { edges, order };
+}
+
 export function buildDependencyGraph(
   nodes: Record<string, AstNode>,
   limits: ExpressionLimits = DEFAULT_EXPRESSION_LIMITS,
@@ -73,7 +122,7 @@ export function buildDependencyGraph(
   };
 
   const edges: DependencyEdge[] = [];
-  const depMap: Record<string, Set<string>> = {};
+  const depMap = Object.create(null) as Record<string, Set<string>>;
 
   for (const [name, ast] of Object.entries(nodes)) {
     const deps = new Set<string>();
@@ -85,7 +134,7 @@ export function buildDependencyGraph(
   }
 
   const order: string[] = [];
-  const state: Record<string, "visiting" | "visited"> = {};
+  const state = Object.create(null) as Record<string, "visiting" | "visited">;
 
   const visit = (n: string, depth = 1) => {
     try {

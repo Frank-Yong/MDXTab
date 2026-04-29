@@ -27,6 +27,41 @@ export interface ReportTableDefinition {
   cells: Record<string, string>;
 }
 
+export interface PivotRowsDefinition {
+  from: string;
+  order?: string[];
+}
+
+export interface PivotColumnsRangeDefinition {
+  start: string;
+  end: string;
+  step?: "day" | "week" | "month";
+}
+
+export interface PivotColumnsDefinition {
+  from: string;
+  range?: PivotColumnsRangeDefinition;
+  label?: "iso_date" | "short_month_day";
+}
+
+export interface PivotTotalsColumnModeDefinition {
+  mode?: "sum" | "running_sum";
+}
+
+export interface PivotTotalsDefinition {
+  row?: string;
+  column?: Record<string, PivotTotalsColumnModeDefinition>;
+}
+
+export interface PivotTableDefinition {
+  source: string;
+  rows: PivotRowsDefinition;
+  columns: PivotColumnsDefinition;
+  value: string;
+  empty_cells?: "null" | "zero" | "empty-string" | "error";
+  totals?: PivotTotalsDefinition;
+}
+
 export interface TableFrontmatter {
   key?: string;
   columns: string[];
@@ -41,6 +76,7 @@ export interface FrontmatterDocument {
   mdxtab: string;
   tables: Record<string, TableFrontmatter>;
   report_tables?: Record<string, ReportTableDefinition>;
+  pivot_tables?: Record<string, PivotTableDefinition>;
 }
 
 export interface HeaderCell {
@@ -94,10 +130,44 @@ export interface ReportTableEvaluation {
   rows: Record<string, Scalar>[];
 }
 
+export interface PivotAxisEntry {
+  id: string;
+  key: Scalar;
+  label: string;
+  index: number;
+}
+
+export interface PivotRowEvaluation {
+  key: Scalar;
+  values: Record<string, Scalar>;
+  total?: Scalar;
+}
+
+export interface PivotFooterRowEvaluation {
+  key: string;
+  mode: "sum" | "running_sum";
+  values: Record<string, Scalar>;
+  total?: Scalar;
+}
+
+export interface PivotTableEvaluation {
+  name: string;
+  source: string;
+  rowsFrom: string;
+  columnsFrom: string;
+  value: string;
+  rowAxis: PivotAxisEntry[];
+  columnAxis: PivotAxisEntry[];
+  rows: PivotRowEvaluation[];
+  rowTotalName?: string;
+  footerRows?: PivotFooterRowEvaluation[];
+}
+
 export interface CompileResult {
   frontmatter: FrontmatterDocument;
   tables: Record<string, TableEvaluation>;
   reportTables: Record<string, ReportTableEvaluation>;
+  pivotTables: Record<string, PivotTableEvaluation>;
   rendered: string;
 }
 
