@@ -609,7 +609,6 @@ function extractHeadingInfo(line: string): { text: string; start: number; end: n
   if (!markerMatch) return undefined;
   const rawHeading = line.slice(markerMatch[0].length);
   const text = rawHeading.trim();
-  if (!text) return undefined;
   const leadingWhitespace = rawHeading.match(/^\s*/)?.[0].length ?? 0;
   const start = markerMatch[0].length + leadingWhitespace;
   const end = start + text.length;
