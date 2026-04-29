@@ -1089,6 +1089,7 @@ function evaluatePivotTables(
 
     const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
     const pairValueBuckets = new Map<string, Scalar[]>();
+    const pairDisplayKeys = new Map<string, { row: string; column: string }>();
     const pairKey = (rowKey: Scalar, columnKey: Scalar) =>
       JSON.stringify([scalarIdentity(rowKey), scalarIdentity(columnKey)]);
 
@@ -1104,6 +1105,7 @@ function evaluatePivotTables(
         bucket.push(row[valueColumn]);
       } else {
         pairValueBuckets.set(key, [row[valueColumn]]);
+        pairDisplayKeys.set(key, { row: String(rowKey), column: String(colKey) });
       }
     }
 
@@ -1112,12 +1114,12 @@ function evaluatePivotTables(
       try {
         pairAggregates.set(key, computeAggregateValues("sum", values));
       } catch (err) {
-        const [rowKeyRaw, columnKeyRaw] = JSON.parse(key) as [string, string];
+        const display = pairDisplayKeys.get(key) ?? { row: "<unknown>", column: "<unknown>" };
         throw toPivotDiagnostic(err, {
           table: name,
-          rowKey: rowKeyRaw,
-          column: columnKeyRaw,
-          messagePrefix: `[pivot-table] table ${name} cell row=${rowKeyRaw} column=${columnKeyRaw}`,
+          rowKey: display.row,
+          column: display.column,
+          messagePrefix: `[pivot-table] table ${name} cell row=${display.row} column=${display.column}`,
         });
       }
     }
