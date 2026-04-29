@@ -1,9 +1,9 @@
 # Work Item: Pivot Tables
 
 ## Status
-- State: IN PROGRESS
+- State: DONE
 - Priority: MEDIUM
-- Branch: `issue-38-pivot-docs-tooling` (active), `issue-38-pivot-tables` (umbrella)
+- Branch: `issue-38-pivot-tables` (umbrella)
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/38
 
 ## Description
@@ -209,7 +209,7 @@ synthetically (same model as `report_tables`).
 - PR: https://github.com/Frank-Yong/MDXTab/pull/42
 - Scope: spec/docs updates, examples, optional VS Code/schema/snippet polish.
 - Includes tasks: 9, 10
-- Progress: task 9 docs/spec and task 10 VS Code tooling updates completed.
+- Progress: merged into `issue-38-pivot-tables`.
 
 ### Merge order
 1. `issue-38-pivot-schema-validation`
