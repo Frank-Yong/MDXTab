@@ -154,9 +154,9 @@ synthetically (same model as `report_tables`).
       and CLI `render` only.
 
 ### 7. Dependency graph & evaluation order
-- [ ] Register pivot tables after row evaluation and aggregates of the source
+- [x] Register pivot tables after row evaluation and aggregates of the source
       table.
-- [ ] Detect cycles if a pivot is referenced from another pivot or report
+- [x] Detect cycles if a pivot is referenced from another pivot or report
       table (deferred: pivot output is not addressable in expressions in MVP).
 
 ### 8. Tests
@@ -202,6 +202,7 @@ synthetically (same model as `report_tables`).
 - Includes tasks: 6, 7
 - Tests in same PR: compile/render integration coverage from task 8.
 - Progress: render injection for pivot headings completed.
+- Progress: synthetic dependency-order planning hooks added for report/pivot evaluation.
 
 ### 4) Docs + examples + tooling polish
 - Branch: `issue-38-pivot-docs-tooling`

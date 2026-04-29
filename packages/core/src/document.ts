@@ -1,4 +1,4 @@
-import { buildDependencyGraph } from "./dependency-graph.js";
+import { buildDependencyGraph, buildNameDependencyGraph } from "./dependency-graph.js";
 import { evaluateAst } from "./evaluator.js";
 import { parseExpression, type AstNode } from "./parser.js";
 import { parseFrontmatter } from "./frontmatter.js";
@@ -916,6 +916,50 @@ function parseColumnReference(sourceTable: string, reference: string): { table: 
   return { table, column };
 }
 
+function buildSyntheticEvaluationPlan(
+  reportTables: Record<string, ParsedReportTable>,
+  pivotTables: Record<string, PivotTableDefinition> | undefined,
+): { reportOrder: string[]; pivotOrder: string[] } {
+  const reportNames = new Set(Object.keys(reportTables));
+  const pivotNames = new Set(Object.keys(pivotTables ?? {}));
+  const nodes = Object.create(null) as Record<string, string[]>;
+
+  const syntheticNodeName = (name: string): string | undefined => {
+    if (reportNames.has(name)) return `report:${name}`;
+    if (pivotNames.has(name)) return `pivot:${name}`;
+    return undefined;
+  };
+
+  for (const [name, report] of Object.entries(reportTables)) {
+    const deps: string[] = [];
+    const dep = syntheticNodeName(report.rowsFrom);
+    if (dep) deps.push(dep);
+    nodes[`report:${name}`] = deps;
+  }
+
+  for (const [name, pivot] of Object.entries(pivotTables ?? {})) {
+    const deps = new Set<string>();
+    const rowRef = parseColumnReference(pivot.source, pivot.rows.from);
+    const columnRef = parseColumnReference(pivot.source, pivot.columns.from);
+    const candidates = [pivot.source, rowRef.table, columnRef.table];
+    for (const candidate of candidates) {
+      const dep = syntheticNodeName(candidate);
+      if (dep) deps.add(dep);
+    }
+    nodes[`pivot:${name}`] = [...deps];
+  }
+
+  const graph = buildNameDependencyGraph(nodes);
+  const reportOrder = graph.order
+    .filter((node) => node.startsWith("report:"))
+    .map((node) => node.slice("report:".length));
+  const pivotOrder = graph.order
+    .filter((node) => node.startsWith("pivot:"))
+    .map((node) => node.slice("pivot:".length));
+
+  return { reportOrder, pivotOrder };
+}
+
 function uniqueByString(values: Scalar[]): Scalar[] {
   const seen = new Set<string>();
   const out: Scalar[] = [];
@@ -1712,8 +1756,29 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
   }
 
   const parsedReportTables = parseReportTableExpressions(frontmatter.report_tables, limits);
+  let syntheticPlan: { reportOrder: string[]; pivotOrder: string[] };
+  try {
+    syntheticPlan = buildSyntheticEvaluationPlan(parsedReportTables, frontmatter.pivot_tables);
+  } catch (err) {
+    throw wrapExpressionDiagnostic(err, { table: "<synthetic>", target: "<dependency>", kind: "dependency" });
+  }
+
+  const orderedParsedReportTables = Object.create(null) as Record<string, ParsedReportTable>;
+  for (const name of syntheticPlan.reportOrder) {
+    if (Object.prototype.hasOwnProperty.call(parsedReportTables, name)) {
+      orderedParsedReportTables[name] = parsedReportTables[name];
+    }
+  }
+
+  const orderedPivotTables = Object.create(null) as Record<string, PivotTableDefinition>;
+  for (const name of syntheticPlan.pivotOrder) {
+    if (Object.prototype.hasOwnProperty.call(frontmatter.pivot_tables ?? {}, name)) {
+      orderedPivotTables[name] = (frontmatter.pivot_tables ?? {})[name];
+    }
+  }
+
   const reportTableResults = evaluateReportTables(
-    parsedReportTables,
+    orderedParsedReportTables,
     rowList,
     ensureByTable,
     lookupRow,
@@ -1721,7 +1786,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     groupedAggregateResults,
     limits,
   );
-  const pivotTableResults = evaluatePivotTables(frontmatter.pivot_tables, frontmatter.tables, rowList, ensureByTable);
+  const pivotTableResults = evaluatePivotTables(orderedPivotTables, frontmatter.tables, rowList, ensureByTable);
 
   const results = Object.create(null) as Record<string, TableEvaluation>;
   for (const [name, rows] of Object.entries(rowList)) {

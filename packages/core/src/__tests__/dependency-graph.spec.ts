@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { lexExpression } from "../tokens.js";
 import { parseExpression } from "../parser.js";
-import { buildDependencyGraph } from "../dependency-graph.js";
+import { buildDependencyGraph, buildNameDependencyGraph } from "../dependency-graph.js";
 
 const ast = (expr: string) => parseExpression(lexExpression(expr));
 
@@ -62,5 +62,23 @@ describe("dependency graph", () => {
 
     expect(graph.edges).toEqual([{ from: "title", to: "role_id" }]);
     expect(graph.order).toEqual(["role_id", "title"]);
+  });
+
+  it("orders name dependencies with external nodes ignored", () => {
+    const graph = buildNameDependencyGraph({
+      "pivot:liquidity": ["table:entries"],
+      "report:overview": ["pivot:liquidity"],
+    });
+
+    expect(graph.order).toEqual(["pivot:liquidity", "report:overview"]);
+  });
+
+  it("detects cycles in name dependencies", () => {
+    expect(() =>
+      buildNameDependencyGraph({
+        "pivot:a": ["report:b"],
+        "report:b": ["pivot:a"],
+      }),
+    ).toThrow(/E_CYCLE/);
   });
 });
