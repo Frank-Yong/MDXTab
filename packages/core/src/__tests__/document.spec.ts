@@ -1344,6 +1344,56 @@ pivot_tables:
     expect(pivot.rows[2].values[c0]).toBe(-30);
   });
 
+  it("sorts numeric pivot row and column axes numerically", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, row_bucket, col_bucket, amount]
+    types:
+      row_bucket: number
+      col_bucket: number
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: row_bucket
+    columns:
+      from: col_bucket
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | row_bucket | col_bucket | amount |
+|----|------------|------------|--------|
+| e1 | 10 | 10 | 100 |
+| e2 | 2 | 2 | 20 |
+| e3 | 1 | 1 | 10 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
+    const c1 = pivot.columnAxis[1].id;
+    const c2 = pivot.columnAxis[2].id;
+
+    expect(pivot.rowAxis.map((r) => r.key)).toEqual([1, 2, 10]);
+    expect(pivot.columnAxis.map((c) => c.key)).toEqual([1, 2, 10]);
+
+    expect(pivot.rows[0].values[c0]).toBe(10);
+    expect(pivot.rows[0].values[c1]).toBe(0);
+    expect(pivot.rows[0].values[c2]).toBe(0);
+    expect(pivot.rows[1].values[c0]).toBe(0);
+    expect(pivot.rows[1].values[c1]).toBe(20);
+    expect(pivot.rows[1].values[c2]).toBe(0);
+    expect(pivot.rows[2].values[c0]).toBe(0);
+    expect(pivot.rows[2].values[c1]).toBe(0);
+    expect(pivot.rows[2].values[c2]).toBe(100);
+  });
+
   it("generates month-stepped pivot columns with clamped month-end progression", () => {
     const pivotDoc = `---
 mdxtab: "1.0"

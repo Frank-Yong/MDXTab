@@ -981,6 +981,12 @@ function uniqueByString(values: Scalar[]): Scalar[] {
 }
 
 function compareByString(a: Scalar, b: Scalar): number {
+  if (typeof a === "number" && typeof b === "number") {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  }
+
   const left = String(a);
   const right = String(b);
   if (left < right) return -1;
