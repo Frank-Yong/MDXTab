@@ -3,7 +3,7 @@
 ## Status
 - State: IN PROGRESS
 - Priority: MEDIUM
-- Branch: `issue-38-pivot-render-pipeline` (active), `issue-38-pivot-tables` (umbrella)
+- Branch: `issue-38-pivot-docs-tooling` (active), `issue-38-pivot-tables` (umbrella)
 - Issue: https://github.com/Frank-Yong/MDXTab/issues/38
 
 ## Description
@@ -202,8 +202,7 @@ synthetically (same model as `report_tables`).
       render injection.
 - Includes tasks: 6, 7
 - Tests in same PR: compile/render integration coverage from task 8.
-- Progress: render injection for pivot headings completed.
-- Progress: synthetic dependency-order planning hooks added for report/pivot evaluation.
+- Progress: merged into `issue-38-pivot-tables`.
 
 ### 4) Docs + examples + tooling polish
 - Branch: `issue-38-pivot-docs-tooling`
