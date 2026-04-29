@@ -27,7 +27,7 @@
     ],
     "description": "Insert a basic MDXTab table scaffold."
   },
-  "MDXTab pivot table": {
+  "MDXTab pivot frontmatter block": {
     "prefix": "mdxtab-pivot",
     "body": [
       "pivot_tables:",
@@ -48,10 +48,15 @@
       "      row: ${11:total}",
       "      column:",
       "        ${12:accumulated}:",
-      "          mode: ${13:running_sum}",
-      "",
+      "          mode: ${13:running_sum}"
+    ],
+    "description": "Insert a pivot_tables frontmatter scaffold."
+  },
+  "MDXTab pivot render heading": {
+    "prefix": "mdxtab-pivot-heading",
+    "body": [
       "## ${1:pivot_name}"
     ],
-    "description": "Insert a pivot_tables scaffold with a matching render heading."
+    "description": "Insert a Markdown heading render target for a pivot table."
   }
 }
