@@ -206,6 +206,7 @@ synthetically (same model as `report_tables`).
 
 ### 4) Docs + examples + tooling polish
 - Branch: `issue-38-pivot-docs-tooling`
+- PR: https://github.com/Frank-Yong/MDXTab/pull/42
 - Scope: spec/docs updates, examples, optional VS Code/schema/snippet polish.
 - Includes tasks: 9, 10
 - Progress: task 9 docs/spec and task 10 VS Code tooling updates completed.

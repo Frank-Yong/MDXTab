@@ -49,7 +49,7 @@ pivot_tables:                        # optional
     key: <columnName>                # optional, default: source table key
     empty_cells: null|zero|empty-string|error  # optional, default: null
     totals:                          # optional
-      row: <columnName>
+      row: <name>
       column:
         <rowName>:
           mode: sum|running_sum      # optional, default: sum
@@ -80,7 +80,7 @@ pivot_tables:                        # optional
 - `pivot_tables.<name>.columns.range` is optional and requires ISO dates (`YYYY-MM-DD`) with `start <= end`; `step` is `day`, `week`, or `month`.
 - `pivot_tables.<name>.columns.label` supports `iso_date` and `short_month_day`.
 - `pivot_tables.<name>.value` in v1 must be `sum(<column>)` where `<column>` exists in the source table.
-- `pivot_tables.<name>.totals.row` adds a trailing row-total column.
+- `pivot_tables.<name>.totals.row` defines the synthesized trailing row-total column name (it is not required to be a source-table column).
 - `pivot_tables.<name>.totals.column.<name>.mode` supports `sum` and `running_sum` footer rows.
 
 ## Markdown Body Rules
