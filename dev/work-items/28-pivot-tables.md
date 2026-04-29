@@ -197,6 +197,7 @@ synthetically (same model as `report_tables`).
 
 ### 3) Pipeline + rendering
 - Branch: `issue-38-pivot-render-pipeline`
+- PR: https://github.com/Frank-Yong/MDXTab/pull/41
 - Scope: evaluation order integration, dependency graph hooks, heading-based
       render injection.
 - Includes tasks: 6, 7
