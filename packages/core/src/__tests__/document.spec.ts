@@ -1122,6 +1122,330 @@ pivot_tables:
     expect(result.rendered).toContain("## liquidity");
   });
 
+  it("evaluates pivot tables with range columns, row totals, and running footer", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+      order: [Salary, Food]
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-25
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+    totals:
+      row: summary
+      column:
+        accumulated:
+          mode: running_sum
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-24 | Salary | 50 |
+| e3 | 2026-04-25 | Food | -30 |
+| e4 | 2026-04-25 | Salary | 20 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
+    const c1 = pivot.columnAxis[1].id;
+
+    expect(pivot.rowAxis.map((r) => r.key)).toEqual(["Salary", "Food"]);
+    expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-04-24", "2026-04-25"]);
+
+    expect(pivot.rows[0].values[c0]).toBe(150);
+    expect(pivot.rows[0].values[c1]).toBe(20);
+    expect(pivot.rows[0].total).toBe(170);
+
+    expect(pivot.rows[1].values[c0]).toBe(0);
+    expect(pivot.rows[1].values[c1]).toBe(-30);
+    expect(pivot.rows[1].total).toBe(-30);
+
+    expect(pivot.footerRows?.[0].key).toBe("accumulated");
+    expect(pivot.footerRows?.[0].values[c0]).toBe(150);
+    expect(pivot.footerRows?.[0].values[c1]).toBe(140);
+    expect(pivot.footerRows?.[0].total).toBe(290);
+  });
+
+  it("derives pivot row axis from another table in authored order", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, category]
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: categories.category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-24
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## categories
+| id | category |
+|----|----------|
+| c1 | Travel |
+| c2 | Salary |
+| c3 | Food |
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-24 | Food | -30 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
+
+    expect(pivot.rowAxis.map((r) => r.key)).toEqual(["Travel", "Salary", "Food"]);
+    expect(pivot.rows[0].values[c0]).toBe(0);
+    expect(pivot.rows[1].values[c0]).toBe(100);
+    expect(pivot.rows[2].values[c0]).toBe(-30);
+  });
+
+  it("generates month-stepped pivot columns with clamped month-end progression", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-01-31
+        end: 2026-03-31
+        step: month
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-01-31 | Salary | 100 |
+| e2 | 2026-02-28 | Salary | 110 |
+| e3 | 2026-03-28 | Salary | 120 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    const c0 = pivot.columnAxis[0].id;
+    const c1 = pivot.columnAxis[1].id;
+    const c2 = pivot.columnAxis[2].id;
+
+    expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-01-31", "2026-02-28", "2026-03-28"]);
+    expect(pivot.rows[0].values[c0]).toBe(100);
+    expect(pivot.rows[0].values[c1]).toBe(110);
+    expect(pivot.rows[0].values[c2]).toBe(120);
+  });
+
+  it("applies pivot.columns.label when generating column axis labels", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: short_month_day
+      range:
+        start: 2026-04-24
+        end: 2026-04-25
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-25 | Salary | 200 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    expect(pivot.columnAxis.map((c) => c.key)).toEqual(["2026-04-24", "2026-04-25"]);
+    expect(pivot.columnAxis.map((c) => c.label)).toEqual(["apr_24", "apr_25"]);
+  });
+
+  it("throws when short_month_day receives a calendar-invalid ISO date key", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      label: short_month_day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-13-10 | Salary | 100 |
+`;
+
+    expect(() => compileMdxtab(pivotDoc)).toThrow(/short_month_day requires ISO date keys/);
+  });
+
+  it("generates identifier-safe, unique pivot axis ids", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+    types:
+      date: date
+      amount: number
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-26
+        step: day
+    value: sum(amount)
+    empty_cells: zero
+---
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+| e2 | 2026-04-25 | Food | -30 |
+| e3 | 2026-04-26 | Travel Expense | -10 |
+`;
+
+    const result = compileMdxtab(pivotDoc);
+    const pivot = result.pivotTables.liquidity;
+    const axisIdRe = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+    for (const entry of pivot.rowAxis) {
+      expect(entry.id).toMatch(axisIdRe);
+    }
+    for (const entry of pivot.columnAxis) {
+      expect(entry.id).toMatch(axisIdRe);
+    }
+
+    const rowIdSet = new Set(pivot.rowAxis.map((entry) => entry.id));
+    const colIdSet = new Set(pivot.columnAxis.map((entry) => entry.id));
+    expect(rowIdSet.size).toBe(pivot.rowAxis.length);
+    expect(colIdSet.size).toBe(pivot.columnAxis.length);
+  });
+
+  it("returns contextual diagnostics for runtime pivot empty_cells errors", () => {
+    const pivotDoc = `---
+mdxtab: "1.0"
+tables:
+  categories:
+    key: id
+    columns: [id, category]
+  entries:
+    key: id
+    columns: [id, date, category, amount]
+pivot_tables:
+  liquidity:
+    source: entries
+    rows:
+      from: categories.category
+    columns:
+      from: date
+      range:
+        start: 2026-04-24
+        end: 2026-04-24
+        step: day
+    value: sum(amount)
+    empty_cells: error
+---
+
+## categories
+| id | category |
+|----|----------|
+| c1 | Travel |
+
+## entries
+| id | date | category | amount |
+|----|------|----------|--------|
+| e1 | 2026-04-24 | Salary | 100 |
+`;
+
+    const result = validateMdxtab(pivotDoc);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("E_EMPTY_CELL");
+    expect(result.diagnostics[0].table).toBe("liquidity");
+    expect(result.diagnostics[0].column).toBe("empty_cells");
+    expect(result.diagnostics[0].rowKey).toBe("Travel");
+    expect(result.diagnostics[0].message).toContain("[pivot-table]");
+  });
+
   it("does not remove prose after an existing report table when the prose contains pipes", () => {
     const reportDoc = `---
 mdxtab: "1.0"

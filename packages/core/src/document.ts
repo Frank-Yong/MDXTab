@@ -13,6 +13,8 @@ import type {
   ExpressionLimits,
   FrontmatterDocument,
   ParsedTable,
+  PivotTableDefinition,
+  PivotTableEvaluation,
   ReportTableDefinition,
   ReportTableEvaluation,
   Scalar,
@@ -25,6 +27,7 @@ import type {
 const NUMERIC_RE = /^-?\d+(?:\.\d+)?$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d+:\d{2}$/;
+const SHORT_MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
 type ColumnType = "number" | "string" | "date" | "bool" | "time" | undefined;
 type LookupRowFn = (table: string, key: Scalar) => Record<string, Scalar>;
@@ -33,7 +36,7 @@ interface EvalRowContext {
   [key: string]: Scalar | EvalRowContext;
 }
 
-type EvalKind = "computed" | "aggregate" | "summary-row" | "report-table";
+type EvalKind = "computed" | "aggregate" | "summary-row" | "report-table" | "pivot-table";
 
 type GroupedAggregate = {
   fn: string;
@@ -104,6 +107,28 @@ function splitFrontmatter(raw: string): { frontmatter: string; body: string; bod
   const frontmatter = lines.slice(0, endIndex + 1).join("\n");
   const body = lines.slice(endIndex + 1).join("\n");
   return { frontmatter, body, bodyOffset: endIndex + 1 };
+}
+
+function scalarIdentity(value: Scalar): string {
+  if (value === null) return "null:null";
+  return `${typeof value}:${String(value)}`;
+}
+
+function stableHash(input: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function scalarIdentifier(value: Scalar): string {
+  const typeName = value === null ? "null" : typeof value;
+  let slug = String(value).replace(/[^A-Za-z0-9_]/g, "_");
+  if (slug.length === 0) slug = "_";
+  if (!/^[A-Za-z_]/.test(slug)) slug = `_${slug}`;
+  return `k_${typeName}_${slug}_${stableHash(scalarIdentity(value))}`;
 }
 
 function coerceValue(text: string, type: ColumnType): Scalar {
@@ -829,6 +854,438 @@ function evaluateReportTables(
   return results;
 }
 
+function parseColumnReference(sourceTable: string, reference: string): { table: string; column: string } {
+  if (!reference.includes(".")) {
+    return { table: sourceTable, column: reference };
+  }
+  const [table, column] = reference.split(".");
+  return { table, column };
+}
+
+function uniqueByString(values: Scalar[]): Scalar[] {
+  const seen = new Set<string>();
+  const out: Scalar[] = [];
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const key = scalarIdentity(value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
+function compareByString(a: Scalar, b: Scalar): number {
+  const left = String(a);
+  const right = String(b);
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+function applyRowOrdering(values: Scalar[], order: string[] | undefined): Scalar[] {
+  if (!order || order.length === 0) return values;
+  const remaining = [...values];
+  const remainingByKey = new Map<string, Scalar>(remaining.map((value) => [scalarIdentity(value), value]));
+  const ordered: Scalar[] = [];
+
+  for (const orderedValue of order) {
+    const key = scalarIdentity(orderedValue);
+    if (!remainingByKey.has(key)) continue;
+    ordered.push(remainingByKey.get(key)!);
+    remainingByKey.delete(key);
+  }
+
+  for (const value of remaining) {
+    const key = scalarIdentity(value);
+    if (!remainingByKey.has(key)) continue;
+    ordered.push(value);
+    remainingByKey.delete(key);
+  }
+
+  return ordered;
+}
+
+function parsePivotValueColumn(
+  pivotName: string,
+  source: string,
+  sourceSchema: TableFrontmatter,
+  expression: string,
+): string {
+  const match = expression.trim().match(/^sum\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$/i);
+  if (!match) {
+    throw new DiagnosticError({
+      code: "E_FRONTMATTER",
+      message: `pivot_table ${pivotName} value must be sum(<column>) in v1`,
+      table: pivotName,
+      column: "value",
+      range: lineRange(0),
+    });
+  }
+  const column = match[1];
+  if (!sourceSchema.columns.includes(column)) {
+    throw new DiagnosticError({
+      code: "E_FRONTMATTER",
+      message: `pivot_table ${pivotName} value references unknown column ${column} in source table ${source}`,
+      table: pivotName,
+      column: "value",
+      range: lineRange(0),
+    });
+  }
+  return column;
+}
+
+function parseIsoDatePreserveYear(isoDate: string): Date {
+  const [yearText, monthText, dayText] = isoDate.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(0, 0, 1));
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
+  return date;
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false;
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1) return false;
+
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
+function formatIsoDate(date: Date): string {
+  const year = String(date.getUTCFullYear()).padStart(4, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function daysInUtcMonth(year: number, monthIndexZeroBased: number): number {
+  return new Date(Date.UTC(year, monthIndexZeroBased + 1, 0)).getUTCDate();
+}
+
+function addUtcMonthsClamped(date: Date, months: number): Date {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+
+  const rawTargetMonth = month + months;
+  const targetYear = year + Math.floor(rawTargetMonth / 12);
+  const targetMonth = ((rawTargetMonth % 12) + 12) % 12;
+  const clampedDay = Math.min(day, daysInUtcMonth(targetYear, targetMonth));
+
+  const next = new Date(Date.UTC(0, 0, 1));
+  next.setUTCFullYear(targetYear, targetMonth, clampedDay);
+  next.setUTCHours(0, 0, 0, 0);
+  return next;
+}
+
+function derivePivotColumnLabel(
+  pivotName: string,
+  key: Scalar,
+  labelMode: string | undefined,
+): string {
+  const raw = String(key);
+  if (!labelMode || labelMode === "iso_date") return raw;
+
+  if (labelMode === "short_month_day") {
+    if (!isValidIsoDate(raw)) {
+      throw new DiagnosticError({
+        code: "E_FRONTMATTER",
+        message: `pivot_table ${pivotName} columns.label short_month_day requires ISO date keys`,
+        table: pivotName,
+        column: "columns.label",
+        range: lineRange(0),
+      });
+    }
+    const [, monthText, dayText] = raw.split("-");
+    const month = Number(monthText);
+    return `${SHORT_MONTHS[month - 1]}_${dayText}`;
+  }
+
+  throw new DiagnosticError({
+    code: "E_FRONTMATTER",
+    message: `pivot_table ${pivotName} columns.label must be one of iso_date, short_month_day`,
+    table: pivotName,
+    column: "columns.label",
+    range: lineRange(0),
+  });
+}
+
+function buildDateRangeValues(
+  pivotName: string,
+  start: string,
+  end: string,
+  step: "day" | "week" | "month",
+): Scalar[] {
+  const values: Scalar[] = [];
+  let current = parseIsoDatePreserveYear(start);
+  const endDate = parseIsoDatePreserveYear(end);
+
+  let guard = 0;
+  while (current.getTime() <= endDate.getTime()) {
+    values.push(formatIsoDate(current));
+
+    const before = current.getTime();
+    if (step === "day") current.setUTCDate(current.getUTCDate() + 1);
+    else if (step === "week") current.setUTCDate(current.getUTCDate() + 7);
+    else current = addUtcMonthsClamped(current, 1);
+
+    if (current.getTime() <= before) {
+      throw new DiagnosticError({
+        code: "E_RANGE",
+        message: `pivot_table ${pivotName} has invalid date range increment`,
+        table: pivotName,
+        column: "columns.range",
+        range: lineRange(0),
+      });
+    }
+    guard += 1;
+    if (guard > 100000) {
+      throw new DiagnosticError({
+        code: "E_LIMIT",
+        message: `pivot_table ${pivotName} date range is too large`,
+        table: pivotName,
+        column: "columns.range",
+        range: lineRange(0),
+      });
+    }
+  }
+
+  return values;
+}
+
+function emptyPivotCell(policy: PivotTableDefinition["empty_cells"] | undefined): Scalar {
+  switch (policy ?? "null") {
+    case "null":
+      return null;
+    case "zero":
+      return 0;
+    case "empty-string":
+      return "";
+    case "error":
+      throw new Error("E_EMPTY_CELL: no matching source rows for pivot cell");
+    default:
+      return null;
+  }
+}
+
+function toNumericOrNull(value: Scalar): Scalar {
+  return typeof value === "number" ? value : null;
+}
+
+function toPivotDiagnostic(
+  err: unknown,
+  info: { table: string; rowKey?: string; column?: string; messagePrefix: string },
+): DiagnosticError {
+  if (err instanceof DiagnosticError) {
+    return new DiagnosticError({
+      code: err.code,
+      message: `${info.messagePrefix}: ${err.message}`,
+      severity: err.severity,
+      table: err.table ?? info.table,
+      column: err.column ?? info.column,
+      rowKey: err.rowKey ?? info.rowKey,
+      range: err.range,
+    });
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  return new DiagnosticError({
+    code: errorCodeFromMessage(message),
+    message: `${info.messagePrefix}: ${message}`,
+    table: info.table,
+    column: info.column,
+    rowKey: info.rowKey,
+  });
+}
+
+function evaluatePivotTables(
+  pivotTables: Record<string, PivotTableDefinition> | undefined,
+  schemas: Record<string, TableFrontmatter>,
+  rowList: Record<string, Record<string, Scalar>[]>,
+  ensureByTable: Record<string, (row: Record<string, Scalar>) => Record<string, Scalar>>,
+): Record<string, PivotTableEvaluation> {
+  if (!pivotTables) return Object.create(null) as Record<string, PivotTableEvaluation>;
+
+  const results = Object.create(null) as Record<string, PivotTableEvaluation>;
+
+  for (const [name, pivot] of Object.entries(pivotTables)) {
+    const sourceRows = rowList[pivot.source] ?? [];
+    const ensureSource = ensureByTable[pivot.source];
+    const sourceSchema = schemas[pivot.source];
+
+    const rowRef = parseColumnReference(pivot.source, pivot.rows.from);
+    const columnRef = parseColumnReference(pivot.source, pivot.columns.from);
+    const valueColumn = parsePivotValueColumn(name, pivot.source, sourceSchema, pivot.value);
+
+    const rowAxisSourceRows = rowList[rowRef.table] ?? [];
+    const ensureRowAxisTable = ensureByTable[rowRef.table];
+    let rowValues = uniqueByString(rowAxisSourceRows.map((row) => ensureRowAxisTable(row)[rowRef.column]));
+    if (rowRef.table === pivot.source) {
+      rowValues = [...rowValues].sort(compareByString);
+    }
+    rowValues = applyRowOrdering(rowValues, pivot.rows.order);
+
+    const columnAxisSourceRows = rowList[columnRef.table] ?? [];
+    const ensureColumnAxisTable = ensureByTable[columnRef.table];
+    let columnValues: Scalar[];
+    if (pivot.columns.range) {
+      columnValues = buildDateRangeValues(
+        name,
+        pivot.columns.range.start,
+        pivot.columns.range.end,
+        pivot.columns.range.step ?? "day",
+      );
+    } else {
+      columnValues = uniqueByString(columnAxisSourceRows.map((row) => ensureColumnAxisTable(row)[columnRef.column]));
+      columnValues = [...columnValues].sort(compareByString);
+    }
+
+    const rowAxis = rowValues.map((key, index) => ({ id: scalarIdentifier(key), key, label: String(key), index }));
+    const columnAxis = columnValues.map((key, index) => ({
+      id: scalarIdentifier(key),
+      key,
+      label: derivePivotColumnLabel(name, key, pivot.columns.label),
+      index,
+    }));
+
+    const ensuredSourceRows = sourceRows.map((row) => ensureSource(row));
+    const rowAxisIdByIdentity = new Map<string, string>(rowAxis.map((entry) => [scalarIdentity(entry.key), entry.id]));
+    const columnAxisIdByIdentity = new Map<string, string>(
+      columnAxis.map((entry) => [scalarIdentity(entry.key), entry.id]),
+    );
+    const pairValueBuckets = new Map<string, Scalar[]>();
+    const pairDisplayKeys = new Map<string, { row: string; column: string }>();
+    const pairKey = (rowId: string, columnId: string) => `${rowId}\u0000${columnId}`;
+
+    for (const row of ensuredSourceRows) {
+      const rowKey = row[rowRef.column];
+      const colKey = row[columnRef.column];
+      if (rowKey === null || rowKey === undefined || colKey === null || colKey === undefined) {
+        continue;
+      }
+      const rowId = rowAxisIdByIdentity.get(scalarIdentity(rowKey));
+      const columnId = columnAxisIdByIdentity.get(scalarIdentity(colKey));
+      if (!rowId || !columnId) {
+        continue;
+      }
+      const key = pairKey(rowId, columnId);
+      const bucket = pairValueBuckets.get(key);
+      if (bucket) {
+        bucket.push(row[valueColumn]);
+      } else {
+        pairValueBuckets.set(key, [row[valueColumn]]);
+        pairDisplayKeys.set(key, { row: String(rowKey), column: String(colKey) });
+      }
+    }
+
+    const pairAggregates = new Map<string, Scalar>();
+    for (const [key, values] of pairValueBuckets.entries()) {
+      try {
+        pairAggregates.set(key, computeAggregateValues("sum", values));
+      } catch (err) {
+        const display = pairDisplayKeys.get(key) ?? { row: "<unknown>", column: "<unknown>" };
+        throw toPivotDiagnostic(err, {
+          table: name,
+          rowKey: display.row,
+          column: display.column,
+          messagePrefix: `[pivot-table] table ${name} cell row=${display.row} column=${display.column}`,
+        });
+      }
+    }
+
+    const evaluatedRows = rowAxis.map((rowAxisEntry) => {
+      const values = Object.create(null) as Record<string, Scalar>;
+
+      for (const columnAxisEntry of columnAxis) {
+        const key = pairKey(rowAxisEntry.id, columnAxisEntry.id);
+        if (!pairValueBuckets.has(key)) {
+          try {
+            values[columnAxisEntry.id] = emptyPivotCell(pivot.empty_cells);
+          } catch (err) {
+            throw toPivotDiagnostic(err, {
+              table: name,
+              rowKey: String(rowAxisEntry.key),
+              column: "empty_cells",
+              messagePrefix: `[pivot-table] table ${name} cell row=${String(rowAxisEntry.key)} column=${columnAxisEntry.label}`,
+            });
+          }
+          continue;
+        }
+        values[columnAxisEntry.id] = pairAggregates.get(key) ?? 0;
+      }
+
+      const rowTotal = pivot.totals?.row
+        ? computeAggregateValues("sum", Object.values(values).map(toNumericOrNull))
+        : undefined;
+
+      return {
+        key: rowAxisEntry.key,
+        values,
+        total: rowTotal,
+      };
+    });
+
+    let footerRows: PivotTableEvaluation["footerRows"];
+    if (pivot.totals?.column) {
+      footerRows = [];
+      for (const [footerName, footerDef] of Object.entries(pivot.totals.column)) {
+        const mode = footerDef.mode ?? "sum";
+        const footerValues = Object.create(null) as Record<string, Scalar>;
+        let running = 0;
+        for (const columnAxisEntry of columnAxis) {
+          const colTotal = computeAggregateValues(
+            "sum",
+            evaluatedRows.map((row) => toNumericOrNull(row.values[columnAxisEntry.id])),
+          );
+
+          if (mode === "running_sum") {
+            const numericColTotal = typeof colTotal === "number" ? colTotal : 0;
+            running += numericColTotal;
+            footerValues[columnAxisEntry.id] = running;
+          } else {
+            footerValues[columnAxisEntry.id] = colTotal;
+          }
+        }
+
+        const footerTotal = pivot.totals.row
+          ? computeAggregateValues("sum", Object.values(footerValues).map(toNumericOrNull))
+          : undefined;
+
+        footerRows.push({
+          key: footerName,
+          mode,
+          values: footerValues,
+          total: footerTotal,
+        });
+      }
+    }
+
+    results[name] = {
+      name,
+      source: pivot.source,
+      rowsFrom: pivot.rows.from,
+      columnsFrom: pivot.columns.from,
+      value: pivot.value,
+      rowAxis,
+      columnAxis,
+      rows: evaluatedRows,
+      rowTotalName: pivot.totals?.row,
+      footerRows,
+    };
+  }
+
+  return results;
+}
+
 function interpolateAggregates(
   body: string,
   aggregates: Record<string, Record<string, Scalar>>,
@@ -1210,6 +1667,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     groupedAggregateResults,
     limits,
   );
+  const pivotTableResults = evaluatePivotTables(frontmatter.pivot_tables, frontmatter.tables, rowList, ensureByTable);
 
   const results = Object.create(null) as Record<string, TableEvaluation>;
   for (const [name, rows] of Object.entries(rowList)) {
@@ -1256,6 +1714,7 @@ export function compileMdxtab(raw: string, options: CompileOptions = {}): Compil
     frontmatter: frontmatter as FrontmatterDocument,
     tables: results,
     reportTables: reportTableResults,
+    pivotTables: pivotTableResults,
     rendered,
   };
 }
